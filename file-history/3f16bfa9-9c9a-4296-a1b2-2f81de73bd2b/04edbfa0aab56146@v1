@@ -1,0 +1,74 @@
+"""
+Test Case: TC-F-004-05
+Requirement: F-004 - Add database reset endpoint with safety code
+Description: Insert 100 records, reset database, verify database has 0 records and response shows "deleted_records": 100
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import requests
+import sqlite3
+import time
+
+def test_TC_F_004_05():
+    """Test database reset deletes exactly 100 records"""
+
+    api_endpoint = "http://localhost:8000/admin/reset-database"
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Clear database first
+        cursor.execute("DELETE FROM inference_results")
+        conn.commit()
+
+        # Insert exactly 100 records
+        for i in range(100):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, bert_prediction, bert_confidence, final_answer,
+                 llm_used, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-004-05 record {i}",
+                "accepted", 0.92, "accepted", 0, time.time(), None
+            ))
+        conn.commit()
+
+        # Verify 100 records exist
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        pre_delete_count = cursor.fetchone()[0]
+        assert pre_delete_count == 100, f"Expected 100 records, got {pre_delete_count}"
+
+        # Reset database
+        response = requests.post(
+            api_endpoint,
+            json={"safety_code": "270195"},
+            timeout=10
+        )
+
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+
+        data = response.json()
+        assert data["deleted_records"] == 100, \
+            f"Expected deleted_records=100, got {data['deleted_records']}"
+
+        # Verify database is empty
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        post_delete_count = cursor.fetchone()[0]
+        assert post_delete_count == 0, f"Database should be empty, has {post_delete_count} records"
+
+        print(f"Success: Deleted exactly 100 records, database now empty")
+
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_004_05()
+        print("TC-F-004-05: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-004-05: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-004-05: ERROR - {e}")

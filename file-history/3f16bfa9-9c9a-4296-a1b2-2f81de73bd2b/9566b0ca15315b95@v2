@@ -1,0 +1,213 @@
+"""
+Database Manager for AI Inference Results
+Minimal SQLite database operations for logging inference results
+"""
+import sqlite3
+import json
+import uuid
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+import os
+
+
+class InferenceDB:
+    def __init__(self, db_path: str = None):
+        """Initialize database connection and create tables if needed"""
+        if db_path is None:
+            # Use environment variable or default to shared volume path
+            self.db_path = os.getenv('DATABASE_PATH', './shared/data/inference_results.db')
+        else:
+            self.db_path = db_path
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        self.init_database()
+    
+    def init_database(self):
+        """Initialize database with schema"""
+        with sqlite3.connect(self.db_path) as conn:
+            # Read and execute schema file
+            schema_path = os.path.join(os.path.dirname(__file__), 'db_schema.sql')
+            if os.path.exists(schema_path):
+                with open(schema_path, 'r') as f:
+                    schema_sql = f.read()
+                conn.executescript(schema_sql)
+            else:
+                # Fallback schema if file not found
+                self._create_fallback_schema(conn)
+    
+    def _create_fallback_schema(self, conn):
+        """Create basic schema if schema file not found"""
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS inference_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                sentence TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                reason TEXT,
+                mode TEXT NOT NULL,
+                score REAL,
+                batch_id TEXT
+            )
+        ''')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON inference_results(timestamp)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_batch_id ON inference_results(batch_id)')
+    
+    def log_inference(self, 
+                     sentence: str, 
+                     answer: str, 
+                     reason: str, 
+                     mode: str, 
+                     score: Optional[float] = None,
+                     batch_id: Optional[str] = None,
+                     entropy_value: Optional[float] = None,
+                     name_detected: bool = False,
+                     detected_name: Optional[str] = None,
+                     deep_thinking: bool = False,
+                     processing_time_ms: Optional[int] = None,
+                     language: Optional[str] = None) -> int:
+        """
+        Log a single inference result to database
+        Returns the ID of the inserted record
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute('''
+                INSERT INTO inference_results 
+                (sentence, answer, reason, mode, score, batch_id, entropy_value, 
+                 name_detected, detected_name, deep_thinking, processing_time_ms, language)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (sentence, answer, reason, mode, score, batch_id, entropy_value,
+                  name_detected, detected_name, deep_thinking, processing_time_ms, language))
+            return cursor.lastrowid
+    
+    def log_batch_inferences(self, results: List[Dict[str, Any]], batch_id: Optional[str] = None) -> List[int]:
+        """
+        Log multiple inference results as a batch
+        Returns list of inserted record IDs
+        """
+        if batch_id is None:
+            batch_id = str(uuid.uuid4())
+        
+        record_ids = []
+        for result in results:
+            record_id = self.log_inference(
+                sentence=result.get('sentence', ''),
+                answer=result.get('answer', ''),
+                reason=result.get('reason', ''),
+                mode=result.get('mode', ''),
+                score=result.get('score'),
+                batch_id=batch_id,
+                entropy_value=result.get('entropy_value'),
+                name_detected=result.get('name_detected', False),
+                detected_name=result.get('detected_name'),
+                deep_thinking=result.get('deep_thinking', False),
+                processing_time_ms=result.get('processing_time_ms'),
+                language=result.get('language')
+            )
+            record_ids.append(record_id)
+        
+        return record_ids
+    
+    def get_recent_results(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get recent inference results"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row  # Enable dict-like access
+            cursor = conn.execute('''
+                SELECT * FROM inference_results 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            ''', (limit,))
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_daily_stats(self, days: int = 30) -> List[Dict[str, Any]]:
+        """Get daily statistics for recent days"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('''
+                SELECT * FROM daily_stats
+                WHERE date >= date('now', '-' || ? || ' days')
+                ORDER BY date DESC
+            ''', (days,))
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def export_for_training(self, start_date: Optional[str] = None, 
+                           end_date: Optional[str] = None,
+                           answer_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Export data for model training/fine-tuning
+        Returns simplified format suitable for ML pipelines
+        """
+        query = '''
+            SELECT sentence, answer, mode, score, timestamp, reason
+            FROM inference_results 
+            WHERE 1=1
+        '''
+        params = []
+        
+        if start_date:
+            query += ' AND DATE(timestamp) >= ?'
+            params.append(start_date)
+        
+        if end_date:
+            query += ' AND DATE(timestamp) <= ?'
+            params.append(end_date)
+        
+        if answer_filter:
+            query += ' AND answer = ?'
+            params.append(answer_filter)
+        
+        query += ' ORDER BY timestamp'
+        
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def export_to_json(self, filename: str, **kwargs) -> str:
+        """Export training data to JSON file"""
+        data = self.export_for_training(**kwargs)
+        filepath = os.path.join(os.path.dirname(self.db_path), filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False, default=str)
+        
+        return filepath
+    
+    def get_model_performance(self) -> List[Dict[str, Any]]:
+        """Get model performance statistics"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute('SELECT * FROM model_performance')
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def cleanup_old_records(self, days_to_keep: int = 365) -> int:
+        """Remove records older than specified days, returns number of deleted records"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute('''
+                DELETE FROM inference_results
+                WHERE timestamp < datetime('now', '-' || ? || ' days')
+            ''', (days_to_keep,))
+            return cursor.rowcount
+
+    def reset_database(self, safety_code: str) -> int:
+        """
+        Reset database by deleting all records from inference_results table.
+        Requires safety code "270195" for validation.
+        Returns number of deleted records.
+        Raises ValueError if safety code is invalid.
+        """
+        if safety_code != "270195":
+            raise ValueError("Invalid safety code")
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute('DELETE FROM inference_results')
+            return cursor.rowcount
+
+
+# Global database instance
+db = InferenceDB()
+
+
+def get_batch_id() -> str:
+    """Generate a unique batch ID for batch processing"""
+    return str(uuid.uuid4())

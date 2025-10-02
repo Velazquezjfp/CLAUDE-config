@@ -1,0 +1,49 @@
+{
+  "requirement_id": "F-001",
+  "requirement_title": "Change dashboard header color from purple to blue",
+  "last_updated": "2025-10-01T15:30:00Z",
+  "tests": {
+    "TC-F-001-01": {
+      "description": "Open dashboard at http://localhost:8001, verify header background displays solid blue RGB(0,180,231)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-001-01.py"
+    },
+    "TC-F-001-02": {
+      "description": "Verify header text remains white and readable against blue background",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-001-02.py"
+    },
+    "TC-F-001-03": {
+      "description": "Test on mobile viewport (max-width: 768px), verify blue header displays correctly",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-001-03.py"
+    },
+    "TC-F-001-04": {
+      "description": "Verify no gradient is visible, only solid blue color",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-001-04.py"
+    },
+    "TC-F-001-05": {
+      "description": "Inspect CSS in browser DevTools, confirm background property is rgb(0, 180, 231) or #00B4E7",
+      "status": "passed",
+      "last_run": "2025-10-01T15:30:00Z",
+      "test_file": "TC-F-001-05.py"
+    },
+    "TC-F-001-06": {
+      "description": "Clear browser cache and reload, verify blue color persists",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-001-06.py"
+    }
+  },
+  "summary": {
+    "total": 6,
+    "passed": 1,
+    "failed": 0,
+    "not_run": 5
+  }
+}

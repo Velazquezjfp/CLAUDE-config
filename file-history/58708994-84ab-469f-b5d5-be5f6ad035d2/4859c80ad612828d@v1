@@ -1,0 +1,1483 @@
+# API Endpoints Reference
+
+Complete reference documentation for the AI Timesheet Compliance Checker API. This API provides work activity description analysis using a hybrid BERT + LLM approach.
+
+---
+
+## Table of Contents
+
+- [Inference Endpoints](#inference-endpoints)
+  - [POST /predict](#post-predict)
+- [Monitoring Endpoints](#monitoring-endpoints)
+  - [GET /health](#get-health)
+- [Statistics Endpoints](#statistics-endpoints)
+  - [GET /stats/recent](#get-statsrecent)
+  - [GET /stats/daily](#get-statsdaily)
+  - [GET /stats/performance](#get-statsperformance)
+- [Export Endpoints](#export-endpoints)
+  - [POST /export/training-data](#post-exporttraining-data)
+- [Admin Endpoints](#admin-endpoints)
+  - [POST /admin/reset-database](#post-adminreset-database)
+
+---
+
+## Inference Endpoints
+
+### POST /predict
+
+Analyzes work activity descriptions for compliance using AI classification.
+
+**Source:** `main.py:50-119`
+
+#### Description
+
+This is the primary endpoint for analyzing work activity descriptions. It supports both single sentence and batch processing modes. The system uses a two-tier approach:
+
+1. **BERT Mode (Fast)**: Primary classifier providing quick decisions with confidence scores
+2. **LLM Mode (Slow)**: Secondary deep analysis using Google Gemini when BERT is uncertain (entropy-based detection)
+
+The endpoint automatically logs all inferences to the database for analytics and model improvement.
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Request Body
+
+**Content-Type:** `application/json`
+
+##### Single Sentence Request
+
+```json
+{
+  "sentence": "string (required)",
+  "llm": "boolean (optional, default: true)"
+}
+```
+
+**Fields:**
+- `sentence` (string, required): Work activity description to analyze. Must not be empty or null.
+- `llm` (boolean, optional): Enable/disable LLM processing for uncertain cases. Default: `true`
+  - `true`: Allows LLM analysis when BERT is uncertain (entropy-based)
+  - `false`: Forces BERT-only processing, adds uncertainty note if needed
+
+**Validation:**
+- `sentence` cannot be empty or null (raises 400 error)
+- `sentence` is trimmed of whitespace before processing
+
+##### Batch Request
+
+```json
+{
+  "sentences": ["string", "string", ...],
+  "llm": "boolean (optional, default: true)"
+}
+```
+
+**Fields:**
+- `sentences` (array of strings, required): List of work activity descriptions. Must not be empty.
+- `llm` (boolean, optional): Enable/disable LLM processing for the entire batch. Default: `true`
+
+**Validation:**
+- `sentences` array cannot be empty (raises 400 error)
+- Each sentence in the array follows the same validation as single sentence
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Single Sentence Response (200 OK)
+
+```json
+{
+  "answer": "accepted" | "rejected",
+  "reason": "string",
+  "mode": "BERT" | "LLM",
+  "score": 0.95
+}
+```
+
+**Fields:**
+- `answer` (string): Compliance determination, either `"accepted"` or `"rejected"`
+- `reason` (string): Detailed explanation for rejection in German. Empty string if accepted.
+- `mode` (string): Processing mode used (`"BERT"` or `"LLM"`)
+- `score` (number, optional): Confidence score between 0 and 1. Only present in BERT mode.
+
+##### Batch Response (200 OK)
+
+```json
+[
+  {
+    "answer": "accepted",
+    "reason": "",
+    "mode": "BERT",
+    "score": 0.92
+  },
+  {
+    "answer": "rejected",
+    "reason": "Administrative activity not related to technical work",
+    "mode": "LLM"
+  }
+]
+```
+
+Array of response objects, one for each input sentence in the same order.
+
+#### Error Responses
+
+##### 400 Bad Request
+
+```json
+{
+  "detail": "Empty sentences list not allowed"
+}
+```
+
+Returned when:
+- Empty sentence provided
+- Empty sentences array in batch request
+- Invalid JSON structure
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "An unexpected error occurred during processing"
+}
+```
+
+Returned when:
+- Model inference fails
+- Database logging fails (logged but doesn't fail the request)
+- Unexpected runtime errors
+
+#### Processing Logic
+
+1. **Input Validation**: Validates request structure and content
+2. **Name Detection**: Uses spaCy NER to detect person names (German/English)
+3. **BERT Classification**: Fast classifier provides initial prediction and confidence score
+4. **Entropy Calculation**: Measures prediction uncertainty
+5. **Deep Thinking Trigger**: If entropy >= 0.1 or min probability >= 0.1, triggers LLM
+6. **LLM Analysis** (if enabled and uncertain): Calls Google Gemini for detailed analysis
+7. **Database Logging**: Stores inference results with metadata
+8. **Response Formation**: Returns structured classification result
+
+#### Database Logging
+
+Each inference is logged with the following metadata:
+- `sentence`: Original input text
+- `answer`: Classification result
+- `reason`: Rejection reason (if applicable)
+- `mode`: Processing mode used
+- `score`: Confidence score (BERT only)
+- `processing_time_ms`: Processing time in milliseconds
+- `entropy_value`: Uncertainty measure
+- `name_detected`: Whether a person name was detected
+- `detected_name`: Detected name (if applicable)
+- `deep_thinking`: Whether deep analysis was triggered
+- `language`: Detected language (en/de)
+- `batch_id`: Batch identifier (for batch requests)
+
+#### Code Examples
+
+##### cURL - Single Sentence
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentence": "Worked on project documentation for 2 hours",
+    "llm": true
+  }'
+```
+
+##### cURL - Batch Processing
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sentences": [
+      "Prepared monthly financial report",
+      "Conducted client meeting and discussed project scope",
+      "Code review for authentication module"
+    ],
+    "llm": true
+  }'
+```
+
+##### Python
+
+```python
+import requests
+
+# Single sentence
+response = requests.post(
+    "http://localhost:8000/predict",
+    json={
+        "sentence": "Worked on project documentation for 2 hours",
+        "llm": True
+    }
+)
+result = response.json()
+print(f"Answer: {result['answer']}, Mode: {result['mode']}")
+
+# Batch processing
+batch_response = requests.post(
+    "http://localhost:8000/predict",
+    json={
+        "sentences": [
+            "Prepared monthly financial report",
+            "Conducted client meeting"
+        ],
+        "llm": True
+    }
+)
+results = batch_response.json()
+for i, result in enumerate(results):
+    print(f"Sentence {i+1}: {result['answer']} ({result['mode']})")
+```
+
+##### JavaScript (Node.js)
+
+```javascript
+const axios = require('axios');
+
+// Single sentence
+const singleRequest = async () => {
+  const response = await axios.post('http://localhost:8000/predict', {
+    sentence: 'Worked on project documentation for 2 hours',
+    llm: true
+  });
+  console.log(`Answer: ${response.data.answer}, Mode: ${response.data.mode}`);
+};
+
+// Batch processing
+const batchRequest = async () => {
+  const response = await axios.post('http://localhost:8000/predict', {
+    sentences: [
+      'Prepared monthly financial report',
+      'Conducted client meeting'
+    ],
+    llm: true
+  });
+  response.data.forEach((result, i) => {
+    console.log(`Sentence ${i+1}: ${result.answer} (${result.mode})`);
+  });
+};
+```
+
+#### Performance Considerations
+
+- **BERT Mode**: ~100-150ms average response time
+- **LLM Mode**: ~1000-2000ms average response time
+- **Batch Processing**: Processes sequentially but logs in single database transaction
+- **Name Detection**: Adds ~50ms overhead per sentence
+- **Database Logging**: Async, doesn't block response
+
+#### Related Endpoints
+
+- [GET /stats/recent](#get-statsrecent) - View recent inference results
+- [GET /stats/performance](#get-statsperformance) - Analyze model performance
+- [POST /export/training-data](#post-exporttraining-data) - Export for retraining
+
+---
+
+## Monitoring Endpoints
+
+### GET /health
+
+Health check endpoint for service monitoring and Docker health checks.
+
+**Source:** `main.py:329-344`
+
+#### Description
+
+Returns the operational status of the API including database connectivity and model loading status. This endpoint is used by:
+- Docker Compose health checks
+- Load balancers for health monitoring
+- Monitoring systems for uptime tracking
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Parameters
+
+None
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "model": "loaded",
+  "timestamp": "2025-10-01T14:30:00.123456"
+}
+```
+
+**Fields:**
+- `status` (string): Overall service health, either `"healthy"` or `"unhealthy"`
+- `database` (string): Database connection status. `"connected"` if successful, error message otherwise.
+- `model` (string): Model loading status. Always `"loaded"` when service is running.
+- `timestamp` (string): ISO 8601 timestamp of the health check
+
+#### Error Responses
+
+##### 500 Internal Server Error
+
+```json
+{
+  "status": "healthy",
+  "database": "error: database locked",
+  "model": "loaded",
+  "timestamp": "2025-10-01T14:30:00.123456"
+}
+```
+
+Returned when database connectivity fails. Note that status may still be "healthy" if model is loaded.
+
+#### Health Check Logic
+
+1. **Database Test**: Attempts to fetch 1 recent result from database
+2. **Status Determination**: Sets database status based on query success
+3. **Model Check**: Verifies model is loaded (always true if service is running)
+4. **Timestamp**: Records current time in ISO 8601 format
+
+#### Code Examples
+
+##### cURL
+
+```bash
+curl -X GET "http://localhost:8000/health"
+```
+
+##### Python
+
+```python
+import requests
+
+response = requests.get("http://localhost:8000/health")
+health = response.json()
+
+if health['status'] == 'healthy' and health['database'] == 'connected':
+    print("Service is fully operational")
+else:
+    print(f"Service issue: {health}")
+```
+
+##### JavaScript
+
+```javascript
+const axios = require('axios');
+
+const checkHealth = async () => {
+  const response = await axios.get('http://localhost:8000/health');
+  const health = response.data;
+
+  if (health.status === 'healthy' && health.database === 'connected') {
+    console.log('Service is fully operational');
+  } else {
+    console.log('Service issue:', health);
+  }
+};
+```
+
+#### Docker Health Check Configuration
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+```
+
+#### Related Endpoints
+
+- [GET /stats/recent](#get-statsrecent) - Check if database has recent data
+- [GET /stats/performance](#get-statsperformance) - Detailed performance metrics
+
+---
+
+## Statistics Endpoints
+
+### GET /stats/recent
+
+Retrieves recent inference results for monitoring and analysis.
+
+**Source:** `main.py:279-286`
+
+#### Description
+
+Returns a list of recent inference results with full metadata. Useful for:
+- Real-time monitoring dashboards
+- Quality assurance checks
+- Debugging classification decisions
+- Audit trails
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Parameters
+
+| Parameter | Type    | Required | Default | Description                     |
+|-----------|---------|----------|---------|----------------------------------|
+| `limit`   | integer | No       | 100     | Maximum number of results (1-1000) |
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "results": [
+    {
+      "id": 1,
+      "timestamp": "2025-10-01T14:30:00",
+      "sentence": "Worked on project documentation",
+      "answer": "accepted",
+      "reason": "",
+      "mode": "BERT",
+      "score": 0.95,
+      "batch_id": null,
+      "entropy_value": 0.05,
+      "name_detected": false,
+      "detected_name": null,
+      "deep_thinking": false,
+      "processing_time_ms": 120,
+      "language": "en"
+    }
+  ],
+  "count": 1
+}
+```
+
+**Fields:**
+- `results` (array): List of inference result objects
+  - `id` (integer): Unique database record ID
+  - `timestamp` (string): ISO 8601 timestamp of inference
+  - `sentence` (string): Original input text
+  - `answer` (string): Classification result (`"accepted"` or `"rejected"`)
+  - `reason` (string): Rejection reason (if applicable)
+  - `mode` (string): Processing mode (`"BERT"` or `"LLM"`)
+  - `score` (number): Confidence score (BERT only)
+  - `batch_id` (string): Batch identifier (null for single requests)
+  - `entropy_value` (number): Uncertainty measure
+  - `name_detected` (boolean): Whether person name was detected
+  - `detected_name` (string): Detected name (if applicable)
+  - `deep_thinking` (boolean): Whether LLM analysis was triggered
+  - `processing_time_ms` (integer): Processing time in milliseconds
+  - `language` (string): Detected language code
+- `count` (integer): Number of results returned
+
+#### Error Responses
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "Database error: unable to open database file"
+}
+```
+
+Returned when database query fails.
+
+#### Code Examples
+
+##### cURL
+
+```bash
+# Get last 50 results
+curl -X GET "http://localhost:8000/stats/recent?limit=50"
+```
+
+##### Python
+
+```python
+import requests
+
+# Get recent results
+response = requests.get("http://localhost:8000/stats/recent", params={"limit": 50})
+data = response.json()
+
+print(f"Retrieved {data['count']} results")
+for result in data['results'][:5]:
+    print(f"{result['timestamp']}: {result['answer']} ({result['mode']}) - {result['sentence'][:50]}...")
+```
+
+##### JavaScript
+
+```javascript
+const axios = require('axios');
+
+const getRecentStats = async (limit = 100) => {
+  const response = await axios.get('http://localhost:8000/stats/recent', {
+    params: { limit }
+  });
+
+  console.log(`Retrieved ${response.data.count} results`);
+  response.data.results.slice(0, 5).forEach(result => {
+    console.log(`${result.timestamp}: ${result.answer} (${result.mode})`);
+  });
+};
+```
+
+#### Related Endpoints
+
+- [POST /predict](#post-predict) - Generate new inference results
+- [GET /stats/daily](#get-statsdaily) - Aggregated daily statistics
+- [POST /export/training-data](#post-exporttraining-data) - Export results for training
+
+---
+
+### GET /stats/daily
+
+Returns aggregated daily statistics for trend analysis.
+
+**Source:** `main.py:288-295`
+
+#### Description
+
+Provides daily aggregated statistics including acceptance rates, mode usage distribution, average scores, and performance metrics. Useful for:
+- Trend analysis over time
+- Performance monitoring
+- Capacity planning
+- Quality metrics tracking
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Parameters
+
+| Parameter | Type    | Required | Default | Description                            |
+|-----------|---------|----------|---------|----------------------------------------|
+| `days`    | integer | No       | 30      | Number of days to retrieve (1-365)     |
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "daily_stats": [
+    {
+      "date": "2025-10-01",
+      "total_inferences": 150,
+      "accepted_count": 120,
+      "rejected_count": 30,
+      "bert_count": 140,
+      "llm_count": 10,
+      "avg_score": 0.89,
+      "avg_processing_time_ms": 125.5
+    }
+  ]
+}
+```
+
+**Fields:**
+- `daily_stats` (array): List of daily statistic objects, ordered by date descending
+  - `date` (string): Date in YYYY-MM-DD format
+  - `total_inferences` (integer): Total number of inferences for the day
+  - `accepted_count` (integer): Number of accepted classifications
+  - `rejected_count` (integer): Number of rejected classifications
+  - `bert_count` (integer): Number of BERT-mode inferences
+  - `llm_count` (integer): Number of LLM-mode inferences
+  - `avg_score` (number): Average BERT confidence score for the day
+  - `avg_processing_time_ms` (number): Average processing time in milliseconds
+
+#### Derived Metrics
+
+From the response data, you can calculate:
+- **Acceptance Rate**: `(accepted_count / total_inferences) * 100`
+- **LLM Usage Rate**: `(llm_count / total_inferences) * 100`
+- **Rejection Rate**: `(rejected_count / total_inferences) * 100`
+
+#### Error Responses
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "Database error: query failed"
+}
+```
+
+#### Code Examples
+
+##### cURL
+
+```bash
+# Get last 7 days
+curl -X GET "http://localhost:8000/stats/daily?days=7"
+```
+
+##### Python
+
+```python
+import requests
+import pandas as pd
+
+# Get daily stats
+response = requests.get("http://localhost:8000/stats/daily", params={"days": 30})
+data = response.json()
+
+# Convert to DataFrame for analysis
+df = pd.DataFrame(data['daily_stats'])
+df['acceptance_rate'] = (df['accepted_count'] / df['total_inferences'] * 100).round(1)
+df['llm_usage_rate'] = (df['llm_count'] / df['total_inferences'] * 100).round(1)
+
+print(df[['date', 'total_inferences', 'acceptance_rate', 'llm_usage_rate']].head())
+```
+
+##### JavaScript
+
+```javascript
+const axios = require('axios');
+
+const getDailyStats = async (days = 30) => {
+  const response = await axios.get('http://localhost:8000/stats/daily', {
+    params: { days }
+  });
+
+  response.data.daily_stats.forEach(stat => {
+    const acceptanceRate = (stat.accepted_count / stat.total_inferences * 100).toFixed(1);
+    console.log(`${stat.date}: ${stat.total_inferences} inferences, ${acceptanceRate}% accepted`);
+  });
+};
+```
+
+#### Related Endpoints
+
+- [GET /stats/recent](#get-statsrecent) - Individual inference records
+- [GET /stats/performance](#get-statsperformance) - Performance breakdown by mode
+
+---
+
+### GET /stats/performance
+
+Returns model performance statistics broken down by processing mode and classification result.
+
+**Source:** `main.py:297-304`
+
+#### Description
+
+Provides detailed performance metrics for model evaluation including:
+- Score distributions by mode (BERT vs LLM)
+- Performance by classification type (accepted vs rejected)
+- Processing time analytics
+- Quality assessment metrics
+
+Useful for:
+- Model performance evaluation
+- A/B testing between modes
+- Quality assurance
+- Performance optimization
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Parameters
+
+None
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "performance": [
+    {
+      "mode": "BERT",
+      "answer": "accepted",
+      "count": 1500,
+      "avg_score": 0.92,
+      "min_score": 0.75,
+      "max_score": 0.99,
+      "avg_processing_time_ms": 100.5
+    },
+    {
+      "mode": "BERT",
+      "answer": "rejected",
+      "count": 300,
+      "avg_score": 0.85,
+      "min_score": 0.60,
+      "max_score": 0.95,
+      "avg_processing_time_ms": 110.2
+    },
+    {
+      "mode": "LLM",
+      "answer": "accepted",
+      "count": 50,
+      "avg_score": null,
+      "min_score": null,
+      "max_score": null,
+      "avg_processing_time_ms": 1500.0
+    },
+    {
+      "mode": "LLM",
+      "answer": "rejected",
+      "count": 150,
+      "avg_score": null,
+      "min_score": null,
+      "max_score": null,
+      "avg_processing_time_ms": 1650.0
+    }
+  ]
+}
+```
+
+**Fields:**
+- `performance` (array): List of performance metric objects
+  - `mode` (string): Processing mode (`"BERT"` or `"LLM"`)
+  - `answer` (string): Classification result (`"accepted"` or `"rejected"`)
+  - `count` (integer): Number of inferences in this category
+  - `avg_score` (number): Average confidence score (BERT only, null for LLM)
+  - `min_score` (number): Minimum confidence score (BERT only, null for LLM)
+  - `max_score` (number): Maximum confidence score (BERT only, null for LLM)
+  - `avg_processing_time_ms` (number): Average processing time in milliseconds
+
+#### Analysis Insights
+
+Use this data to:
+- **Compare BERT vs LLM speed**: LLM typically 10-15x slower than BERT
+- **Evaluate confidence patterns**: Lower avg_score may indicate uncertainty
+- **Identify edge cases**: Wide score ranges suggest varied confidence
+- **Monitor performance degradation**: Track avg_processing_time trends
+
+#### Error Responses
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "Database error: view not accessible"
+}
+```
+
+#### Code Examples
+
+##### cURL
+
+```bash
+curl -X GET "http://localhost:8000/stats/performance"
+```
+
+##### Python
+
+```python
+import requests
+
+response = requests.get("http://localhost:8000/stats/performance")
+data = response.json()
+
+# Analyze BERT performance
+bert_stats = [p for p in data['performance'] if p['mode'] == 'BERT']
+total_bert = sum(p['count'] for p in bert_stats)
+avg_bert_time = sum(p['avg_processing_time_ms'] * p['count'] for p in bert_stats) / total_bert
+
+print(f"BERT Performance:")
+print(f"  Total inferences: {total_bert}")
+print(f"  Average processing time: {avg_bert_time:.1f}ms")
+
+# Analyze LLM usage
+llm_stats = [p for p in data['performance'] if p['mode'] == 'LLM']
+total_llm = sum(p['count'] for p in llm_stats)
+llm_percentage = (total_llm / (total_bert + total_llm)) * 100
+
+print(f"\nLLM Usage: {llm_percentage:.1f}% of total inferences")
+```
+
+##### JavaScript
+
+```javascript
+const axios = require('axios');
+
+const analyzePerformance = async () => {
+  const response = await axios.get('http://localhost:8000/stats/performance');
+  const performance = response.data.performance;
+
+  const bertStats = performance.filter(p => p.mode === 'BERT');
+  const llmStats = performance.filter(p => p.mode === 'LLM');
+
+  const totalBert = bertStats.reduce((sum, p) => sum + p.count, 0);
+  const totalLLM = llmStats.reduce((sum, p) => sum + p.count, 0);
+
+  console.log(`BERT: ${totalBert} inferences`);
+  console.log(`LLM: ${totalLLM} inferences (${(totalLLM/(totalBert+totalLLM)*100).toFixed(1)}%)`);
+
+  // Average scores
+  const bertAccepted = bertStats.find(p => p.answer === 'accepted');
+  if (bertAccepted) {
+    console.log(`BERT Accepted avg score: ${bertAccepted.avg_score.toFixed(3)}`);
+  }
+};
+```
+
+#### Related Endpoints
+
+- [GET /stats/daily](#get-statsdaily) - Time-series performance trends
+- [GET /stats/recent](#get-statsrecent) - Individual inference details
+
+---
+
+## Export Endpoints
+
+### POST /export/training-data
+
+Exports inference data to JSON format for model training and fine-tuning.
+
+**Source:** `main.py:306-327`
+
+#### Description
+
+Exports historical inference data in a format suitable for:
+- Model retraining and fine-tuning
+- Data analysis and research
+- Backup and archival
+- External analytics systems
+
+Supports flexible filtering by date range and classification result.
+
+#### Authentication
+
+None (Public endpoint)
+
+#### Parameters
+
+| Parameter       | Type   | Required | Default               | Description                        |
+|----------------|--------|----------|----------------------|------------------------------------|
+| `start_date`   | string | No       | null                 | Start date filter (YYYY-MM-DD)     |
+| `end_date`     | string | No       | null                 | End date filter (YYYY-MM-DD)       |
+| `answer_filter`| string | No       | null                 | Filter by answer type (accepted/rejected) |
+| `filename`     | string | No       | training_export.json | Output filename                    |
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "message": "Training data exported successfully",
+  "filepath": "/app/shared/data/training_export.json",
+  "filters": {
+    "start_date": "2025-09-01",
+    "end_date": "2025-10-01",
+    "answer_filter": null
+  }
+}
+```
+
+**Fields:**
+- `message` (string): Success confirmation message
+- `filepath` (string): Absolute path to the exported JSON file
+- `filters` (object): Applied filters for the export
+  - `start_date` (string): Start date used (or null)
+  - `end_date` (string): End date used (or null)
+  - `answer_filter` (string): Answer filter used (or null)
+
+#### Exported Data Format
+
+The exported JSON file contains an array of inference records:
+
+```json
+[
+  {
+    "sentence": "Worked on project documentation",
+    "answer": "accepted",
+    "mode": "BERT",
+    "score": 0.95,
+    "timestamp": "2025-10-01T14:30:00",
+    "reason": ""
+  }
+]
+```
+
+#### Error Responses
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "Export error: Permission denied writing to file"
+}
+```
+
+Returned when:
+- Database query fails
+- File system write fails
+- Invalid date format provided
+
+#### File Location
+
+Exported files are saved to the shared data directory:
+- **Docker**: `/app/shared/data/`
+- **Local**: `./shared/data/`
+
+Files are accessible from both the API and Dashboard containers.
+
+#### Code Examples
+
+##### cURL - Export Last Month
+
+```bash
+curl -X POST "http://localhost:8000/export/training-data?start_date=2025-09-01&end_date=2025-10-01&filename=september_data.json"
+```
+
+##### cURL - Export Rejected Only
+
+```bash
+curl -X POST "http://localhost:8000/export/training-data?answer_filter=rejected&filename=rejected_samples.json"
+```
+
+##### Python
+
+```python
+import requests
+from datetime import datetime, timedelta
+
+# Export last 30 days
+end_date = datetime.now().strftime('%Y-%m-%d')
+start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+
+response = requests.post(
+    "http://localhost:8000/export/training-data",
+    params={
+        "start_date": start_date,
+        "end_date": end_date,
+        "filename": "monthly_training_data.json"
+    }
+)
+
+result = response.json()
+print(f"Exported to: {result['filepath']}")
+print(f"Filters applied: {result['filters']}")
+
+# Read the exported file (if accessible)
+import json
+with open(result['filepath'], 'r') as f:
+    data = json.load(f)
+print(f"Total records: {len(data)}")
+```
+
+##### JavaScript
+
+```javascript
+const axios = require('axios');
+const fs = require('fs');
+
+const exportTrainingData = async () => {
+  const endDate = new Date().toISOString().split('T')[0];
+  const startDate = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+
+  const response = await axios.post('http://localhost:8000/export/training-data', null, {
+    params: {
+      start_date: startDate,
+      end_date: endDate,
+      filename: 'monthly_export.json'
+    }
+  });
+
+  console.log(`Exported to: ${response.data.filepath}`);
+
+  // If file is accessible locally
+  if (fs.existsSync(response.data.filepath)) {
+    const data = JSON.parse(fs.readFileSync(response.data.filepath, 'utf8'));
+    console.log(`Total records: ${data.length}`);
+  }
+};
+```
+
+#### Use Cases
+
+1. **Model Retraining**: Export all data for periodic model updates
+2. **Quality Analysis**: Export rejected samples for manual review
+3. **A/B Testing**: Export time-ranged data for comparing model versions
+4. **Compliance Auditing**: Export specific date ranges for audits
+5. **Research**: Export data subsets for analysis
+
+#### Best Practices
+
+- Use date filters to limit export size for large datasets
+- Use descriptive filenames with timestamps
+- Export regularly for backup purposes
+- Filter by answer type for focused analysis
+- Combine with `/stats/daily` to identify interesting periods
+
+#### Related Endpoints
+
+- [GET /stats/recent](#get-statsrecent) - Preview data before export
+- [GET /stats/daily](#get-statsdaily) - Identify date ranges of interest
+- [POST /predict](#post-predict) - Generate new training data
+
+---
+
+## Admin Endpoints
+
+### POST /admin/reset-database
+
+Resets the database by deleting all records from the inference_results table.
+
+**Source:** `main.py:346-369`
+
+#### Description
+
+This is a destructive administrative endpoint that permanently deletes all inference records from the database. It requires a safety code for authorization to prevent accidental data loss. This endpoint is useful for:
+- Development and testing environments to clear test data
+- System maintenance and cleanup operations
+- Preparing the system for new data collection phases
+- Resetting the system to a clean state
+
+**WARNING:** This operation is irreversible. All inference history, statistics, and training data will be permanently deleted.
+
+#### Authentication
+
+Safety code based authentication. Requires hardcoded safety code "270195" in request body.
+
+#### Request Body
+
+**Content-Type:** `application/json`
+
+```json
+{
+  "safety_code": "string (required)"
+}
+```
+
+**Fields:**
+- `safety_code` (string, required): Security validation code. Must be exactly "270195" to authorize the reset operation.
+
+**Validation:**
+- `safety_code` must be present in request (raises 403 if missing)
+- `safety_code` must match "270195" exactly (raises 403 if incorrect)
+- Frontend performs additional validation before submitting request
+
+#### Response
+
+**Content-Type:** `application/json`
+
+##### Success Response (200 OK)
+
+```json
+{
+  "message": "Database reset successful",
+  "deleted_records": 1523
+}
+```
+
+**Fields:**
+- `message` (string): Confirmation message indicating successful reset
+- `deleted_records` (integer): Number of records deleted from inference_results table
+
+#### Error Responses
+
+##### 403 Forbidden
+
+```json
+{
+  "detail": "Invalid or missing safety code"
+}
+```
+
+Returned when:
+- `safety_code` is missing from request body
+- `safety_code` does not match "270195"
+- Authorization validation fails
+
+##### 405 Method Not Allowed
+
+```json
+{
+  "detail": "Method Not Allowed"
+}
+```
+
+Returned when:
+- Using GET, PUT, DELETE, or PATCH methods instead of POST
+- Only POST method is supported for this endpoint
+
+##### 500 Internal Server Error
+
+```json
+{
+  "detail": "Database error: unable to delete records"
+}
+```
+
+Returned when:
+- Database connection fails during deletion
+- File permissions prevent database writes
+- Database is locked by another process
+- Unexpected runtime errors during deletion
+
+#### Database Impact
+
+This endpoint executes the following operations:
+
+1. **Validates Safety Code**: Checks safety_code parameter twice (endpoint and db_manager method)
+2. **Deletes All Records**: Executes `DELETE FROM inference_results` removing all data
+3. **Returns Count**: Provides count of deleted records via `cursor.rowcount`
+4. **Resets Views**: Database views (daily_stats, model_performance) automatically recalculate to empty state
+5. **Preserves Schema**: Table structure, indexes, and views remain intact
+
+**Affected Database Components:**
+- **inference_results table**: All records deleted
+- **daily_stats view**: Recalculates with 0 records
+- **model_performance view**: Recalculates with 0 records
+
+#### Side Effects
+
+After database reset, the following endpoints will return empty or zero-value results:
+
+- **GET /stats/recent**: Returns empty results array (`{"results": [], "count": 0}`)
+- **GET /stats/daily**: Returns empty daily_stats array
+- **GET /stats/performance**: Returns empty performance array
+- **GET /api/stats** (Dashboard): All counters return 0
+  - `summary.total_inferences`: 0
+  - `summary.bert_usage`: 0
+  - `summary.llm_usage`: 0
+  - `summary.accepted`: 0
+  - `summary.rejected`: 0
+
+#### Security Considerations
+
+**Current Implementation:**
+- Hardcoded safety code (not environment-based)
+- No IP whitelisting or network restrictions
+- No audit logging of reset operations
+- No user tracking or authorization levels
+
+**Best Practices for Production:**
+- Move safety code to environment variable
+- Implement IP whitelisting for admin endpoints
+- Add comprehensive audit logging
+- Require multi-factor authentication
+- Implement backup creation before reset
+- Add role-based access control
+
+#### Processing Logic
+
+1. **Request Parsing**: Extract safety_code from JSON request body
+2. **Initial Validation**: Check if safety_code is present (403 if missing)
+3. **Code Verification**: Validate safety_code matches "270195" (403 if incorrect)
+4. **Database Method Call**: Invoke `db.reset_database(safety_code)`
+5. **Double Verification**: db_manager validates safety_code again (ValueError if invalid)
+6. **Execute Delete**: Run `DELETE FROM inference_results` SQL command
+7. **Count Records**: Retrieve number of deleted records via cursor.rowcount
+8. **Return Response**: Send success message with deleted_records count
+9. **Error Handling**: Catch ValueError (403) and general exceptions (500)
+
+#### Frontend Integration
+
+The endpoint integrates with the dashboard UI for user-friendly access:
+
+**Dashboard Location:** Dashboard Admin Actions section
+**Implementation:** `dashboard/templates/dashboard.html:115-122`, `dashboard/static/dashboard.js:387-432`
+
+**Frontend Flow:**
+1. User clicks "Reset Database" button in dashboard
+2. JavaScript prompts for safety code input
+3. Frontend validates safety code client-side
+4. Confirmation dialog warns about irreversibility
+5. POST request sent to `/admin/reset-database`
+6. Success/error alert displays result
+7. Dashboard auto-refreshes to show updated (empty) statistics
+
+#### Code Examples
+
+##### cURL
+
+```bash
+curl -X POST "http://localhost:8000/admin/reset-database" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "safety_code": "270195"
+  }'
+```
+
+##### Python
+
+```python
+import requests
+
+# Reset database with safety code
+response = requests.post(
+    "http://localhost:8000/admin/reset-database",
+    json={"safety_code": "270195"}
+)
+
+if response.status_code == 200:
+    result = response.json()
+    print(f"Success: {result['message']}")
+    print(f"Deleted {result['deleted_records']} records")
+elif response.status_code == 403:
+    print(f"Authorization failed: {response.json()['detail']}")
+else:
+    print(f"Error: {response.json()['detail']}")
+```
+
+##### JavaScript (Node.js)
+
+```javascript
+const axios = require('axios');
+
+const resetDatabase = async () => {
+  try {
+    const response = await axios.post('http://localhost:8000/admin/reset-database', {
+      safety_code: '270195'
+    });
+
+    console.log(`Success: ${response.data.message}`);
+    console.log(`Deleted ${response.data.deleted_records} records`);
+  } catch (error) {
+    if (error.response) {
+      console.error(`Error ${error.response.status}: ${error.response.data.detail}`);
+    } else {
+      console.error('Request failed:', error.message);
+    }
+  }
+};
+
+resetDatabase();
+```
+
+##### JavaScript (Dashboard Integration)
+
+```javascript
+// From dashboard/static/dashboard.js
+async function resetDatabase() {
+    const safetyCode = prompt('Enter safety code to reset database:');
+
+    if (safetyCode === null) return; // User cancelled
+
+    if (safetyCode !== '270195') {
+        alert('Invalid safety code');
+        return;
+    }
+
+    const confirmReset = confirm('Are you sure you want to delete ALL records? This action cannot be undone!');
+    if (!confirmReset) return;
+
+    try {
+        const response = await fetch('http://localhost:8000/admin/reset-database', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ safety_code: safetyCode })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Database reset successful. Deleted ${data.deleted_records} records.`);
+            window.dashboard.loadDashboardData(); // Refresh dashboard
+        } else {
+            alert(`Error: ${data.detail}`);
+        }
+    } catch (error) {
+        console.error('Reset failed:', error);
+        alert(`Reset failed: ${error.message}`);
+    }
+}
+```
+
+#### Testing the Endpoint
+
+##### Test Case 1: Successful Reset
+
+```bash
+# Request
+curl -X POST http://localhost:8000/admin/reset-database \
+  -H "Content-Type: application/json" \
+  -d '{"safety_code": "270195"}'
+
+# Expected Response (200)
+{
+  "message": "Database reset successful",
+  "deleted_records": 150
+}
+```
+
+##### Test Case 2: Invalid Safety Code
+
+```bash
+# Request
+curl -X POST http://localhost:8000/admin/reset-database \
+  -H "Content-Type: application/json" \
+  -d '{"safety_code": "wrong_code"}'
+
+# Expected Response (403)
+{
+  "detail": "Invalid or missing safety code"
+}
+```
+
+##### Test Case 3: Missing Safety Code
+
+```bash
+# Request
+curl -X POST http://localhost:8000/admin/reset-database \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Expected Response (403)
+{
+  "detail": "Invalid or missing safety code"
+}
+```
+
+##### Test Case 4: Wrong HTTP Method
+
+```bash
+# Request
+curl -X GET http://localhost:8000/admin/reset-database
+
+# Expected Response (405)
+{
+  "detail": "Method Not Allowed"
+}
+```
+
+#### Recovery After Reset
+
+After executing a database reset:
+
+1. **Verify Empty State**: Call `GET /stats/recent` to confirm no records exist
+2. **Check Dashboard**: Verify dashboard shows zero counts
+3. **Resume Operations**: System is ready for new inference requests via `POST /predict`
+4. **No Restart Required**: API continues operating normally without restart
+5. **Automatic Recovery**: Database schema and views remain functional
+
+#### Performance Considerations
+
+- **Execution Time**: Proportional to number of records (typically 10-100ms for <10,000 records)
+- **Database Lock**: Brief exclusive lock during DELETE operation
+- **No Downtime**: API remains available during reset
+- **Instant Effect**: Changes visible immediately to all endpoints
+- **No Caching Issues**: Database views recalculate automatically
+
+#### Related Endpoints
+
+- [GET /stats/recent](#get-statsrecent) - Verify empty state after reset
+- [GET /stats/daily](#get-statsdaily) - Check empty statistics
+- [POST /predict](#post-predict) - Resume inference operations after reset
+- [GET /health](#get-health) - Verify system health post-reset
+
+#### Backend Implementation Details
+
+**Database Method:** `db_manager.py:192-204`
+
+```python
+def reset_database(self, safety_code: str) -> int:
+    """
+    Reset database by deleting all records from inference_results table.
+    Requires safety code "270195" for validation.
+    Returns number of deleted records.
+    Raises ValueError if safety code is invalid.
+    """
+    if safety_code != "270195":
+        raise ValueError("Invalid safety code")
+
+    with sqlite3.connect(self.db_path) as conn:
+        cursor = conn.execute('DELETE FROM inference_results')
+        return cursor.rowcount
+```
+
+**API Endpoint:** `main.py:346-369`
+
+```python
+@app.post("/admin/reset-database")
+async def reset_database(request: dict):
+    """
+    Reset database by deleting all records from inference_results table.
+    Requires safety code "270195" in request body.
+    """
+    safety_code = request.get("safety_code")
+
+    if not safety_code:
+        raise HTTPException(status_code=403, detail="Invalid or missing safety code")
+
+    if safety_code != "270195":
+        raise HTTPException(status_code=403, detail="Invalid or missing safety code")
+
+    try:
+        deleted_count = db.reset_database(safety_code)
+        return {
+            "message": "Database reset successful",
+            "deleted_records": deleted_count
+        }
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Invalid or missing safety code")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+```
+
+---
+
+## Common Response Codes
+
+All endpoints use standard HTTP response codes:
+
+| Code | Meaning           | Description                                      |
+|------|-------------------|--------------------------------------------------|
+| 200  | OK                | Request successful, data returned                |
+| 400  | Bad Request       | Invalid input parameters or request body         |
+| 403  | Forbidden         | Authorization failed, invalid or missing credentials |
+| 405  | Method Not Allowed| HTTP method not supported for this endpoint      |
+| 500  | Internal Error    | Server error, check logs for details             |
+
+## Rate Limiting
+
+Currently, no rate limiting is implemented. In production environments, consider:
+- Implementing rate limiting at the NGINX level
+- Adding request throttling for export endpoints
+- Monitoring usage patterns
+
+## CORS Configuration
+
+CORS is not explicitly configured in the API. If accessing from web browsers, configure CORS middleware:
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure based on security requirements
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+## Versioning
+
+Current API version: **1.0.0**
+
+No version prefix is used in URLs. Future versions may introduce:
+- `/v2/predict` for major changes
+- Query parameter versioning
+- Custom header versioning
+
+## Support and Contact
+
+For API questions or issues:
+- Email: velazquez.jfp@gmail.com or javier.bosenet@hotmail.com
+- Interactive Docs: http://localhost:8000/docs (Swagger UI)
+- Alternative Docs: http://localhost:8000/redoc (ReDoc)

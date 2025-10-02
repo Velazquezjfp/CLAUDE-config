@@ -1,0 +1,674 @@
+# API Changelog
+
+Chronological record of all API changes, additions, and deprecations for the AI Timesheet Compliance Checker API.
+
+---
+
+## Version 1.1.0 - 2025-10-02 (Current)
+
+**Feature Release** - Database reset functionality (Requirement F-004).
+
+### New Features
+
+#### Admin Endpoints
+- **Added: POST /admin/reset-database** (Main API service, port 8000)
+  - **Purpose**: Administrative endpoint to permanently delete all inference records from the database
+  - **Authentication**: Safety code based authentication (hardcoded "270195")
+  - **Request Body**: `{"safety_code": "string"}`
+  - **Response 200**: `{"message": "Database reset successful", "deleted_records": <integer>}`
+  - **Response 403**: `{"detail": "Invalid or missing safety code"}`
+  - **Response 405**: `{"detail": "Method Not Allowed"}` (only POST supported)
+  - **Response 500**: `{"detail": "Database error: <error>"}`
+  - **Source**: `main.py:346-369`
+  - **Commit**: 56089ce
+  - **Use Cases**:
+    - Development and testing environment cleanup
+    - System maintenance operations
+    - Preparing system for new data collection phases
+    - Database state reset for testing
+
+#### Backend Implementation
+- **Added: `InferenceDB.reset_database(safety_code: str) -> int`**
+  - Purpose: Deletes all records from inference_results table with safety code validation
+  - Location: `db_manager.py:192-204`
+  - Query: `DELETE FROM inference_results`
+  - Validation: Double-checks safety code ("270195") before execution
+  - Return: Integer count of deleted records
+  - Raises: ValueError if safety code is invalid
+  - Error Handling: Comprehensive exception handling with specific error messages
+
+#### Frontend Integration
+- **Added: Dashboard Admin Actions Section**
+  - Location: `dashboard/templates/dashboard.html:115-122`
+  - UI: Reset Database button with warning message
+  - Confirmation: Multi-step validation (prompt + confirm dialog)
+  - Visual Warning: Red button styling with warning icon and message
+
+- **Added: `resetDatabase()` JavaScript Function**
+  - Location: `dashboard/static/dashboard.js:387-432`
+  - Features:
+    - User prompt for safety code input
+    - Client-side validation of safety code
+    - Confirmation dialog with irreversibility warning
+    - POST request to `/admin/reset-database` endpoint
+    - Success/error alert displays
+    - Automatic dashboard refresh on success
+  - Error Handling: Comprehensive try-catch with user-friendly messages
+
+### Behavior Changes
+
+#### Statistics Endpoints (Side Effects)
+After database reset, the following endpoints return empty or zero-value results:
+
+- **Modified Behavior: GET /stats/recent**
+  - After reset: Returns `{"results": [], "count": 0}`
+  - Normal state: Returns populated results array
+
+- **Modified Behavior: GET /stats/daily**
+  - After reset: Returns `{"daily_stats": []}`
+  - Normal state: Returns daily aggregated statistics
+
+- **Modified Behavior: GET /stats/performance**
+  - After reset: Returns `{"performance": []}`
+  - Normal state: Returns mode/answer performance metrics
+
+- **Modified Behavior: GET /api/stats** (Dashboard service, port 8001)
+  - After reset: All counters return 0
+    - `summary.total_inferences`: 0
+    - `summary.bert_usage`: 0
+    - `summary.llm_usage`: 0
+    - `summary.accepted`: 0
+    - `summary.rejected`: 0
+  - Normal state: Returns actual counts from database
+
+### Database Impact
+
+#### Tables Affected
+- **inference_results**: All records deleted on reset
+  - Query: `DELETE FROM inference_results`
+  - Effect: Permanent deletion of all inference history
+  - Recovery: No recovery mechanism (irreversible operation)
+
+#### Views Affected (Auto-recalculation)
+- **daily_stats**: Automatically recalculates with 0 records
+- **model_performance**: Automatically recalculates with 0 records
+
+#### Schema Preservation
+- Table structure remains intact
+- Indexes preserved
+- Views preserved (empty results until new data)
+- No schema migration required
+
+### Security Considerations
+
+**Current Implementation:**
+- Hardcoded safety code ("270195") in both frontend and backend
+- No environment variable configuration
+- No IP whitelisting or network restrictions
+- No audit logging of reset operations
+- No user tracking or authorization levels
+- Client-side validation (not secure alone)
+- Server-side double validation (endpoint + db_manager)
+
+**Production Recommendations:**
+- Move safety code to environment variable
+- Implement IP whitelisting for admin endpoints
+- Add comprehensive audit logging
+- Require multi-factor authentication
+- Implement automatic backup creation before reset
+- Add role-based access control (RBAC)
+- Implement rate limiting for admin endpoints
+- Add API key or JWT authentication
+
+### Performance Characteristics
+
+- **Execution Time**: Proportional to record count (10-100ms for <10,000 records)
+- **Database Lock**: Brief exclusive lock during DELETE operation
+- **API Availability**: No downtime during reset
+- **Effect Propagation**: Instant visibility across all endpoints
+- **View Recalculation**: Automatic and immediate
+
+### API Contract Changes
+
+**New Response Codes Introduced:**
+- **403 Forbidden**: Invalid or missing safety code
+- **405 Method Not Allowed**: Wrong HTTP method used
+
+Updated response code documentation across all files:
+- endpoints.md: Added 403 and 405 to Common Response Codes table
+- openapi.json: Added 403 and 405 response schemas
+- openapi.yaml: Added 403 and 405 response schemas
+
+### Migration Notes
+
+**No migration required.** Changes are additive and backward compatible:
+- Existing endpoints unchanged
+- No breaking changes to request/response formats
+- No database schema changes
+- Automatic application after service restart
+
+### Testing Recommendations
+
+1. **Success Case**: Test with correct safety code
+2. **Authorization Failure**: Test with incorrect safety code
+3. **Missing Code**: Test with empty request body
+4. **Wrong Method**: Test GET/PUT/DELETE methods (expect 405)
+5. **Empty Database**: Verify reset on empty database (0 records deleted)
+6. **Large Dataset**: Verify reset with >10,000 records
+7. **Side Effects**: Verify all statistics endpoints return zeros after reset
+8. **Frontend Integration**: Test dashboard button workflow
+9. **Recovery**: Verify system accepts new inferences after reset
+
+### Documentation Updates
+
+- **endpoints.md**: Added complete Admin Endpoints section with POST /admin/reset-database
+- **openapi.json**: Added /admin/reset-database path with full specification
+- **openapi.yaml**: Added /admin/reset-database path with full specification
+- **openapi.json**: Added ResetDatabaseRequest and ResetDatabaseResponse schemas
+- **openapi.yaml**: Added ResetDatabaseRequest and ResetDatabaseResponse schemas
+- **openapi.json**: Added Admin tag to tags list
+- **openapi.yaml**: Added Admin tag to tags list
+- **API version**: Bumped from 1.0.1 to 1.1.0 (feature addition)
+
+### Known Limitations
+
+- Hardcoded safety code (not environment-configurable)
+- No audit trail of who performed reset and when
+- No automatic backup before reset
+- No rollback mechanism
+- No confirmation email or notification
+- No scheduled reset capability
+- No partial reset (e.g., delete last N days)
+- Safety code visible in client-side JavaScript
+
+### Related Requirements
+
+- **Requirement F-004**: Database reset functionality
+- Implementation includes both API endpoint and dashboard UI integration
+
+---
+
+## Version 1.0.1 - 2025-10-01
+
+**Bug Fix Release** - Dashboard statistics calculation improvements.
+
+### Changes
+
+#### Dashboard Service Bug Fixes
+- **Fixed: Total inferences count calculation** in `GET /api/stats` (Dashboard service port 8001)
+  - **Issue**: Dashboard was calculating total_inferences from only the most recent 100 records, causing incorrect count display when database contained more than 100 records
+  - **Solution**: Added dedicated database methods `get_total_count()` and `get_answer_counts()` to query entire database
+  - **Impact**: Non-breaking change, response format unchanged
+  - **Source**: `dashboard/src/dashboard.py:125-141, 194-198`
+  - **Commit**: a9e479f
+
+#### New Internal Methods (Dashboard Service)
+- **Added: `DashboardDB.get_total_count()`**
+  - Purpose: Returns total count of all inference results in database
+  - Query: `SELECT COUNT(*) as total FROM inference_results`
+  - Returns: Integer (total count)
+
+- **Added: `DashboardDB.get_answer_counts()`**
+  - Purpose: Returns accepted and rejected counts from entire database
+  - Query: Aggregated SUM with CASE statements
+  - Returns: Dictionary with 'accepted' and 'rejected' keys
+
+#### Modified Endpoint Logic (Dashboard Service)
+- **Modified: `GET /api/stats`** (Dashboard service, port 8001)
+  - **Before**: `total_inferences = len(recent) if recent else 0` (limited to 100)
+  - **After**: `total_inferences = db.get_total_count()` (entire database)
+  - **Before**: Calculated accepted/rejected from recent array
+  - **After**: Uses `db.get_answer_counts()` with optimized SQL
+  - **Response format**: Unchanged (no breaking changes)
+
+### Database Impact
+
+No schema changes required. All modifications use existing `inference_results` table structure.
+
+### Performance Improvements
+
+- Optimized SQL queries using aggregate functions instead of Python array processing
+- Reduced memory footprint by avoiding loading full result sets for counting
+
+### Migration Notes
+
+No migration required. Changes are backward compatible and automatically apply after dashboard service restart.
+
+---
+
+## Version 1.0.0 - 2025-10-01
+
+**Initial Release** - First production-ready version of the AI Timesheet Compliance Checker API.
+
+### Features Added
+
+#### Core Inference Endpoint
+- **POST /predict** - Primary compliance analysis endpoint
+  - Single sentence processing with BERT/LLM hybrid approach
+  - Batch processing support for multiple sentences
+  - Configurable LLM mode (enable/disable via `llm` parameter)
+  - Automatic name detection and rejection
+  - Entropy-based uncertainty detection
+  - Response includes mode indicator (BERT vs LLM)
+  - Confidence scores for BERT mode classifications
+  - German language support for rejection reasons
+  - Database logging with comprehensive metadata
+
+#### Monitoring Endpoints
+- **GET /health** - Health check endpoint
+  - Returns service status, database connectivity, model status
+  - ISO 8601 timestamp for monitoring
+  - Used by Docker health checks
+  - No authentication required
+
+#### Statistics Endpoints
+- **GET /stats/recent** - Recent inference results
+  - Configurable limit (1-1000, default 100)
+  - Full metadata including processing times, entropy values
+  - Name detection results included
+  - Batch ID tracking for grouped requests
+
+- **GET /stats/daily** - Daily aggregated statistics
+  - Configurable time range (1-365 days, default 30)
+  - Acceptance/rejection rates
+  - BERT vs LLM usage distribution
+  - Average confidence scores
+  - Processing time metrics
+
+- **GET /stats/performance** - Model performance metrics
+  - Breakdown by mode (BERT/LLM) and answer type
+  - Score distributions (min/max/avg)
+  - Processing time analysis
+  - Count statistics per category
+
+#### Export Endpoints
+- **POST /export/training-data** - Training data export
+  - JSON format export for model retraining
+  - Date range filtering (start_date, end_date)
+  - Answer type filtering (accepted/rejected)
+  - Customizable output filename
+  - Returns filepath and applied filters
+
+### Data Models
+
+#### Request Models
+- **Sentence** - Single sentence request
+  - `sentence` (string, required): Activity description
+  - `llm` (boolean, optional, default: true): LLM mode toggle
+  - Validation: Non-empty sentence required
+
+- **BatchSentences** - Batch request
+  - `sentences` (array of strings, required): Activity descriptions
+  - `llm` (boolean, optional, default: true): LLM mode toggle
+  - Validation: Non-empty array required
+
+#### Response Models
+- **SingleSentenceResponse** - Inference result
+  - `answer` (string): "accepted" or "rejected"
+  - `reason` (string): Rejection explanation (German)
+  - `mode` (string): "BERT" or "LLM"
+  - `score` (number, optional): Confidence (BERT only)
+
+- **BatchSentencesResponse** - Array of SingleSentenceResponse
+
+### Database Schema
+
+#### Tables
+- **inference_results** - Main inference logging table
+  - Core fields: sentence, answer, reason, mode, score
+  - Metadata: timestamp, batch_id, processing_time_ms
+  - ML metrics: entropy_value, deep_thinking, language
+  - Name detection: name_detected, detected_name
+  - Indexes on timestamp, batch_id, answer, mode, created_date
+
+#### Views
+- **daily_stats** - Aggregated daily statistics
+  - Acceptance/rejection counts
+  - Mode usage (BERT/LLM)
+  - Average scores and processing times
+
+- **model_performance** - Performance metrics by mode and answer type
+  - Count, avg/min/max scores
+  - Processing time statistics
+
+### Technical Details
+
+#### Processing Pipeline
+1. Input validation via Pydantic models
+2. Language detection (English/German)
+3. Name detection using spaCy NER
+4. BERT classification with confidence scoring
+5. Entropy-based uncertainty calculation
+6. LLM fallback for uncertain cases (if enabled)
+7. Database logging with metadata
+8. Response formatting
+
+#### External Dependencies
+- Google Gemini 2.0 Flash (LLM mode)
+- BERT classifier (custom trained model)
+- spaCy (en_core_web_lg, de_core_news_lg)
+- SQLite database (shared volume)
+
+#### Performance Metrics
+- BERT Mode: ~100-150ms average
+- LLM Mode: ~1000-2000ms average
+- Name Detection: ~50ms overhead
+- Database Logging: Async, non-blocking
+
+### Deployment Configuration
+
+#### Servers
+- Local Development: `http://localhost:8000`
+- Production: `https://tscheckerservices.bosenet.com`
+
+#### Architecture
+- FastAPI framework
+- Docker containerization
+- NGINX reverse proxy (production)
+- Shared volume for database persistence
+
+### Documentation
+- OpenAPI 3.0.3 specification (JSON/YAML)
+- Interactive Swagger UI at `/docs`
+- ReDoc documentation at `/redoc`
+- Comprehensive endpoint reference
+- Authentication and security guide
+- Example code (cURL, Python, JavaScript)
+
+### Known Limitations
+- No authentication mechanism (internal service)
+- No built-in rate limiting
+- No request signing or integrity verification
+- No user-level access control
+- SQLite single-writer limitation for high concurrency
+
+---
+
+## Pre-Release History
+
+### Development Phase (2025-09-01 to 2025-09-30)
+
+#### September 26, 2025 - Database Integration
+- Added SQLite database for inference logging
+- Implemented `InferenceDB` class with full CRUD operations
+- Created database views for statistics
+- Added export functionality
+- Batch processing support with batch_id tracking
+
+#### September 20, 2025 - LLM Integration
+- Integrated Google Gemini 2.0 Flash for complex cases
+- Implemented entropy-based uncertainty detection
+- Added deep thinking trigger mechanism
+- German language support for LLM responses
+
+#### September 15, 2025 - Core Inference
+- Implemented BERT-based classification
+- Added Pydantic request/response models
+- Input validation with custom validators
+- Error handling and logging
+
+#### September 10, 2025 - Name Detection
+- Integrated spaCy for Named Entity Recognition
+- Support for English and German language models
+- Automatic rejection of descriptions with names
+
+#### September 5, 2025 - Project Initialization
+- FastAPI project structure
+- Docker containerization
+- Model loading and initialization
+
+---
+
+## Planned Changes
+
+### Version 1.1.0 (Planned Q4 2025)
+
+#### Proposed Features
+
+##### Authentication
+- **API Key Authentication**
+  - Header-based API key validation
+  - Per-client key management
+  - Key rotation mechanism
+  - Usage tracking per API key
+
+##### Rate Limiting
+- Application-level rate limiting
+- Configurable limits per endpoint
+- Burst allowance for statistics endpoints
+- 429 Too Many Requests response
+
+##### Enhanced Monitoring
+- **GET /metrics** - Prometheus-compatible metrics endpoint
+  - Request counts by endpoint
+  - Response time histograms
+  - Error rate tracking
+  - Active request gauge
+
+- **GET /stats/realtime** - Real-time statistics
+  - Last minute/hour statistics
+  - Active batch processing indicator
+  - Queue depth (if async implemented)
+
+##### Batch Improvements
+- Async batch processing option
+- Batch status endpoint (GET /batch/{batch_id}/status)
+- Webhook notifications for batch completion
+- Progress tracking for large batches
+
+##### Export Enhancements
+- CSV export format support
+- Compressed export (gzip) option
+- Scheduled exports via cron jobs
+- Export to external storage (S3-compatible)
+
+### Version 1.2.0 (Planned Q1 2026)
+
+#### Proposed Features
+
+##### Advanced Analytics
+- **GET /stats/trends** - Trend analysis endpoint
+  - Week-over-week comparisons
+  - Month-over-month growth
+  - Pattern detection
+  - Anomaly alerts
+
+##### Model Management
+- **POST /model/feedback** - Submit classification feedback
+  - User corrections for rejected/accepted items
+  - Confidence score feedback
+  - Feature for active learning
+
+- **GET /model/info** - Model version and metadata
+  - Current BERT model version
+  - Training data statistics
+  - Last update timestamp
+  - Performance benchmarks
+
+##### Multi-Language Support
+- Additional language detection
+- Multilingual rejection reasons
+- Language-specific model variants
+
+### Version 2.0.0 (Conceptual - Q2 2026)
+
+**BREAKING CHANGES** - Major architectural updates
+
+#### Proposed Breaking Changes
+
+##### Versioned API
+- URL prefix: `/v2/predict`, `/v2/stats/*`
+- Maintain v1 endpoints for 6-month deprecation period
+
+##### Enhanced Request Model
+```json
+{
+  "text": "...",           // Renamed from "sentence"
+  "language": "en",        // Explicit language specification
+  "mode": "auto",          // "auto", "fast" (BERT), "accurate" (LLM)
+  "options": {
+    "return_metadata": true,
+    "explain": true
+  }
+}
+```
+
+##### Streaming Responses
+- Server-Sent Events for batch processing
+- Real-time progress updates
+- Chunked response support
+
+##### GraphQL API
+- Alternative GraphQL endpoint
+- Flexible query capabilities
+- Unified schema for all data
+
+---
+
+## Deprecation Policy
+
+### Guidelines
+
+1. **Advance Notice**: Minimum 6 months notice for breaking changes
+2. **Deprecation Headers**: Include `X-API-Deprecated` header with sunset date
+3. **Documentation**: Clear migration guides for deprecated endpoints
+4. **Support Period**: Maintain deprecated endpoints for at least 6 months
+5. **Communication**: Email notifications to registered API consumers
+
+### Deprecation Example
+
+```http
+HTTP/1.1 200 OK
+X-API-Deprecated: true
+X-API-Sunset: 2026-06-01
+X-API-Alternative: POST /v2/predict
+Warning: This endpoint is deprecated. Migrate to POST /v2/predict by 2026-06-01.
+```
+
+---
+
+## Breaking Changes
+
+No breaking changes have been introduced yet. This section will track any breaking changes in future versions.
+
+### What Constitutes a Breaking Change
+
+- Removing endpoints or parameters
+- Changing required parameters
+- Modifying response structure in incompatible ways
+- Changing default behavior significantly
+- Authentication requirement additions
+- Changing HTTP methods
+- Modifying error response formats
+
+### Non-Breaking Changes
+
+- Adding new optional parameters
+- Adding new endpoints
+- Adding new response fields (backward compatible)
+- Performance improvements
+- Bug fixes
+- Documentation updates
+
+---
+
+## Migration Guides
+
+### Future Migration Guides Will Include:
+
+- Step-by-step upgrade instructions
+- Code examples before/after changes
+- Timeline for deprecations
+- Testing strategies
+- Rollback procedures
+- Support contact information
+
+---
+
+## Versioning Strategy
+
+### Semantic Versioning
+
+We follow Semantic Versioning 2.0.0:
+
+**Format:** MAJOR.MINOR.PATCH
+
+- **MAJOR**: Breaking changes, incompatible API changes
+- **MINOR**: New features, backward-compatible additions
+- **PATCH**: Bug fixes, backward-compatible fixes
+
+**Examples:**
+- `1.0.0` → `1.0.1`: Bug fix (no code changes needed)
+- `1.0.1` → `1.1.0`: New feature added (optional, backward compatible)
+- `1.1.0` → `2.0.0`: Breaking change (migration required)
+
+### Version Discovery
+
+```bash
+# Get current API version
+curl http://localhost:8000/health | jq .version  # Future enhancement
+```
+
+---
+
+## API Stability Guarantees
+
+### Stable (v1.x)
+- Endpoint URLs remain unchanged
+- Request/response schemas backward compatible
+- No breaking changes without major version bump
+- Security patches applied without notice
+
+### Experimental (Future)
+- May be marked with `X-Experimental: true` header
+- Subject to change without notice
+- Not recommended for production use
+- Feedback encouraged
+
+---
+
+## Feedback and Contributions
+
+### How to Report Issues
+
+1. **Bug Reports**: Email with reproduction steps
+2. **Feature Requests**: Submit via email with use case
+3. **Security Issues**: Private disclosure to security contact
+
+### Contact
+
+- Email: velazquez.jfp@gmail.com or javier.bosenet@hotmail.com
+- Subject Line: [API Feedback] Brief description
+
+### Response Time
+
+- Security issues: 24-48 hours
+- Bug reports: 3-5 business days
+- Feature requests: Reviewed quarterly
+
+---
+
+## Change Request Process
+
+For proposing API changes:
+
+1. **Describe the Problem**: What limitation exists?
+2. **Propose Solution**: How should the API change?
+3. **Impact Analysis**: Who will be affected?
+4. **Migration Path**: How can users adapt?
+5. **Timeline**: When should this be implemented?
+
+---
+
+## Related Documentation
+
+- [OpenAPI Specification](./openapi.yaml) - Full API schema
+- [Endpoints Reference](./endpoints.md) - Detailed endpoint documentation
+- [Authentication Guide](./authentication.md) - Security and access control
+- [README.md](../../README.md) - Project overview and setup
+
+---
+
+**Last Updated:** 2025-10-02
+**Current Version:** 1.1.0
+**Next Review:** 2025-12-01

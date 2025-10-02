@@ -1,0 +1,61 @@
+"""
+Test Case: TC-F-002-03
+Requirement: F-002 - Fix total inferences count calculation on dashboard
+Description: With empty database (0 records), verify dashboard shows "Total Inferences: 0" without errors
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+
+def test_TC_F_002_03():
+    """Verify dashboard handles empty database gracefully"""
+
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+    dashboard_api = "http://localhost:8001/api/stats"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Backup existing records
+        cursor.execute("CREATE TABLE IF NOT EXISTS temp_backup AS SELECT * FROM inference_results")
+        conn.commit()
+
+        # Clear database
+        cursor.execute("DELETE FROM inference_results")
+        conn.commit()
+
+        # Verify empty
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        count = cursor.fetchone()[0]
+        assert count == 0, f"Database should be empty, has {count} records"
+
+        # Query dashboard API
+        response = requests.get(dashboard_api, timeout=10)
+        assert response.status_code == 200, f"API failed with status {response.status_code}"
+
+        data = response.json()
+        total_inferences = data.get("summary", {}).get("total_inferences", -1)
+
+        print(f"Empty database: Dashboard reports {total_inferences} inferences")
+        assert total_inferences == 0, f"Expected 0, got {total_inferences}"
+
+        # Verify no errors in response
+        assert "error" not in data, "Response contains error field"
+
+    finally:
+        # Restore database
+        cursor.execute("INSERT INTO inference_results SELECT * FROM temp_backup")
+        cursor.execute("DROP TABLE temp_backup")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_03()
+        print("TC-F-002-03: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-03: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-03: ERROR - {e}")

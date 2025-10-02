@@ -1,0 +1,437 @@
+// AI Inference Dashboard JavaScript
+class Dashboard {
+    constructor() {
+        this.charts = {};
+        this.data = null;
+        this.appPrefix = '';
+        this.init();
+    }
+
+    async init() {
+        console.log('🚀 Initializing AI Inference Dashboard...');
+        await this.loadConfig();
+        await this.loadData();
+        this.setupEventListeners();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            this.loadData();
+        }, 30000);
+    }
+
+    async loadConfig() {
+        try {
+            const response = await axios.get('./api/config');
+            this.appPrefix = response.data.app_prefix || '';
+            console.log(`📝 App prefix set to: "${this.appPrefix}"`);
+        } catch (error) {
+            console.warn('⚠️ Could not load config, using default prefix');
+            this.appPrefix = '';
+        }
+    }
+
+    getApiUrl(endpoint) {
+        return `${this.appPrefix}/api${endpoint}`;
+    }
+
+    async loadData() {
+        try {
+            const response = await axios.get(this.getApiUrl('/stats'));
+            this.data = response.data;
+            this.updateSummaryCards();
+            this.updateCharts();
+            this.updateRecentTable();
+            console.log('✅ Dashboard data updated');
+        } catch (error) {
+            console.error('❌ Failed to load dashboard data:', error);
+            this.showError('Failed to load data. Please check the connection.');
+        }
+    }
+
+    updateSummaryCards() {
+        const { summary } = this.data;
+        
+        document.getElementById('total-inferences').textContent = summary.total_inferences;
+        document.getElementById('acceptance-rate').textContent = `${summary.acceptance_rate}%`;
+        document.getElementById('avg-bert-score').textContent = summary.avg_bert_score.toFixed(3);
+        document.getElementById('bert-llm-ratio').textContent = `${summary.bert_usage} / ${summary.llm_usage}`;
+    }
+
+    updateAIInsights() {
+        const insights = this.data.ai_insights;
+        const statusElement = document.getElementById('insights-status');
+        const statusIndicator = statusElement.querySelector('.status-indicator');
+        
+        if (!insights) {
+            statusElement.innerHTML = '<span class="status-indicator error">●</span> Insights not available';
+            return;
+        }
+        
+        if (insights.error) {
+            statusElement.innerHTML = '<span class="status-indicator error">●</span> ' + insights.error;
+            return;
+        }
+        
+        // Update status to ready
+        statusElement.innerHTML = '<span class="status-indicator ready">●</span> Insights ready';
+        
+        // Update pattern analysis
+        if (insights.pattern_analysis) {
+            const patternContent = document.getElementById('pattern-analysis-content');
+            patternContent.innerHTML = this.formatInsightText(insights.pattern_analysis);
+        }
+        
+        // Update quality assessment
+        if (insights.quality_assessment) {
+            const qualityContent = document.getElementById('quality-assessment-content');
+            qualityContent.innerHTML = this.formatInsightText(insights.quality_assessment);
+        }
+    }
+    
+    formatInsightText(text) {
+        // Convert numbered list format to HTML
+        const lines = text.split('\n').filter(line => line.trim());
+        let formattedText = '';
+        
+        for (let line of lines) {
+            line = line.trim();
+            if (line.match(/^\d+\./)) {
+                // Numbered list item
+                formattedText += `<p class="insight-point"><strong>${line}</strong></p>`;
+            } else if (line.length > 10) {
+                // Regular paragraph
+                formattedText += `<p>${line}</p>`;
+            }
+        }
+        
+        return formattedText || `<p>${text}</p>`;
+    }
+
+    updateCharts() {
+        // Destroy all existing charts first
+        this.destroyAllCharts();
+        
+        // Then create new ones
+        this.updateDailyTrendsChart();
+        this.updateModeDistributionChart();
+        this.updateScoreDistributionChart();
+        this.updateRejectionReasonsChart();
+        this.updateAIInsights();
+    }
+
+    destroyAllCharts() {
+        // Destroy all charts to prevent canvas reuse errors
+        Object.keys(this.charts).forEach(key => {
+            if (this.charts[key] && typeof this.charts[key].destroy === 'function') {
+                this.charts[key].destroy();
+            }
+        });
+        this.charts = {};
+    }
+
+    updateDailyTrendsChart() {
+        const ctx = document.getElementById('dailyTrendsChart').getContext('2d');
+        const dailyStats = this.data.daily_stats.reverse(); // Most recent first
+
+        this.charts.dailyTrends = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dailyStats.map(d => new Date(d.date).toLocaleDateString()),
+                datasets: [
+                    {
+                        label: 'Accepted',
+                        data: dailyStats.map(d => d.accepted),
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Rejected',
+                        data: dailyStats.map(d => d.rejected),
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    updateModeDistributionChart() {
+        const ctx = document.getElementById('modeDistChart').getContext('2d');
+        const modeData = this.data.mode_distribution;
+
+        this.charts.modeDistribution = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(modeData),
+                datasets: [{
+                    data: Object.values(modeData),
+                    backgroundColor: [
+                        '#007bff', // BERT - Blue
+                        '#fd7e14'  // LLM - Orange
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    updateScoreDistributionChart() {
+        const ctx = document.getElementById('scoreDistChart').getContext('2d');
+        const scoreData = this.data.score_distribution;
+
+        this.charts.scoreDistribution = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: scoreData.map(d => d.score.toFixed(1)),
+                datasets: [{
+                    label: 'Count',
+                    data: scoreData.map(d => d.count),
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'BERT Score'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    updateRejectionReasonsChart() {
+        const ctx = document.getElementById('rejectionReasonsChart').getContext('2d');
+        const reasonsData = this.data.rejection_reasons.slice(0, 8); // Top 8 reasons
+
+
+        this.charts.rejectionReasons = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: reasonsData.map(d => this.truncateText(d.reason, 30)),
+                datasets: [{
+                    label: 'Count',
+                    data: reasonsData.map(d => d.count),
+                    backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    updateRecentTable() {
+        const tbody = document.getElementById('recent-tbody');
+        const recentInferences = this.data.recent_inferences;
+
+        tbody.innerHTML = '';
+
+        recentInferences.forEach(inference => {
+            const row = document.createElement('tr');
+            
+            const timestamp = new Date(inference.timestamp).toLocaleString();
+            const answerClass = inference.answer === 'accepted' ? 'answer-accepted' : 'answer-rejected';
+            const modeClass = inference.mode === 'BERT' ? 'mode-bert' : 'mode-llm';
+            const score = inference.score !== null ? inference.score.toFixed(3) : 'N/A';
+            
+            row.innerHTML = `
+                <td>${timestamp}</td>
+                <td class="sentence-cell" title="${this.escapeHtml(inference.sentence)}">
+                    ${this.escapeHtml(this.truncateText(inference.sentence, 50))}
+                </td>
+                <td><span class="${answerClass}">${inference.answer}</span></td>
+                <td><span class="${modeClass}">${inference.mode}</span></td>
+                <td>${score}</td>
+                <td class="reason-cell" title="${this.escapeHtml(inference.reason || '')}">
+                    ${this.escapeHtml(this.truncateText(inference.reason || '', 30))}
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+    }
+
+    setupEventListeners() {
+        // Refresh button is handled by global function
+        // Export buttons are handled by global functions
+    }
+
+    truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    showError(message) {
+        // Simple error display - could be enhanced with toast notifications
+        console.error(message);
+        // You could add a toast notification here
+    }
+}
+
+// Global functions for button handlers
+async function refreshData() {
+    console.log('🔄 Refreshing dashboard data...');
+    await window.dashboard.loadData();
+}
+
+async function exportData(format) {
+    try {
+        console.log(`📊 Exporting data as ${format}...`);
+        
+        const params = new URLSearchParams({
+            format: format
+        });
+        
+        if (format === 'csv') {
+            // For CSV, trigger download
+            window.location.href = `${window.dashboard.getApiUrl('/export')}?${params.toString()}`;
+        } else {
+            // For JSON, show in new tab
+            const response = await axios.get(`${window.dashboard.getApiUrl('/export')}?${params.toString()}`);
+            const dataStr = JSON.stringify(response.data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inference_data_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        console.log(`✅ Export completed: ${format}`);
+    } catch (error) {
+        console.error('❌ Export failed:', error);
+        alert(`Export failed: ${error.message}`);
+    }
+}
+
+async function resetDatabase() {
+    // Prompt user for safety code
+    const safetyCode = prompt('Enter safety code to reset database:');
+
+    // User cancelled the prompt
+    if (safetyCode === null) {
+        return;
+    }
+
+    // Validate safety code in frontend
+    if (safetyCode !== '270195') {
+        alert('Invalid safety code');
+        return;
+    }
+
+    // Confirm action
+    const confirmReset = confirm('Are you sure you want to delete ALL records? This action cannot be undone!');
+    if (!confirmReset) {
+        return;
+    }
+
+    try {
+        const response = await fetch('http://localhost:8000/admin/reset-database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ safety_code: safetyCode })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Database reset successful. Deleted ${data.deleted_records} records.`);
+            // Refresh the dashboard
+            if (window.dashboard) {
+                window.dashboard.loadDashboardData();
+            }
+        } else {
+            alert(`Error: ${data.detail}`);
+        }
+    } catch (error) {
+        console.error('❌ Reset failed:', error);
+        alert(`Reset failed: ${error.message}`);
+    }
+}
+
+// Initialize dashboard when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new Dashboard();
+});

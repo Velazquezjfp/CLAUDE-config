@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Inference Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Inference Dashboard</h1>
+            <p>Real-time analytics for activity classification</p>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+            <div class="card">
+                <h3>Total Inferences</h3>
+                <div class="stat-value" id="total-inferences">0</div>
+            </div>
+            <div class="card">
+                <h3>Acceptance Rate</h3>
+                <div class="stat-value" id="acceptance-rate">0%</div>
+            </div>
+            <div class="card">
+                <h3>Avg BERT Score</h3>
+                <div class="stat-value" id="avg-bert-score">0.000</div>
+            </div>
+            <div class="card">
+                <h3>BERT vs LLM</h3>
+                <div class="stat-value" id="bert-llm-ratio">0 / 0</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>Daily Inference Trends</h3>
+                <canvas id="dailyTrendsChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Processing Mode Distribution</h3>
+                <canvas id="modeDistChart"></canvas>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>BERT Score Distribution</h3>
+                <canvas id="scoreDistChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Top Rejection Reasons</h3>
+                <canvas id="rejectionReasonsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Inferences Table -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>Recent Inferences</h3>
+                <div class="controls">
+                    <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+                    <button class="btn" onclick="exportData('json')">📊 Export JSON</button>
+                    <button class="btn" onclick="exportData('csv')">📋 Export CSV</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="recent-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Sentence</th>
+                            <th>Answer</th>
+                            <th>Mode</th>
+                            <th>Score</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-tbody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- AI Insights Section -->
+        <div class="insights-container">
+            <div class="insights-header">
+                <h3>🧠 AI Insights</h3>
+                <div class="insights-status" id="insights-status">
+                    <span class="status-indicator loading">●</span>
+                    Loading insights...
+                </div>
+            </div>
+            <div id="insights-content">
+                <div class="insight-card" id="pattern-analysis-card">
+                    <h4>📊 Pattern Analysis</h4>
+                    <div class="insight-content" id="pattern-analysis-content">
+                        <p class="placeholder">Analyzing classification patterns...</p>
+                    </div>
+                </div>
+                <div class="insight-card" id="quality-assessment-card">
+                    <h4>🎯 Quality Assessment</h4>
+                    <div class="insight-content" id="quality-assessment-content">
+                        <p class="placeholder">Evaluating classification quality...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Actions Section -->
+        <div class="admin-container" style="margin-top: 2rem; padding: 1.5rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h3 style="margin-bottom: 1rem; color: #333;">⚙️ Admin Actions</h3>
+            <button id="reset-database-btn" onclick="resetDatabase()" style="background: #dc3545; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                🗑️ Reset Database
+            </button>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #666;">⚠️ Warning: This will permanently delete all inference records</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>

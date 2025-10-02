@@ -1,0 +1,69 @@
+"""
+Test Case: TC-F-002-07
+Requirement: F-002 - Fix total inferences count calculation on dashboard
+Description: Query GET /api/stats endpoint directly, verify response JSON contains correct total_inferences value
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+import os
+
+def test_TC_F_002_07():
+    """Query API endpoint directly and validate JSON response structure"""
+
+    # Get project root (3 levels up from this test file)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+    db_path = os.path.join(project_root, "shared/data/inference_results.db")
+    dashboard_api = "http://localhost:8001/api/stats"
+
+    # Get actual database count
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        actual_db_count = cursor.fetchone()[0]
+        print(f"Actual database count: {actual_db_count}")
+
+        # Query API endpoint
+        response = requests.get(dashboard_api, timeout=10)
+
+        # Validate response
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        assert response.headers.get("Content-Type") == "application/json", "Response not JSON"
+
+        data = response.json()
+
+        # Validate JSON structure
+        assert "summary" in data, "Missing 'summary' field in response"
+        assert "total_inferences" in data["summary"], "Missing 'total_inferences' in summary"
+
+        api_total = data["summary"]["total_inferences"]
+
+        print(f"API response: total_inferences = {api_total}")
+        print(f"Database actual count: {actual_db_count}")
+
+        # Validate API matches database
+        assert api_total == actual_db_count, \
+            f"API reports {api_total}, but database has {actual_db_count} records"
+
+        # Validate total_inferences is an integer
+        assert isinstance(api_total, int), f"total_inferences should be int, got {type(api_total)}"
+
+        # Validate it's non-negative
+        assert api_total >= 0, f"total_inferences should be non-negative, got {api_total}"
+
+        print("JSON response validation: PASSED")
+
+    finally:
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_07()
+        print("TC-F-002-07: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-07: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-07: ERROR - {e}")

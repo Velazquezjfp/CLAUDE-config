@@ -1,0 +1,93 @@
+{
+  "requirement_id": "F-003",
+  "requirement_title": "Implement batch processing with internal summaries for AI insights",
+  "last_updated": "2025-10-02T07:18:44Z",
+  "implementation_status": "completed",
+  "implementation_notes": "Batch processing implemented in dashboard/src/ai_insights.py with BATCH_SIZE=500. Added methods: _fetch_records_in_batches(), _process_batch_summary(), _generate_final_verdict(). Modified generate_pattern_analysis() and generate_quality_assessment() to use batch processing.",
+  "tests": {
+    "TC-F-003-01": {
+      "description": "Insert 1500 records, verify AIInsightsGenerator processes in 3 batches of 500 each",
+      "status": "passed",
+      "last_run": "2025-10-02T07:18:44Z",
+      "test_file": "TC-F-003-01.py",
+      "notes": "Fixed schema field names. Added database cleanup. Verified 3 batches + 1 final verdict for 1500 records.",
+      "execution_time_ms": null
+    },
+    "TC-F-003-02": {
+      "description": "With 1500 records, verify final verdict includes insights from all 3 batches",
+      "status": "passed",
+      "last_run": "2025-10-02T07:18:44Z",
+      "test_file": "TC-F-003-02.py",
+      "notes": "Fixed schema field names. Created distinct patterns per batch (all accepted, all rejected, mixed LLM). Verified final verdict includes insights from all batches with real Gemini API calls.",
+      "execution_time_ms": null,
+      "verdict_sample": "Identified inconsistent classification logic, LLM dependency loop, and BERT model personal activity bias across batches"
+    },
+    "TC-F-003-03": {
+      "description": "With 250 records (less than batch size), verify single batch processing works correctly",
+      "status": "passed",
+      "last_run": "2025-10-02T07:18:44Z",
+      "test_file": "TC-F-003-03.py",
+      "notes": "Fixed schema field names. Verified single batch processing for datasets smaller than BATCH_SIZE (500). Clears database for clean test.",
+      "execution_time_ms": null
+    },
+    "TC-F-003-04": {
+      "description": "Mock Gemini API to count requests, verify N batches = N+1 API calls (N batch summaries + 1 final verdict)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-04.py",
+      "notes": "Test needs completion: mock Gemini API, count calls, verify 2 batches = 3 API calls"
+    },
+    "TC-F-003-05": {
+      "description": "Verify batch summaries are cached properly to avoid redundant processing",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-05.py",
+      "notes": "Test needs completion. Note: Current implementation caches at insight level (pattern_analysis, quality_assessment) not individual batch summaries. Cache expires after 3-4 hours."
+    },
+    "TC-F-003-06": {
+      "description": "Test with 5000 records, verify process completes without token limit errors",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-06.py",
+      "notes": "Test needs completion: insert 5000 records (10 batches), verify no token limit errors"
+    },
+    "TC-F-003-07": {
+      "description": "Verify final verdict prompt contains all batch summaries with proper formatting",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-07.py",
+      "notes": "Test needs completion: capture prompt sent to _generate_final_verdict, verify formatting"
+    },
+    "TC-F-003-08": {
+      "description": "Test edge case with exactly 500 records, verify single batch processing",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-08.py",
+      "notes": "Test needs completion: insert exactly 500 records, verify processed as 1 batch"
+    },
+    "TC-F-003-09": {
+      "description": "Verify dashboard displays final insights correctly after batch processing completes",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-09.py",
+      "notes": "Test needs completion: verify dashboard API endpoint returns batch-processed insights"
+    }
+  },
+  "summary": {
+    "total": 9,
+    "passed": 3,
+    "failed": 0,
+    "not_run": 6,
+    "completion_percentage": 33
+  },
+  "schema_fixes_applied": [
+    "Changed INSERT field names from (bert_prediction, bert_confidence, final_answer, llm_used) to (answer, mode, score, reason)",
+    "Applied fix to TC-F-003-01, TC-F-003-02, TC-F-003-03"
+  ],
+  "key_findings": {
+    "batch_processing_verified": "3 batches of 500 records each correctly processed for 1500 total records",
+    "final_verdict_quality": "Gemini API generates comprehensive insights covering all batch patterns",
+    "small_dataset_handling": "Datasets smaller than BATCH_SIZE (500) correctly processed as single batch",
+    "api_integration": "Real Gemini API calls successfully generate actionable insights from batch summaries"
+  }
+}

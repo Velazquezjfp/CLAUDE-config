@@ -1,0 +1,629 @@
+{
+  "entities": [
+    {
+      "name": "main.py",
+      "entityType": "API Module",
+      "observations": [
+        "Main FastAPI application entry point",
+        "Handles inference endpoints for AI timesheet compliance checking",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/main.py",
+        "Imports: FastAPI, torch, transformers, spacy, langdetect, prompt_expert, nlp_explain, db_manager",
+        "Loads BERT model for text classification",
+        "Manages both single and batch sentence processing",
+        "Implements entropy-based uncertainty detection",
+        "Integrates with LLM (Gemini) for uncertain cases"
+      ]
+    },
+    {
+      "name": "FastAPI Application",
+      "entityType": "Framework",
+      "observations": [
+        "Web framework for building APIs",
+        "Handles HTTP requests and responses",
+        "Provides automatic API documentation",
+        "Manages routing for endpoints"
+      ]
+    },
+    {
+      "name": "/predict Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "POST endpoint for activity classification",
+        "Accepts single sentence or batch of sentences",
+        "Returns classification (accepted/rejected) with reasoning",
+        "Supports LLM enable/disable flag",
+        "Logs results to database"
+      ]
+    },
+    {
+      "name": "/health Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "GET endpoint for health checking",
+        "Returns API and database status",
+        "Used for Docker health checks",
+        "Returns timestamp and model status"
+      ]
+    },
+    {
+      "name": "/stats/recent Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "GET endpoint for recent inference results",
+        "Accepts limit parameter",
+        "Returns recent classification results",
+        "Used for monitoring and analytics"
+      ]
+    },
+    {
+      "name": "/stats/daily Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "GET endpoint for daily statistics",
+        "Accepts days parameter",
+        "Returns aggregated daily stats",
+        "Shows trends over time"
+      ]
+    },
+    {
+      "name": "/stats/performance Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "GET endpoint for model performance metrics",
+        "Returns accuracy and performance data",
+        "Used for model evaluation"
+      ]
+    },
+    {
+      "name": "/export/training-data Endpoint",
+      "entityType": "API Endpoint",
+      "observations": [
+        "POST endpoint for exporting training data",
+        "Supports date range and answer filters",
+        "Exports to JSON format",
+        "Used for model retraining"
+      ]
+    },
+    {
+      "name": "BERT Classifier",
+      "entityType": "ML Model",
+      "observations": [
+        "Pre-trained BERT model for sequence classification",
+        "Located in bert_classifier directory",
+        "Fast inference for most cases",
+        "Provides confidence scores",
+        "Binary classification: accepted/rejected"
+      ]
+    },
+    {
+      "name": "Sentence Model",
+      "entityType": "Data Model",
+      "observations": [
+        "Pydantic model for single sentence input",
+        "Fields: sentence (str), llm (bool)",
+        "Validates sentence is not empty",
+        "Used for request validation"
+      ]
+    },
+    {
+      "name": "BatchSentences Model",
+      "entityType": "Data Model",
+      "observations": [
+        "Pydantic model for batch processing",
+        "Fields: sentences (List[str]), llm (bool)",
+        "Validates non-empty list",
+        "Enables bulk classification"
+      ]
+    },
+    {
+      "name": "db_manager.py",
+      "entityType": "Database Module",
+      "observations": [
+        "Database management module for inference results",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/db_manager.py",
+        "Uses SQLite for data storage",
+        "Handles inference result logging",
+        "Provides data export functionality",
+        "Manages batch processing records",
+        "Creates database views for statistics"
+      ]
+    },
+    {
+      "name": "InferenceDB Class",
+      "entityType": "Database Class",
+      "observations": [
+        "Main database handler class",
+        "Methods: log_inference, log_batch_inferences, get_recent_results",
+        "Methods: get_daily_stats, export_for_training, export_to_json",
+        "Methods: get_model_performance, cleanup_old_records",
+        "Manages SQLite connections",
+        "Handles schema initialization"
+      ]
+    },
+    {
+      "name": "inference_results Table",
+      "entityType": "Database Table",
+      "observations": [
+        "Primary table for storing inference results",
+        "Columns: id, timestamp, sentence, answer, reason, mode, score",
+        "Additional columns: batch_id, entropy_value, name_detected",
+        "Columns: detected_name, deep_thinking, processing_time_ms, language",
+        "Indexed on timestamp and batch_id"
+      ]
+    },
+    {
+      "name": "prompt_expert.py",
+      "entityType": "LLM Module",
+      "observations": [
+        "Handles LLM integration for complex classifications",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/prompt_expert.py",
+        "Uses Google Gemini 2.0 Flash model",
+        "Contains detailed prompt engineering",
+        "Provides German language responses",
+        "Handles uncertain classification cases"
+      ]
+    },
+    {
+      "name": "prompt_llm Function",
+      "entityType": "Function",
+      "observations": [
+        "Main function for LLM classification",
+        "Takes activity text as input",
+        "Returns JSON with answer and reason",
+        "Contains comprehensive rule set",
+        "Includes examples of accepted/rejected activities",
+        "Bilingual support (English/German)"
+      ]
+    },
+    {
+      "name": "nlp_explain.py",
+      "entityType": "NLP Module",
+      "observations": [
+        "Provides rejection reason explanations",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/nlp_explain.py",
+        "Uses NLTK for text processing",
+        "Implements stemming and stopword removal",
+        "Supports English and German",
+        "Loads rejection cases from JSON files"
+      ]
+    },
+    {
+      "name": "provide_rejection_reasons Function",
+      "entityType": "Function",
+      "observations": [
+        "Main function for generating rejection explanations",
+        "Detects language using langdetect",
+        "Applies stemming and preprocessing",
+        "Matches against predefined rejection patterns",
+        "Returns German language explanations"
+      ]
+    },
+    {
+      "name": "dashboard.py",
+      "entityType": "Dashboard Module",
+      "observations": [
+        "Flask application for analytics dashboard",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/dashboard/src/dashboard.py",
+        "Provides web UI for monitoring",
+        "Displays statistics and charts",
+        "Supports data export functionality",
+        "Integrates AI insights"
+      ]
+    },
+    {
+      "name": "DashboardDB Class",
+      "entityType": "Dashboard Database Class",
+      "observations": [
+        "Database interface for dashboard",
+        "Methods: get_recent_inferences, get_daily_stats, get_total_count, get_answer_counts",
+        "Methods: get_rejection_reasons, get_mode_distribution",
+        "Methods: get_score_distribution, export_data",
+        "Read-only access to inference database"
+      ]
+    },
+    {
+      "name": "ai_insights.py",
+      "entityType": "AI Analytics Module",
+      "observations": [
+        "AI-powered insights generator",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/dashboard/src/ai_insights.py",
+        "Uses Gemini Flash 2.0 for analysis",
+        "Generates pattern analysis",
+        "Provides quality assessment",
+        "Implements caching for efficiency"
+      ]
+    },
+    {
+      "name": "AIInsightsGenerator Class",
+      "entityType": "Analytics Class",
+      "observations": [
+        "Main class for generating AI insights",
+        "Methods: generate_pattern_analysis, generate_quality_assessment",
+        "Methods: get_cached_insight, store_insight",
+        "Analyzes classification patterns",
+        "Provides actionable recommendations",
+        "Caches results to reduce API calls"
+      ]
+    },
+    {
+      "name": "export_utils.py",
+      "entityType": "Export Module",
+      "observations": [
+        "Standalone data export utility",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/export_utils.py",
+        "Supports CSV, JSON, BERT training format",
+        "Provides performance analysis export",
+        "Command-line interface",
+        "Integrates with pandas for data processing"
+      ]
+    },
+    {
+      "name": "init_database.py",
+      "entityType": "Database Init Module",
+      "observations": [
+        "Database initialization script",
+        "Located at: /home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_2/init_database.py",
+        "Creates database schema",
+        "Sets up tables and indexes",
+        "Creates views for statistics"
+      ]
+    },
+    {
+      "name": "Docker Compose Stack",
+      "entityType": "Infrastructure",
+      "observations": [
+        "Container orchestration configuration",
+        "Services: inference-api, dashboard",
+        "Shared volume for database",
+        "Network: inference-network",
+        "Health checks configured",
+        "Environment variable management"
+      ]
+    },
+    {
+      "name": "inference-api Service",
+      "entityType": "Docker Service",
+      "observations": [
+        "Main API container",
+        "Port mapping: 8000:80",
+        "Volume mount: ./shared/data",
+        "Environment: DATABASE_PATH, GOOGLE_API_KEY",
+        "Health check on /health endpoint"
+      ]
+    },
+    {
+      "name": "dashboard Service",
+      "entityType": "Docker Service",
+      "observations": [
+        "Dashboard container",
+        "Port mapping: 8001:8001",
+        "Volume mount: ./shared/data",
+        "Environment: FLASK_APP_PREFIX, FLASK_ENV",
+        "Depends on inference-api",
+        "Uses Gunicorn for production"
+      ]
+    },
+    {
+      "name": "SpaCy Models",
+      "entityType": "NLP Models",
+      "observations": [
+        "Language models for NER",
+        "English: en_core_web_lg",
+        "German: de_core_news_lg",
+        "Used for person name detection",
+        "Part of rejection logic"
+      ]
+    },
+    {
+      "name": "Test Suite",
+      "entityType": "Testing Framework",
+      "observations": [
+        "Comprehensive test coverage",
+        "Located in tests directory",
+        "test_inference_api.py: API endpoint tests",
+        "test_database.py: Database operations tests",
+        "Pytest framework",
+        "Includes edge case testing"
+      ]
+    },
+    {
+      "name": "case_rejection_english.json",
+      "entityType": "Configuration File",
+      "observations": [
+        "English rejection patterns",
+        "Located at: json_files/case_rejection_english.json",
+        "Contains rejection keywords and warnings",
+        "Used by nlp_explain module"
+      ]
+    },
+    {
+      "name": "case_rejection_german.json",
+      "entityType": "Configuration File",
+      "observations": [
+        "German rejection patterns",
+        "Located at: json_files/case_rejection_german.json",
+        "Contains rejection keywords and warnings",
+        "Used by nlp_explain module"
+      ]
+    },
+    {
+      "name": "Gemini 2.0 Flash",
+      "entityType": "External LLM",
+      "observations": [
+        "Google's language model",
+        "Used for uncertain classifications",
+        "Accessed via Google AI API",
+        "Provides reasoning for decisions",
+        "Handles complex edge cases"
+      ]
+    },
+    {
+      "name": "SQLite Database",
+      "entityType": "Database System",
+      "observations": [
+        "Lightweight database engine",
+        "File-based storage",
+        "Path: shared/data/inference_results.db",
+        "Shared between API and dashboard",
+        "Persistent storage for all inference results"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from_": "main.py",
+      "to": "FastAPI Application",
+      "relationType": "uses"
+    },
+    {
+      "from_": "main.py",
+      "to": "db_manager.py",
+      "relationType": "imports"
+    },
+    {
+      "from_": "main.py",
+      "to": "prompt_expert.py",
+      "relationType": "imports"
+    },
+    {
+      "from_": "main.py",
+      "to": "nlp_explain.py",
+      "relationType": "imports"
+    },
+    {
+      "from_": "main.py",
+      "to": "BERT Classifier",
+      "relationType": "loads"
+    },
+    {
+      "from_": "main.py",
+      "to": "SpaCy Models",
+      "relationType": "loads"
+    },
+    {
+      "from_": "main.py",
+      "to": "/predict Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "main.py",
+      "to": "/health Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "main.py",
+      "to": "/stats/recent Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "main.py",
+      "to": "/stats/daily Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "main.py",
+      "to": "/stats/performance Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "main.py",
+      "to": "/export/training-data Endpoint",
+      "relationType": "defines"
+    },
+    {
+      "from_": "/predict Endpoint",
+      "to": "Sentence Model",
+      "relationType": "validates_with"
+    },
+    {
+      "from_": "/predict Endpoint",
+      "to": "BatchSentences Model",
+      "relationType": "validates_with"
+    },
+    {
+      "from_": "/predict Endpoint",
+      "to": "BERT Classifier",
+      "relationType": "uses"
+    },
+    {
+      "from_": "/predict Endpoint",
+      "to": "prompt_llm Function",
+      "relationType": "calls"
+    },
+    {
+      "from_": "/predict Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "logs_to"
+    },
+    {
+      "from_": "db_manager.py",
+      "to": "InferenceDB Class",
+      "relationType": "defines"
+    },
+    {
+      "from_": "InferenceDB Class",
+      "to": "SQLite Database",
+      "relationType": "connects_to"
+    },
+    {
+      "from_": "InferenceDB Class",
+      "to": "inference_results Table",
+      "relationType": "manages"
+    },
+    {
+      "from_": "prompt_expert.py",
+      "to": "prompt_llm Function",
+      "relationType": "defines"
+    },
+    {
+      "from_": "prompt_llm Function",
+      "to": "Gemini 2.0 Flash",
+      "relationType": "calls"
+    },
+    {
+      "from_": "nlp_explain.py",
+      "to": "provide_rejection_reasons Function",
+      "relationType": "defines"
+    },
+    {
+      "from_": "provide_rejection_reasons Function",
+      "to": "case_rejection_english.json",
+      "relationType": "reads"
+    },
+    {
+      "from_": "provide_rejection_reasons Function",
+      "to": "case_rejection_german.json",
+      "relationType": "reads"
+    },
+    {
+      "from_": "dashboard.py",
+      "to": "DashboardDB Class",
+      "relationType": "defines"
+    },
+    {
+      "from_": "dashboard.py",
+      "to": "ai_insights.py",
+      "relationType": "imports"
+    },
+    {
+      "from_": "DashboardDB Class",
+      "to": "SQLite Database",
+      "relationType": "connects_to"
+    },
+    {
+      "from_": "ai_insights.py",
+      "to": "AIInsightsGenerator Class",
+      "relationType": "defines"
+    },
+    {
+      "from_": "AIInsightsGenerator Class",
+      "to": "Gemini 2.0 Flash",
+      "relationType": "calls"
+    },
+    {
+      "from_": "AIInsightsGenerator Class",
+      "to": "SQLite Database",
+      "relationType": "analyzes"
+    },
+    {
+      "from_": "export_utils.py",
+      "to": "InferenceDB Class",
+      "relationType": "uses"
+    },
+    {
+      "from_": "export_utils.py",
+      "to": "SQLite Database",
+      "relationType": "exports_from"
+    },
+    {
+      "from_": "init_database.py",
+      "to": "SQLite Database",
+      "relationType": "initializes"
+    },
+    {
+      "from_": "init_database.py",
+      "to": "inference_results Table",
+      "relationType": "creates"
+    },
+    {
+      "from_": "Docker Compose Stack",
+      "to": "inference-api Service",
+      "relationType": "orchestrates"
+    },
+    {
+      "from_": "Docker Compose Stack",
+      "to": "dashboard Service",
+      "relationType": "orchestrates"
+    },
+    {
+      "from_": "inference-api Service",
+      "to": "main.py",
+      "relationType": "runs"
+    },
+    {
+      "from_": "dashboard Service",
+      "to": "dashboard.py",
+      "relationType": "runs"
+    },
+    {
+      "from_": "inference-api Service",
+      "to": "SQLite Database",
+      "relationType": "mounts_volume"
+    },
+    {
+      "from_": "dashboard Service",
+      "to": "SQLite Database",
+      "relationType": "mounts_volume"
+    },
+    {
+      "from_": "dashboard Service",
+      "to": "inference-api Service",
+      "relationType": "depends_on"
+    },
+    {
+      "from_": "Test Suite",
+      "to": "/predict Endpoint",
+      "relationType": "tests"
+    },
+    {
+      "from_": "Test Suite",
+      "to": "/health Endpoint",
+      "relationType": "tests"
+    },
+    {
+      "from_": "Test Suite",
+      "to": "/stats/recent Endpoint",
+      "relationType": "tests"
+    },
+    {
+      "from_": "Test Suite",
+      "to": "InferenceDB Class",
+      "relationType": "tests"
+    },
+    {
+      "from_": "/stats/recent Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "queries"
+    },
+    {
+      "from_": "/stats/daily Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "queries"
+    },
+    {
+      "from_": "/stats/performance Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "queries"
+    },
+    {
+      "from_": "/export/training-data Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "exports_via"
+    },
+    {
+      "from_": "/health Endpoint",
+      "to": "InferenceDB Class",
+      "relationType": "checks"
+    }
+  ]
+}

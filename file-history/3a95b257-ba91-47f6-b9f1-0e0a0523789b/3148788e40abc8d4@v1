@@ -1,0 +1,91 @@
+"""
+Test Case: TC-F-002-02
+Requirement: F-002 - Fix total inferences count calculation on dashboard
+Description: Verify "BERT vs LLM" card shows correct ratio (450 / 50) when 500 total records exist
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+import time
+
+def test_TC_F_002_02():
+    """Verify BERT vs LLM ratio is correct with 500 records (450 BERT, 50 LLM)"""
+
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+    dashboard_api = "http://localhost:8001/api/stats"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Insert 450 BERT records (llm_used = 0)
+        for i in range(450):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, bert_prediction, bert_confidence, final_answer,
+                 llm_used, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Test BERT {i}",
+                "accepted",
+                0.95,
+                "accepted",
+                0,
+                time.time(),
+                None
+            ))
+
+        # Insert 50 LLM records (llm_used = 1)
+        for i in range(50):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, bert_prediction, bert_confidence, final_answer,
+                 llm_used, llm_reason, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Test LLM {i}",
+                "uncertain",
+                0.60,
+                "rejected",
+                1,
+                "LLM analysis",
+                time.time(),
+                None
+            ))
+
+        conn.commit()
+
+        # Query dashboard API
+        response = requests.get(dashboard_api, timeout=10)
+        assert response.status_code == 200, f"API failed: {response.status_code}"
+
+        data = response.json()
+        bert_count = data.get("summary", {}).get("bert_only", 0)
+        llm_count = data.get("summary", {}).get("llm_assisted", 0)
+
+        print(f"Dashboard BERT count: {bert_count}")
+        print(f"Dashboard LLM count: {llm_count}")
+
+        assert bert_count >= 450, f"Expected at least 450 BERT records, got {bert_count}"
+        assert llm_count >= 50, f"Expected at least 50 LLM records, got {llm_count}"
+
+        # Verify ratio
+        total = bert_count + llm_count
+        bert_ratio = (bert_count / total * 100) if total > 0 else 0
+        print(f"BERT ratio: {bert_ratio:.1f}% (expected 90%)")
+
+    finally:
+        # Cleanup
+        cursor.execute("DELETE FROM inference_results WHERE sentence LIKE 'Test BERT%' OR sentence LIKE 'Test LLM%'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_02()
+        print("TC-F-002-02: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-02: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-02: ERROR - {e}")

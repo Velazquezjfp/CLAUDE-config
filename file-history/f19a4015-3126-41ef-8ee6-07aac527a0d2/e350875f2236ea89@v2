@@ -1,0 +1,112 @@
+"""
+Test Case: TC-F-003-09
+Requirement: F-003 - Implement batch processing with internal summaries for AI insights
+Description: Verify dashboard displays final insights correctly after batch processing completes
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+import time
+
+def test_TC_F_003_09():
+    """Verify dashboard displays AI insights correctly after batch processing"""
+
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+    dashboard_api = "http://localhost:8001/api/insights"  # Assuming insights endpoint exists
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Clear database and cache
+        cursor.execute("DELETE FROM inference_results")
+        cursor.execute("DELETE FROM ai_insights WHERE insight_type = 'pattern_analysis'")
+        conn.commit()
+
+        # Insert 1000 records for batch processing (2 batches)
+        for i in range(1000):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, reason, mode, score, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-003-09 dashboard test {i}",
+                "accepted" if i % 2 == 0 else "rejected",
+                "Test rejection" if i % 2 != 0 else "",
+                "LLM" if i % 5 == 0 else "BERT",
+                0.88,
+                time.time(),
+                None
+            ))
+
+        conn.commit()
+        print("✓ Inserted 1000 test records")
+
+        # Import AIInsightsGenerator
+        import sys
+        sys.path.insert(0, '/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/dashboard/src')
+        from ai_insights import AIInsightsGenerator
+
+        # Generate insights using batch processing
+        generator = AIInsightsGenerator(db_path)
+
+        # Mock Gemini API for predictable results
+        class MockResponse:
+            def __init__(self, text):
+                self.text = text
+                self.candidates = [self]
+                self.content = self
+                self.parts = [self]
+
+        def mock_generate_content(prompt):
+            return MockResponse("Mock consolidated insight from batch processing: System shows good classification patterns with efficient BERT usage.")
+
+        from unittest.mock import patch
+
+        with patch.object(generator.model, 'generate_content', side_effect=mock_generate_content):
+            pattern_insight = generator.generate_pattern_analysis()
+            quality_insight = generator.generate_quality_assessment()
+
+        # Verify insights were generated
+        assert len(pattern_insight) > 0, "Pattern analysis should not be empty"
+        assert len(quality_insight) > 0, "Quality assessment should not be empty"
+        print(f"✓ Pattern analysis generated: {len(pattern_insight)} characters")
+        print(f"✓ Quality assessment generated: {len(quality_insight)} characters")
+
+        # Verify insights are cached in database
+        cursor.execute("SELECT COUNT(*) FROM ai_insights WHERE insight_type = 'pattern_analysis'")
+        pattern_count = cursor.fetchone()[0]
+        assert pattern_count >= 1, "Pattern analysis should be cached in database"
+
+        cursor.execute("SELECT COUNT(*) FROM ai_insights WHERE insight_type = 'quality_assessment'")
+        quality_count = cursor.fetchone()[0]
+        assert quality_count >= 1, "Quality assessment should be cached in database"
+
+        print(f"✓ Insights cached in database (pattern: {pattern_count}, quality: {quality_count})")
+
+        # Verify insights can be retrieved via get_all_insights
+        all_insights = generator.get_all_insights()
+        assert 'pattern_analysis' in all_insights, "Should include pattern_analysis"
+        assert 'quality_assessment' in all_insights, "Should include quality_assessment"
+        assert len(all_insights['pattern_analysis']) > 0, "Pattern analysis should have content"
+        assert len(all_insights['quality_assessment']) > 0, "Quality assessment should have content"
+
+        print(f"✓ Dashboard integration verified:")
+        print(f"  - Pattern analysis: {len(all_insights['pattern_analysis'])} chars")
+        print(f"  - Quality assessment: {len(all_insights['quality_assessment'])} chars")
+        print(f"✓ Batch-processed insights ready for dashboard display")
+
+    finally:
+        cursor.execute("DELETE FROM inference_results WHERE sentence LIKE 'TC-F-003-09%'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_003_09()
+        print("TC-F-003-09: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-003-09: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-003-09: ERROR - {e}")

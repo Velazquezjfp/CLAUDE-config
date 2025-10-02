@@ -1,0 +1,55 @@
+{
+  "requirement_id": "F-002",
+  "requirement_title": "Fix total inferences count calculation on dashboard",
+  "last_updated": "2025-10-01T14:59:00Z",
+  "tests": {
+    "TC-F-002-01": {
+      "description": "Insert 500 test records (300 BERT accepted, 150 BERT rejected, 50 LLM rejected), verify dashboard shows 'Total Inferences: 500'",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-01.py"
+    },
+    "TC-F-002-02": {
+      "description": "Verify 'BERT vs LLM' card shows correct ratio (450 / 50) when 500 total records exist",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-02.py"
+    },
+    "TC-F-002-03": {
+      "description": "With empty database (0 records), verify dashboard shows 'Total Inferences: 0' without errors",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-03.py"
+    },
+    "TC-F-002-04": {
+      "description": "Insert 1 record, verify count increments to 1 immediately after refresh",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-04.py"
+    },
+    "TC-F-002-05": {
+      "description": "Verify acceptance rate calculation uses correct total: (accepted_count / total_inferences * 100)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-05.py"
+    },
+    "TC-F-002-06": {
+      "description": "Test with exactly 100 records, verify count shows 100 (edge case where bug would be hidden)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-06.py"
+    },
+    "TC-F-002-07": {
+      "description": "Query GET /api/stats endpoint directly, verify response JSON contains correct total_inferences value",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-07.py"
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 0,
+    "failed": 0,
+    "not_run": 7
+  }
+}

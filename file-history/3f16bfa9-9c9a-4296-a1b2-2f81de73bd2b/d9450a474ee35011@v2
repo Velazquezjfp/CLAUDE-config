@@ -1,0 +1,105 @@
+{
+  "requirement_id": "F-004",
+  "requirement_title": "Add database reset endpoint with safety code",
+  "last_updated": "2025-10-02T08:45:35Z",
+  "tests": {
+    "TC-F-004-01": {
+      "description": "POST /admin/reset-database with correct code '270195', verify all records deleted and response returns deleted count",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-01.py",
+      "notes": "Deleted 50 records successfully"
+    },
+    "TC-F-004-02": {
+      "description": "POST /admin/reset-database with incorrect code '123456', verify 403 Forbidden returned",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-02.py",
+      "notes": "Incorrect code rejected with 403 Forbidden"
+    },
+    "TC-F-004-03": {
+      "description": "POST /admin/reset-database without safety_code field, verify 403 Forbidden returned",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-03.py",
+      "notes": "Missing safety_code rejected with 403 Forbidden"
+    },
+    "TC-F-004-04": {
+      "description": "POST with empty safety_code '', verify 403 Forbidden returned",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-04.py",
+      "notes": "Empty safety_code rejected with 403 Forbidden"
+    },
+    "TC-F-004-05": {
+      "description": "Insert 100 records, reset database, verify database has 0 records and response shows 'deleted_records': 100",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-05.py",
+      "notes": "Deleted exactly 100 records, database now empty"
+    },
+    "TC-F-004-06": {
+      "description": "Click reset button in dashboard, enter wrong code in prompt, verify error message displayed",
+      "status": "pending_manual",
+      "last_run": null,
+      "test_file": "TC-F-004-06.py",
+      "notes": "Requires manual browser testing or Playwright automation"
+    },
+    "TC-F-004-07": {
+      "description": "Click reset button in dashboard, enter correct code '270195', verify success confirmation shown with count",
+      "status": "pending_manual",
+      "last_run": null,
+      "test_file": "TC-F-004-07.py",
+      "notes": "Requires manual browser testing or Playwright automation"
+    },
+    "TC-F-004-08": {
+      "description": "After successful reset, refresh dashboard and verify all counters show 0",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-08.py",
+      "notes": "All dashboard counters show 0 after reset"
+    },
+    "TC-F-004-09": {
+      "description": "Test SQL injection attempt with safety_code: '270195'; DROP TABLE inference_results;--', verify rejected safely",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-09.py",
+      "notes": "SQL injection attempt rejected, table still exists"
+    },
+    "TC-F-004-10": {
+      "description": "Verify endpoint requires POST method (GET returns 405 Method Not Allowed)",
+      "status": "passed",
+      "last_run": "2025-10-02T08:45:35Z",
+      "test_file": "TC-F-004-10.py",
+      "notes": "GET/PUT/DELETE correctly rejected with 405, POST correctly accepted"
+    }
+  },
+  "summary": {
+    "total": 10,
+    "passed": 8,
+    "failed": 0,
+    "pending_manual": 2,
+    "not_run": 0
+  },
+  "implementation_notes": {
+    "schema_fixes": [
+      "TC-F-004-01.py: Updated INSERT to use correct columns (sentence, answer, mode, score, batch_id)",
+      "TC-F-004-05.py: Updated INSERT to use correct columns (sentence, answer, mode, score, batch_id)",
+      "TC-F-004-08.py: Updated INSERT to use correct columns (sentence, answer, mode, score, batch_id)",
+      "TC-F-004-08.py: Fixed API field names (bert_usage, llm_usage instead of bert_only, llm_assisted)"
+    ],
+    "components_implemented": [
+      "db_manager.py:192 - reset_database() method with safety code validation",
+      "main.py:346 - POST /admin/reset-database endpoint with double validation",
+      "dashboard.html:115 - Admin Actions section with red reset button",
+      "dashboard.js:387 - resetDatabase() function with frontend validation and confirmation"
+    ],
+    "security_features": [
+      "Double validation (frontend + backend)",
+      "Safety code requirement: 270195",
+      "Confirmation dialog before deletion",
+      "SQL injection protection via parameterized queries",
+      "Method enforcement (POST only)"
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+"""
+Test Case: TC-F-002-01
+Requirement: F-002 - Fix total inferences count calculation on dashboard
+Description: Insert 500 test records (300 BERT accepted, 150 BERT rejected, 50 LLM rejected), verify dashboard shows "Total Inferences: 500"
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+import time
+import os
+
+def test_TC_F_002_01():
+    """Insert 500 test records and verify dashboard shows correct total count"""
+
+    # Get project root (3 levels up from this test file)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+    db_path = os.path.join(project_root, "shared/data/inference_results.db")
+    dashboard_api = "http://localhost:8001/api/stats"
+
+    # Connect to database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Get initial count
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        initial_count = cursor.fetchone()[0]
+        print(f"Initial database count: {initial_count}")
+
+        # Insert 500 test records
+        # 300 BERT accepted
+        for i in range(300):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, mode, score, reason, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Test sentence BERT accepted {i}",
+                "accepted",
+                "BERT",
+                0.95,
+                "",
+                time.time(),
+                None
+            ))
+
+        # 150 BERT rejected
+        for i in range(150):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, mode, score, reason, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Test sentence BERT rejected {i}",
+                "rejected",
+                "BERT",
+                0.92,
+                "BERT rejection",
+                time.time(),
+                None
+            ))
+
+        # 50 LLM rejected
+        for i in range(50):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, mode, score, reason, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"Test sentence LLM rejected {i}",
+                "rejected",
+                "LLM",
+                None,
+                "LLM determined rejection",
+                time.time(),
+                None
+            ))
+
+        conn.commit()
+
+        # Verify database has 500 more records
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        final_count = cursor.fetchone()[0]
+        expected_count = initial_count + 500
+
+        assert final_count == expected_count, f"Expected {expected_count} records, got {final_count}"
+        print(f"Database verification: {final_count} records (added 500)")
+
+        # Query dashboard API
+        response = requests.get(dashboard_api, timeout=10)
+        assert response.status_code == 200, f"API request failed with status {response.status_code}"
+
+        data = response.json()
+        total_inferences = data.get("summary", {}).get("total_inferences", 0)
+
+        print(f"Dashboard API reports: {total_inferences} total inferences")
+        assert total_inferences == final_count, f"Dashboard shows {total_inferences}, expected {final_count}"
+
+    finally:
+        # Cleanup: Remove test records
+        cursor.execute("DELETE FROM inference_results WHERE sentence LIKE 'Test sentence%'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_01()
+        print("TC-F-002-01: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-01: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-01: ERROR - {e}")

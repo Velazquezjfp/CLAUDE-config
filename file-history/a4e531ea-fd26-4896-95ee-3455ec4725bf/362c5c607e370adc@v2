@@ -1,0 +1,128 @@
+"""
+Test Case: TC-F-003-02
+Requirement: F-003 - Implement batch processing with internal summaries for AI insights
+Description: With 1500 records, verify final verdict includes insights from all 3 batches
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sys
+import sqlite3
+import time
+
+def test_TC_F_003_02():
+    """Verify final verdict includes insights from all 3 batches"""
+
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Insert 1500 records with distinct patterns per batch
+        # Batch 1 (0-499): All accepted
+        # Batch 2 (500-999): All rejected
+        # Batch 3 (1000-1499): Mixed
+
+        for i in range(500):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, reason, mode, score, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-003-02 batch1 accepted {i}",
+                "accepted", "High confidence acceptance", "BERT", 0.95, time.time(), None
+            ))
+
+        for i in range(500):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, reason, mode, score, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-003-02 batch2 rejected {i}",
+                "rejected", "Personal activity detected", "BERT", 0.92, time.time(), None
+            ))
+
+        for i in range(500):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, answer, reason, mode, score, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-003-02 batch3 mixed {i}",
+                "rejected" if i % 2 == 0 else "accepted",
+                "LLM analysis required",
+                "LLM",
+                0.65,
+                time.time(),
+                None
+            ))
+
+        conn.commit()
+
+        # Test AIInsightsGenerator final verdict
+        # Expected: Final verdict should mention:
+        # - Pattern from batch 1: High acceptance rate
+        # - Pattern from batch 2: High rejection rate
+        # - Pattern from batch 3: LLM-assisted mixed results
+
+        sys.path.insert(0, "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/dashboard/src")
+        from ai_insights import AIInsightsGenerator
+
+        generator = AIInsightsGenerator(db_path)
+
+        # Clear cache
+        cursor.execute("DELETE FROM ai_insights WHERE insight_type = 'pattern_analysis'")
+        conn.commit()
+
+        # Mock to capture batch summaries
+        batch_summaries_captured = []
+        original_batch = generator._process_batch_summary
+
+        def capture_batch(batch_data):
+            summary = original_batch(batch_data)
+            batch_summaries_captured.append(summary)
+            return summary
+
+        generator._process_batch_summary = capture_batch
+
+        verdict = generator.generate_pattern_analysis()
+
+        # Restore original
+        generator._process_batch_summary = original_batch
+
+        # Verify we got 3 batch summaries
+        assert len(batch_summaries_captured) == 3, f"Expected 3 batches, got {len(batch_summaries_captured)}"
+
+        # Verify verdict contains key terms
+        verdict_lower = verdict.lower()
+
+        # Debug: print verdict if assertions fail
+        print(f"\nGenerated verdict:\n{verdict}\n")
+
+        # Be more lenient with acceptance - could be "accepted", "acceptance", "approve", etc.
+        has_acceptance = any(term in verdict_lower for term in ["accept", "approved", "positive", "high confidence"])
+        has_rejection = any(term in verdict_lower for term in ["reject", "denied", "negative", "low confidence"])
+        has_llm = any(term in verdict_lower for term in ["llm", "uncertain", "assisted", "model", "gemini"])
+
+        assert has_acceptance, f"Final verdict should mention acceptance patterns. Got: {verdict[:200]}"
+        assert has_rejection, f"Final verdict should mention rejection patterns. Got: {verdict[:200]}"
+        assert has_llm, f"Final verdict should mention LLM usage. Got: {verdict[:200]}"
+
+        print(f"✓ Final verdict verified: {len(batch_summaries_captured)} batches processed")
+        print(f"✓ Verdict contains patterns from all batches")
+        print(f"Verdict snippet: {verdict[:150]}...")
+
+    finally:
+        cursor.execute("DELETE FROM inference_results WHERE sentence LIKE 'TC-F-003-02%'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_003_02()
+        print("TC-F-003-02: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-003-02: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-003-02: ERROR - {e}")

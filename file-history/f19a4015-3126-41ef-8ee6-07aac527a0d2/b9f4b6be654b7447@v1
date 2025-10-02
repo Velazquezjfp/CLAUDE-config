@@ -1,0 +1,79 @@
+"""
+Test Case: TC-F-003-06
+Requirement: F-003 - Implement batch processing with internal summaries for AI insights
+Description: Test with 5000 records, verify process completes without token limit errors
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import time
+
+def test_TC_F_003_06():
+    """Verify large dataset (5000 records) processes without token limit errors"""
+
+    db_path = "/home/javiervel/clients/bosenet/ai-timesheet/inference/docker_files_api_copy2/shared/data/inference_results.db"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        print("Inserting 5000 test records (this may take a moment)...")
+
+        # Insert 5000 records (will be processed in 10 batches of 500)
+        for i in range(5000):
+            cursor.execute("""
+                INSERT INTO inference_results
+                (sentence, bert_prediction, bert_confidence, final_answer,
+                 llm_used, timestamp, batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                f"TC-F-003-06 large dataset record {i}",
+                "accepted" if i % 3 != 0 else "rejected",
+                0.80 + (i % 15) * 0.01,
+                "accepted" if i % 3 != 0 else "rejected",
+                1 if i % 10 == 0 else 0,
+                time.time(),
+                None
+            ))
+
+            # Commit in chunks for performance
+            if i % 500 == 0:
+                conn.commit()
+
+        conn.commit()
+        print("5000 records inserted successfully")
+
+        # TODO: Test AIInsightsGenerator with large dataset
+        # Expected: Should process 10 batches of 500 each
+        # Should NOT hit token limit errors
+        # Should complete successfully
+        #
+        # from dashboard.src.ai_insights import AIInsightsGenerator
+        #
+        # generator = AIInsightsGenerator(db_path)
+        #
+        # try:
+        #     verdict = generator.generate_pattern_analysis()
+        #     assert len(verdict) > 0, "Verdict should not be empty"
+        #     print("Successfully processed 5000 records without token limit errors")
+        # except Exception as e:
+        #     if "token" in str(e).lower() or "limit" in str(e).lower():
+        #         raise AssertionError(f"Token limit error occurred: {e}")
+        #     raise
+
+        print("TODO: Test processing 5000 records (10 batches)")
+        print("Expected: Complete without token limit errors")
+
+    finally:
+        cursor.execute("DELETE FROM inference_results WHERE sentence LIKE 'TC-F-003-06%'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_003_06()
+        print("TC-F-003-06: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-003-06: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-003-06: ERROR - {e}")

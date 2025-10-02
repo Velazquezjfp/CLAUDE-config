@@ -1,0 +1,96 @@
+"""
+Test Case: TC-F-001-01
+Requirement: F-001 - Configure Firebase Emulator Suite for Local Development
+Description: Run `npm install` after adding firebase-tools, verify successful installation without errors
+Generated: 2025-10-02T00:00:00Z
+"""
+
+import subprocess
+import json
+import os
+import sys
+
+def test_TC_F_001_01():
+    """Verify firebase-tools is installed successfully via npm install"""
+    project_root = "/home/javiervel/clients/personal/Mein-Thema/LingoLeap"
+    package_json_path = os.path.join(project_root, "package.json")
+
+    # Step 1: Read package.json and verify firebase-tools is listed
+    if not os.path.exists(package_json_path):
+        raise FileNotFoundError(f"package.json not found at {package_json_path}")
+
+    with open(package_json_path, 'r') as f:
+        package_data = json.load(f)
+
+    # Check if firebase-tools is in devDependencies
+    dev_deps = package_data.get('devDependencies', {})
+    if 'firebase-tools' not in dev_deps:
+        raise AssertionError("firebase-tools not found in devDependencies")
+
+    version = dev_deps['firebase-tools']
+    print(f"  firebase-tools version in package.json: {version}")
+
+    # Verify version is 13.0.0 or higher
+    if version.startswith('^') or version.startswith('~'):
+        version_number = version[1:].split('.')[0]
+    else:
+        version_number = version.split('.')[0]
+
+    try:
+        major_version = int(version_number)
+        if major_version < 13:
+            raise AssertionError(f"firebase-tools version {version} is below required ^13.0.0")
+    except ValueError:
+        # If we can't parse it, it might be "latest" or a range, which is acceptable
+        pass
+
+    # Step 2: Run npm install to ensure dependencies are installed
+    print(f"  Running npm install in {project_root}...")
+    result = subprocess.run(
+        ["npm", "install"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        timeout=180  # 3 minutes timeout
+    )
+
+    if result.returncode != 0:
+        raise AssertionError(f"npm install failed with exit code {result.returncode}\n{result.stderr}")
+
+    print("  npm install completed successfully")
+
+    # Step 3: Verify firebase CLI is available
+    firebase_check = subprocess.run(
+        ["npx", "firebase", "--version"],
+        cwd=project_root,
+        capture_output=True,
+        text=True
+    )
+
+    if firebase_check.returncode != 0:
+        raise AssertionError("firebase command not available after npm install")
+
+    firebase_version = firebase_check.stdout.strip()
+    print(f"  Firebase CLI version installed: {firebase_version}")
+
+    # Verify the installed version meets minimum requirement
+    try:
+        installed_major = int(firebase_version.split('.')[0])
+        if installed_major < 13:
+            raise AssertionError(f"Installed Firebase CLI version {firebase_version} is below required 13.0.0")
+    except (ValueError, IndexError):
+        # If we can't parse the version, at least it's installed
+        pass
+
+    print("  firebase-tools successfully installed and accessible")
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_001_01()
+        print("TC-F-001-01: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-001-01: FAILED - {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"TC-F-001-01: ERROR - {e}")
+        sys.exit(1)

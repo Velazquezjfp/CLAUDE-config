@@ -1,0 +1,73 @@
+{
+  "requirement_id": "F-004",
+  "requirement_title": "Add database reset endpoint with safety code",
+  "last_updated": "2025-10-01T14:59:00Z",
+  "tests": {
+    "TC-F-004-01": {
+      "description": "POST /admin/reset-database with correct code '270195', verify all records deleted and response returns deleted count",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-01.py"
+    },
+    "TC-F-004-02": {
+      "description": "POST /admin/reset-database with incorrect code '123456', verify 403 Forbidden returned",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-02.py"
+    },
+    "TC-F-004-03": {
+      "description": "POST /admin/reset-database without safety_code field, verify 403 Forbidden returned",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-03.py"
+    },
+    "TC-F-004-04": {
+      "description": "POST with empty safety_code '', verify 403 Forbidden returned",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-04.py"
+    },
+    "TC-F-004-05": {
+      "description": "Insert 100 records, reset database, verify database has 0 records and response shows 'deleted_records': 100",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-05.py"
+    },
+    "TC-F-004-06": {
+      "description": "Click reset button in dashboard, enter wrong code in prompt, verify error message displayed",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-06.py"
+    },
+    "TC-F-004-07": {
+      "description": "Click reset button in dashboard, enter correct code '270195', verify success confirmation shown with count",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-07.py"
+    },
+    "TC-F-004-08": {
+      "description": "After successful reset, refresh dashboard and verify all counters show 0",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-08.py"
+    },
+    "TC-F-004-09": {
+      "description": "Test SQL injection attempt with safety_code: '270195'; DROP TABLE inference_results;--', verify rejected safely",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-09.py"
+    },
+    "TC-F-004-10": {
+      "description": "Verify endpoint requires POST method (GET returns 405 Method Not Allowed)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-004-10.py"
+    }
+  },
+  "summary": {
+    "total": 10,
+    "passed": 0,
+    "failed": 0,
+    "not_run": 10
+  }
+}

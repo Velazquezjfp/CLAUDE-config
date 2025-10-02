@@ -1,0 +1,67 @@
+{
+  "requirement_id": "F-003",
+  "requirement_title": "Implement batch processing with internal summaries for AI insights",
+  "last_updated": "2025-10-01T14:59:00Z",
+  "tests": {
+    "TC-F-003-01": {
+      "description": "Insert 1500 records, verify AIInsightsGenerator processes in 3 batches of 500 each",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-01.py"
+    },
+    "TC-F-003-02": {
+      "description": "With 1500 records, verify final verdict includes insights from all 3 batches",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-02.py"
+    },
+    "TC-F-003-03": {
+      "description": "With 250 records (less than batch size), verify single batch processing works correctly",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-03.py"
+    },
+    "TC-F-003-04": {
+      "description": "Mock Gemini API to count requests, verify N batches = N+1 API calls (N batch summaries + 1 final verdict)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-04.py"
+    },
+    "TC-F-003-05": {
+      "description": "Verify batch summaries are cached properly to avoid redundant processing",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-05.py"
+    },
+    "TC-F-003-06": {
+      "description": "Test with 5000 records, verify process completes without token limit errors",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-06.py"
+    },
+    "TC-F-003-07": {
+      "description": "Verify final verdict prompt contains all batch summaries with proper formatting",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-07.py"
+    },
+    "TC-F-003-08": {
+      "description": "Test edge case with exactly 500 records, verify single batch processing",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-08.py"
+    },
+    "TC-F-003-09": {
+      "description": "Verify dashboard displays final insights correctly after batch processing completes",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-003-09.py"
+    }
+  },
+  "summary": {
+    "total": 9,
+    "passed": 0,
+    "failed": 0,
+    "not_run": 9
+  }
+}

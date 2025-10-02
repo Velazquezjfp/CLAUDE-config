@@ -1,0 +1,75 @@
+"""
+Test Case: TC-F-002-04
+Requirement: F-002 - Fix total inferences count calculation on dashboard
+Description: Insert 1 record, verify count increments to 1 immediately after refresh
+Generated: 2025-10-01T14:59:00Z
+"""
+
+import sqlite3
+import requests
+import time
+import os
+
+def test_TC_F_002_04():
+    """Verify single record insertion updates total count correctly"""
+
+    # Get project root (3 levels up from this test file)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+    db_path = os.path.join(project_root, "shared/data/inference_results.db")
+    dashboard_api = "http://localhost:8001/api/stats"
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    try:
+        # Get initial count
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        initial_count = cursor.fetchone()[0]
+        print(f"Initial count: {initial_count}")
+
+        # Insert exactly 1 record
+        cursor.execute("""
+            INSERT INTO inference_results
+            (sentence, bert_prediction, bert_confidence, final_answer,
+             llm_used, timestamp, batch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            "TC-F-002-04 single test record",
+            "accepted",
+            0.98,
+            "accepted",
+            0,
+            time.time(),
+            None
+        ))
+        conn.commit()
+
+        # Verify database
+        cursor.execute("SELECT COUNT(*) FROM inference_results")
+        new_count = cursor.fetchone()[0]
+        assert new_count == initial_count + 1, f"Expected {initial_count + 1}, got {new_count}"
+
+        # Query API
+        response = requests.get(dashboard_api, timeout=10)
+        assert response.status_code == 200
+
+        data = response.json()
+        api_total = data.get("summary", {}).get("total_inferences", 0)
+
+        print(f"After insert: Database={new_count}, API={api_total}")
+        assert api_total == new_count, f"API shows {api_total}, expected {new_count}"
+
+    finally:
+        # Cleanup
+        cursor.execute("DELETE FROM inference_results WHERE sentence = 'TC-F-002-04 single test record'")
+        conn.commit()
+        conn.close()
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_04()
+        print("TC-F-002-04: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-04: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-04: ERROR - {e}")
