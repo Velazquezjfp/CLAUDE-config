@@ -1,0 +1,45 @@
+{
+  "language": "java",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "imports": [
+      "^\\s*import\\s+(?:static\\s+)?([\\w.]+(?:\\.\\*)?);",
+      "^\\s*import\\s+([\\w.]+);"
+    ],
+    "functions": [
+      "(?:public|private|protected)?\\s+(?:static\\s+)?(?:\\w+(?:<[^>]+>)?\\s+)+(\\w+)\\s*\\([^)]*\\)\\s*(?:throws\\s+[\\w,\\s]+)?\\s*\\{",
+      "(?:@\\w+\\s+)*(?:public|private|protected)\\s+(?:\\w+)\\s+(\\w+)\\s*\\("
+    ],
+    "classes": [
+      "(?:public\\s+)?(?:abstract\\s+)?class\\s+(\\w+)(?:\\s+extends\\s+\\w+)?(?:\\s+implements\\s+[\\w,\\s]+)?\\s*\\{",
+      "(?:public\\s+)?interface\\s+(\\w+)(?:\\s+extends\\s+[\\w,\\s]+)?\\s*\\{",
+      "(?:public\\s+)?enum\\s+(\\w+)\\s*\\{"
+    ],
+    "api_endpoints": [
+      "@RequestMapping\\(['\"]([^'\"]+)['\"]",
+      "@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)\\(['\"]([^'\"]+)['\"]",
+      "@Path\\(['\"]([^'\"]+)['\"]",
+      "@(GET|POST|PUT|DELETE|PATCH)\\s*(?:@Path\\(['\"]([^'\"]+)['\"])?",
+      "@RestController"
+    ],
+    "database_models": [
+      "@Entity\\s+(?:@Table\\(name\\s*=\\s*['\"]([^'\"]+)['\"]\\))?\\s*(?:public\\s+)?class\\s+(\\w+)",
+      "@Table\\(name\\s*=\\s*['\"]([^'\"]+)['\"]\\)",
+      "class\\s+(\\w+)(?:\\s+extends\\s+)?.*\\{[^}]*@Id"
+    ],
+    "database_queries": [
+      "@Query\\(['\"]([^'\"]+)['\"]\\)",
+      "SELECT\\s+.*\\s+FROM\\s+(\\w+)",
+      "INSERT\\s+INTO\\s+(\\w+)",
+      "UPDATE\\s+(\\w+)\\s+SET",
+      "DELETE\\s+FROM\\s+(\\w+)",
+      "entityManager\\.find\\((\\w+)\\.class",
+      "repository\\.findBy(\\w+)",
+      "CriteriaQuery.*from\\((\\w+)\\.class\\)"
+    ],
+    "annotations": [
+      "@(\\w+)(?:\\([^)]*\\))?"
+    ]
+  }
+}

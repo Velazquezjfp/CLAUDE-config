@@ -1,0 +1,62 @@
+{
+  "language": "typescript",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "imports": [
+      "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+type\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)"
+    ],
+    "exports": [
+      "^\\s*export\\s+(?:default\\s+)?(?:class|function|const|let|var|interface|type|enum)\\s+(\\w+)",
+      "^\\s*export\\s+\\{[^}]*\\}\\s+from\\s+['\"]([^'\"]+)['\"]"
+    ],
+    "functions": [
+      "function\\s+(\\w+)\\s*(?:<[^>]+>)?\\s*\\(",
+      "(?:const|let|var)\\s+(\\w+)\\s*:\\s*(?:<[^>]*>)?\\s*\\([^)]*\\)\\s*=>",
+      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
+      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>",
+      "(\\w+)\\s*:\\s*(?:async\\s+)?function\\s*\\(",
+      "async\\s+function\\s+(\\w+)\\s*\\("
+    ],
+    "classes": [
+      "class\\s+(\\w+)(?:<[^>]+>)?(?:\\s+extends\\s+\\w+(?:<[^>]+>)?)?(?:\\s+implements\\s+[\\w,\\s<>]+)?\\s*\\{"
+    ],
+    "interfaces": [
+      "interface\\s+(\\w+)(?:<[^>]+>)?(?:\\s+extends\\s+[\\w,\\s<>]+)?\\s*\\{"
+    ],
+    "types": [
+      "type\\s+(\\w+)(?:<[^>]+>)?\\s*="
+    ],
+    "api_endpoints": [
+      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\(['\"]([^'\"]+)['\"]",
+      "@(Get|Post|Put|Delete|Patch)\\(['\"]([^'\"]+)['\"]\\)",
+      "@Controller\\(['\"]([^'\"]+)['\"]\\)",
+      "\\.route\\(['\"]([^'\"]+)['\"]\\)"
+    ],
+    "database_queries": [
+      "\\.find\\(\\{",
+      "\\.findOne\\(\\{",
+      "\\.findById\\(",
+      "\\.create\\(",
+      "\\.update\\(",
+      "\\.delete\\(",
+      "SELECT\\s+.*\\s+FROM\\s+(\\w+)",
+      "INSERT\\s+INTO\\s+(\\w+)",
+      "UPDATE\\s+(\\w+)\\s+SET",
+      "DELETE\\s+FROM\\s+(\\w+)",
+      "@Entity\\(['\"]([^'\"]+)['\"]\\)",
+      "getRepository\\((\\w+)\\)"
+    ],
+    "react_components": [
+      "(?:function|const)\\s+(\\w+)\\s*(?::|=)\\s*(?:React\\.)?FC(?:<[^>]*>)?",
+      "(?:function|const)\\s+(\\w+)\\s*=?\\s*\\([^)]*\\)\\s*:\\s*JSX\\.Element",
+      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)(?:<[^>]*>)?"
+    ],
+    "decorators": [
+      "@(\\w+)(?:\\([^)]*\\))?"
+    ]
+  }
+}

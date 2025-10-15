@@ -1,0 +1,55 @@
+{
+  "language": "javascript",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "imports": [
+      "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*(?:const|let|var)\\s+.*=\\s*require\\(['\"]([^'\"]+)['\"]\\)",
+      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)"
+    ],
+    "exports": [
+      "^\\s*export\\s+(?:default\\s+)?(?:class|function|const|let|var)\\s+(\\w+)",
+      "^\\s*module\\.exports\\s*=",
+      "^\\s*exports\\.(\\w+)\\s*="
+    ],
+    "functions": [
+      "function\\s+(\\w+)\\s*\\(",
+      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
+      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>",
+      "(\\w+)\\s*:\\s*(?:async\\s+)?function\\s*\\(",
+      "async\\s+function\\s+(\\w+)\\s*\\("
+    ],
+    "classes": [
+      "class\\s+(\\w+)(?:\\s+extends\\s+\\w+)?\\s*\\{"
+    ],
+    "api_endpoints": [
+      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\(['\"]([^'\"]+)['\"]",
+      "\\.route\\(['\"]([^'\"]+)['\"]\\)",
+      "app\\.use\\(['\"]([^'\"]+)['\"]"
+    ],
+    "database_queries": [
+      "\\.find\\(\\{",
+      "\\.findOne\\(\\{",
+      "\\.findById\\(",
+      "\\.create\\(",
+      "\\.update\\(",
+      "\\.delete\\(",
+      "\\.insertOne\\(",
+      "\\.insertMany\\(",
+      "\\.updateOne\\(",
+      "\\.deleteOne\\(",
+      "SELECT\\s+.*\\s+FROM\\s+(\\w+)",
+      "INSERT\\s+INTO\\s+(\\w+)",
+      "UPDATE\\s+(\\w+)\\s+SET",
+      "DELETE\\s+FROM\\s+(\\w+)",
+      "db\\(['\"]([^'\"]+)['\"]\\)",
+      "collection\\(['\"]([^'\"]+)['\"]\\)"
+    ],
+    "react_components": [
+      "(?:function|const)\\s+(\\w+)\\s*=?\\s*\\([^)]*\\)\\s*(?::|=>)\\s*(?:\\{[^}]*return\\s*\\(|\\()",
+      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "language": "react",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "imports": [
+      "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+['\"]([^'\"]+)['\"]"
+    ],
+    "components": [
+      "(?:export\\s+)?(?:default\\s+)?(?:function|const)\\s+(\\w+)\\s*(?::|=)?\\s*(?:\\([^)]*\\))?\\s*(?::)?\\s*(?:React\\.FC|JSX\\.Element)?",
+      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)",
+      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>\\s*(?:\\{[^}]*return\\s*\\(|<|\\()"
+    ],
+    "hooks": [
+      "useState(?:<[^>]*>)?\\(",
+      "useEffect\\(",
+      "useContext\\(",
+      "useReducer\\(",
+      "useCallback\\(",
+      "useMemo\\(",
+      "useRef(?:<[^>]*>)?\\(",
+      "use(\\w+)\\("
+    ],
+    "jsx_elements": [
+      "<(\\w+)(?:\\s+[^>]*)?>",
+      "<([A-Z]\\w+)\\s*(?:/|>)"
+    ],
+    "props": [
+      "interface\\s+(\\w+Props)\\s*\\{",
+      "type\\s+(\\w+Props)\\s*=\\s*\\{"
+    ],
+    "state": [
+      "interface\\s+(\\w+State)\\s*\\{",
+      "type\\s+(\\w+State)\\s*=\\s*\\{"
+    ],
+    "event_handlers": [
+      "on(\\w+)\\s*=\\s*\\{",
+      "handle(\\w+)\\s*=",
+      "const\\s+handle(\\w+)\\s*="
+    ],
+    "api_calls": [
+      "fetch\\(['\"]([^'\"]+)['\"]",
+      "axios\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]",
+      "\\$\\.(get|post|put|delete|ajax)\\(['\"]([^'\"]+)['\"]",
+      "api\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]"
+    ]
+  }
+}

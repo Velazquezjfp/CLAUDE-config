@@ -1,0 +1,147 @@
+# Dependency Update Plan - Risk Assessment
+
+## 🟢 LOW RISK - Safe to Update (Recommended)
+
+### 1. **patch-package: 8.0.0 → 8.0.1**
+- **Impact**: Patch version - bug fixes only
+- **Risk**: Minimal
+- **Action**: Safe to update, no breaking changes
+- **Note**: No patches directory exists, so no risk to existing patches
+
+### 2. **Minor Updates to Radix UI Components**
+- All Radix components (accordion, alert-dialog, avatar, etc.)
+- **Risk**: Very Low - patch/minor updates only
+- **Action**: Update all at once via `npm update @radix-ui/*`
+
+### 3. **Small Utility Libraries**
+- tailwind-merge: 3.0.1 → 3.3.1
+- react-hook-form: 7.54.2 → 7.64.0
+- postcss: 8.5.2 → 8.5.6
+- typescript: 5.7.3 → 5.9.3
+- **Risk**: Very Low
+
+### 4. **Genkit Updates: 1.20.0 → 1.21.0**
+- @genkit-ai/google-genai, @genkit-ai/next, genkit, genkit-cli
+- **Risk**: Low - minor version bump
+- **Action**: Update all Genkit packages together
+
+## 🟡 MEDIUM RISK - Evaluate Before Updating
+
+### 5. **Next.js: 15.3.3 → 15.5.4**
+- **Changes**: Turbopack Beta, Node.js middleware stable, TypeScript improvements
+- **Breaking**: `next lint` deprecation warnings (removed in v16)
+- **Risk**: Medium-Low
+- **Action**: ✅ RECOMMENDED - No breaking changes, just deprecation warnings
+
+### 6. **Firebase: 11.9.1 → 12.3.0**
+- **Changes**: Major version bump with breaking changes
+- **Risk**: MEDIUM - Version 12.0.0 had breaking changes
+- **Action**: ⚠️ STAY ON 11.x for now - Research specific breaking changes for your use case first
+- **Reason**: Need to verify Genkit compatibility with Firebase 12.x
+
+### 7. **@hookform/resolvers: 4.1.3 → 5.2.2**
+- **Risk**: Medium - Major version bump
+- **Action**: ⚠️ STAY ON 4.x - Test in separate branch first
+
+## 🔴 HIGH RISK - Do NOT Update Yet
+
+### 8. **React: 18.3.1 → 19.2.0**
+- **Breaking Changes**: String refs removed, module pattern factories removed, createFactory removed
+- **Risk**: HIGH
+- **Action**: ❌ STAY ON 18.x - Next.js 15.x is designed for React 18, not 19
+- **Reason**: Next.js 15 does not officially support React 19 yet
+
+### 9. **Tailwind CSS: 3.4.17 → 4.1.14**
+- **Breaking Changes**: Configuration moved from JS to CSS, @tailwind directives replaced with @import, browser support changed
+- **Risk**: HIGH
+- **Action**: ❌ STAY ON 3.x - Major rewrite, requires significant migration effort
+- **Tool**: Upgrade tool available: `npx @tailwindcss/upgrade@next`
+
+### 10. **Zod: 3.24.2 → 4.1.12**
+- **Risk**: HIGH - Major version bump
+- **Action**: ❌ STAY ON 3.x - Likely breaking changes, affects form validation across the app
+
+### 11. **recharts: 2.15.1 → 3.2.1**
+- **Risk**: Medium-High - Major version bump
+- **Action**: ❌ STAY ON 2.x - Check if charts are used in the app
+
+## ⚙️ Deprecated Dependencies (Transitive)
+
+### **inflight, rimraf, glob** (from patch-package)
+- These are **transitive dependencies** (7 layers deep) from `patch-package → rimraf@2.7.1 → glob@7.2.3`
+- **Impact**: Deprecation warnings only, no functional impact
+- **Action**: ✅ Updating patch-package 8.0.0 → 8.0.1 may help, but patch-package itself depends on old rimraf
+- **Reality**: Can be safely ignored - these are just warnings, not errors
+
+---
+
+## Recommended Update Strategy
+
+### **Phase 1 (Safe - Do Now):**
+```bash
+npm update patch-package @radix-ui/* tailwind-merge react-hook-form postcss typescript
+npm update @genkit-ai/google-genai @genkit-ai/next genkit genkit-cli
+npm update lucide-react date-fns dotenv
+```
+
+### **Phase 2 (Test First):**
+```bash
+npm update next@15.5.4
+# Test thoroughly, then:
+npm update
+```
+
+### **Phase 3 (Research & Plan - Future):**
+- Firebase 11 → 12 (when Genkit compatibility confirmed)
+- Tailwind 3 → 4 (use upgrade tool, significant effort)
+- React 18 → 19 (wait for Next.js 16 with official React 19 support)
+
+**Deprecated Warnings:** Can be safely ignored - they're from transitive dependencies and don't affect functionality.
+
+---
+
+## Risk Assessment for Development
+
+### Current Stack Stability: ✅ **GOOD TO GO**
+
+**Recommendation: Continue development with current versions, apply Phase 1 updates**
+
+#### Why Current Versions Are Fine:
+
+1. **React 18.3.1** - Stable, production-ready, perfect for Next.js 15
+2. **Next.js 15.3.3** - Solid version, Turbopack available
+3. **Tailwind CSS 3.4.17** - Mature, well-documented, extensive ecosystem
+4. **Firebase 11.9.1** - Stable SDK with Genkit 1.20.0 compatibility
+5. **All Radix UI components** - Minor versions behind, but stable
+
+#### Development Strategy:
+
+**Option A: Update First (Recommended for this project)**
+- ✅ Run Phase 1 updates now (30 minutes)
+- ✅ Minimal risk, mostly patch/minor updates
+- ✅ Reduces technical debt early
+- ✅ Better IDE support with latest TypeScript
+
+**Option B: Develop Now, Update Later**
+- ⚠️ Current versions are stable enough
+- ⚠️ Risk: Accumulating more code before updates
+- ⚠️ Harder to test updates with more features
+
+#### Specific Risks of NOT Updating Phase 1:
+
+1. **TypeScript 5.7.3 → 5.9.3**: Missing bug fixes and type improvements
+2. **Radix UI**: Missing accessibility improvements and bug fixes
+3. **Genkit 1.20.0 → 1.21.0**: Missing latest AI features/fixes
+
+### Final Recommendation:
+
+**✅ Yes, update Phase 1 now before adding new components**
+
+**Rationale:**
+- Takes ~30 minutes
+- Minimal breaking change risk
+- Better foundation for new features
+- Latest TypeScript = better DX
+- Latest Radix UI = better accessibility
+
+After Phase 1, you have a stable, modern stack that will last 6-12 months before needing major updates.

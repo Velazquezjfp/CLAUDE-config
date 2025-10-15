@@ -1,0 +1,46 @@
+{
+  "language": "python",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "imports": [
+      "^\\s*from\\s+([\\w.]+)\\s+import",
+      "^\\s*import\\s+([\\w.]+(?:\\s*,\\s*[\\w.]+)*)"
+    ],
+    "functions": [
+      "^\\s*def\\s+(\\w+)\\s*\\(",
+      "^\\s*async\\s+def\\s+(\\w+)\\s*\\("
+    ],
+    "classes": [
+      "^\\s*class\\s+(\\w+)\\s*[\\(:]"
+    ],
+    "api_endpoints": [
+      "@app\\.route\\(['\"]([^'\"]+)['\"](?:.*methods\\s*=\\s*\\[([^\\]]+)\\])?",
+      "@router\\.(get|post|put|delete|patch|options)\\(['\"]([^'\"]+)['\"]",
+      "@app\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]",
+      "@api_view\\(\\[([^\\]]+)\\]\\)",
+      "class\\s+\\w+\\(.*APIView.*\\):"
+    ],
+    "database_models": [
+      "class\\s+(\\w+)\\(.*(?:Model|Base|Document).*\\):",
+      "class\\s+(\\w+)\\(db\\.Model\\):",
+      "__tablename__\\s*=\\s*['\"]([^'\"]+)['\"]"
+    ],
+    "database_queries": [
+      "\\.query\\((\\w+)\\)",
+      "\\.filter\\((\\w+)\\.",
+      "\\.select\\(\\s*(\\w+)\\s*\\)",
+      "\\.join\\((\\w+)",
+      "SELECT\\s+.*\\s+FROM\\s+(\\w+)",
+      "INSERT\\s+INTO\\s+(\\w+)",
+      "UPDATE\\s+(\\w+)\\s+SET",
+      "DELETE\\s+FROM\\s+(\\w+)",
+      "db\\.session\\.query\\((\\w+)\\)",
+      "\\.filter_by\\(",
+      "\\.get\\(\\s*(\\w+)\\s*,"
+    ],
+    "decorators": [
+      "@(\\w+)(?:\\.\\w+)*"
+    ]
+  }
+}

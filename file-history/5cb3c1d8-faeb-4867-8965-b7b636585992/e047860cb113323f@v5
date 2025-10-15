@@ -1,0 +1,415 @@
+import json
+import requests
+from typing import List
+
+
+class TableDetail:
+    """Simple class to represent a table detail record"""
+    
+    def __init__(self, data: dict):
+        # Store all original data as-is to preserve dynamic fields
+        self.data = data.copy()
+        
+        # Only validate that descriptions exists and is processable
+        self._validate_descriptions()
+    
+    def _validate_descriptions(self):
+        """Validate only the descriptions field"""
+        descriptions = self.data.get('descriptions')
+        if descriptions is None:
+            # None is acceptable - will be skipped during processing
+            return
+        if not isinstance(descriptions, str):
+            raise ValueError(f"Invalid descriptions: {descriptions} - must be string or None")
+    
+    def has_valid_description(self) -> bool:
+        """Check if record has a non-empty description for AI processing"""
+        descriptions = self.data.get('descriptions')
+        return descriptions is not None and str(descriptions).strip() != ''
+    
+    def get_description(self) -> str:
+        """Get the description for AI processing"""
+        return str(self.data.get('descriptions', ''))
+    
+    def set_ai_check(self, value: str):
+        """Set the ai_check field"""
+        self.data['ai_check'] = value
+    
+    def get_id(self):
+        """Get record ID for logging"""
+        return self.data.get('id', 'unknown')
+    
+    def to_dict(self):
+        """Convert back to dictionary format - returns original data with ai_check updated"""
+        return self.data
+
+
+def validate_table_details_request(data: dict) -> List[TableDetail]:
+    """Validate and parse TableDetails request"""
+    if not isinstance(data, dict):
+        raise ValueError("Request must be a dictionary")
+    
+    if 'TableDetails' not in data:
+        raise ValueError("Missing 'TableDetails' field")
+    
+    table_details = data['TableDetails']
+    if not isinstance(table_details, list):
+        raise ValueError("TableDetails must be a list")
+    
+    if len(table_details) == 0:
+        raise ValueError("TableDetails cannot be empty")
+    
+    # Parse and validate each record
+    parsed_records = []
+    for i, record in enumerate(table_details):
+        try:
+            parsed_records.append(TableDetail(record))
+        except (ValueError, KeyError) as e:
+            raise ValueError(f"Invalid record at index {i}: {str(e)}")
+    
+    return parsed_records
+
+
+def create_batches(items: List[TableDetail], batch_size: int = 5) -> List[List[TableDetail]]:
+    """Split TableDetails into batches of maximum batch_size"""
+    batches = []
+    for i in range(0, len(items), batch_size):
+        batches.append(items[i:i + batch_size])
+    print(f"Created {len(batches)} batches from {len(items)} items")
+    for idx, batch in enumerate(batches):
+        print(f"Batch {idx + 1}: {len(batch)} items - IDs: {[item.get_id() for item in batch]}")
+    return batches
+
+
+def call_ai_endpoint(descriptions: List[str], test: bool = False, llm: bool = True) -> List[dict]:
+    """Call the AI endpoint with batch of descriptions
+
+    Args:
+        descriptions: List of descriptions to process
+        test: If True, inference runs without database logging (default: False)
+        llm: If True, allows LLM for uncertain cases; if False, BERT-only (default: True)
+    """
+    url = "https://tscheckerservices.bosenet.com/predict"
+
+    # For individual processing (single description), send as single string
+    if len(descriptions) == 1:
+        payload = {
+            "sentence": descriptions[0],  # Fixed: was "sentences", should be "sentence" for single
+            "llm": llm,
+            "test": test
+        }
+        print(f"🔄 INDIVIDUAL REQUEST PAYLOAD:")
+        print(f"URL: {url}")
+        print(f"Payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+        print(f"Description length: {len(descriptions[0])} characters")
+    else:
+        # For batch processing, send as list
+        payload = {
+            "sentences": descriptions,  # List of strings for batch
+            "llm": llm,
+            "test": test
+        }
+        print(f"🔄 BATCH REQUEST PAYLOAD:")
+        print(f"URL: {url}")
+        print(f"Payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+        print(f"Number of descriptions: {len(descriptions)}")
+        for idx, desc in enumerate(descriptions):
+            print(f"  {idx + 1}: {desc[:50]}... (length: {len(desc)})")
+    
+    try:
+        response = requests.post(url, json=payload, timeout=30.0)
+        print(f"📨 Response Status: {response.status_code}")
+        print(f"📨 Response Headers: {dict(response.headers)}")
+        
+        if response.status_code != 200:
+            print(f"❌ Error Response Body: {response.text}")
+        
+        response.raise_for_status()
+        ai_response = response.json()
+
+        # Handle batch response format: {"results": [...]} for batch, direct object for single
+        if isinstance(ai_response, dict) and 'results' in ai_response:
+            # Batch response format
+            results = ai_response['results']
+            print(f"✅ AI endpoint returned {len(results)} batch responses")
+            print(f"📤 Full AI Response: {json.dumps(ai_response, indent=2, ensure_ascii=False)}")
+
+            for idx, resp in enumerate(results):
+                print(f"  Response {idx + 1}: {resp.get('answer', 'N/A')} - {resp.get('reason', 'N/A')[:50]}...")
+
+            return results
+        else:
+            # Single response format (direct object)
+            print(f"✅ AI endpoint returned single response")
+            print(f"📤 Full AI Response: {json.dumps(ai_response, indent=2, ensure_ascii=False)}")
+            print(f"  Response: {ai_response.get('answer', 'N/A')} - {ai_response.get('reason', 'N/A')[:50]}...")
+
+            return [ai_response]  # Wrap in list for consistent handling
+        
+    except requests.exceptions.HTTPError as e:
+        print(f"❌ HTTP Error: {e}")
+        print(f"❌ Response Status: {response.status_code}")
+        print(f"❌ Response Text: {response.text}")
+        raise
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Request Exception: {e}")
+        raise
+
+
+def process_batch_with_fallback(batch: List[TableDetail], test: bool = False, llm: bool = True) -> None:
+    """Process a batch of records, with individual processing fallback on error
+
+    Args:
+        batch: List of TableDetail records to process
+        test: If True, inference runs without database logging
+        llm: If True, allows LLM for uncertain cases; if False, BERT-only
+    """
+    batch_ids = [record.get_id() for record in batch]
+    print(f"\n=== Processing batch with IDs: {batch_ids} (test: {test}, llm: {llm}) ===")
+    
+    # Filter out records with empty descriptions and create mapping
+    records_with_descriptions = []
+    descriptions = []
+    record_index_map = {}  # Maps description index to original batch index
+    
+    for i, record in enumerate(batch):
+        if record.has_valid_description():
+            descriptions.append(record.get_description())
+            record_index_map[len(descriptions) - 1] = i
+            records_with_descriptions.append(record)
+        # No action needed for empty descriptions - they remain unchanged
+    
+    # If no records have descriptions, exit early
+    if not descriptions:
+        print("  No records with descriptions to process")
+        return
+    
+    try:
+        ai_responses = call_ai_endpoint(descriptions, test=test, llm=llm)
+        
+        print(f"Assigning AI responses to {len(records_with_descriptions)} records with descriptions:")
+        for desc_idx, ai_resp in enumerate(ai_responses):
+            if desc_idx in record_index_map:
+                batch_idx = record_index_map[desc_idx]
+                record = batch[batch_idx]
+                
+                answer = ai_resp.get("answer", "unknown")
+                reason = ai_resp.get("reason", "")
+                mode = ai_resp.get("mode", "unknown")
+                
+                if answer == "accepted":
+                    ai_check_value = f"Accepted [mode used: {mode}]"
+                elif answer == "rejected":
+                    ai_check_value = f"{answer} --> {reason} [mode used: {mode}]"
+                else:
+                    ai_check_value = f"Unknown response: {answer} [mode used: {mode}]"
+                
+                record.set_ai_check(ai_check_value)
+                print(f"  Record ID {record.get_id()}: {answer} - {ai_check_value[:50]}...")
+        
+        # Handle case where we got fewer responses than expected
+        for desc_idx, record in enumerate(records_with_descriptions):
+            if desc_idx >= len(ai_responses):
+                record.set_ai_check("Warnung --> Diese Aktivität hatte einen Fehler bei der Verarbeitung, bitte überprufen Sie sie")
+                print(f"  Record ID {record.get_id()}: No AI response available, assigned warning")
+                
+    except Exception as e:
+        print(f"Batch processing failed, processing individually: {str(e)}")
+        
+        for record in records_with_descriptions:
+            try:
+                print(f"Processing individual record ID {record.get_id()}")
+                # Only process records that have descriptions (already filtered)
+                ai_responses = call_ai_endpoint([record.get_description()], test=test, llm=llm)
+                if ai_responses and len(ai_responses) > 0:
+                    ai_resp = ai_responses[0]
+                    answer = ai_resp.get("answer", "unknown")
+                    reason = ai_resp.get("reason", "")
+                    mode = ai_resp.get("mode", "unknown")
+                    
+                    if answer == "accepted":
+                        ai_check_value = f"Accepted [mode used: {mode}]"
+                    elif answer == "rejected":
+                        ai_check_value = f"{answer} --> {reason} [mode used: {mode}]"
+                    else:
+                        ai_check_value = f"Unknown response: {answer} [mode used: {mode}]"
+                    
+                    record.set_ai_check(ai_check_value)
+                    print(f"  Individual success for record ID {record.get_id()}: {answer}")
+                else:
+                    record.set_ai_check("Warnung --> Diese Aktivität hatte einen Fehler bei der Verarbeitung, bitte überprufen Sie sie")
+                    print(f"  No individual response for record ID {record.get_id()}")
+            except Exception as individual_error:
+                print(f"Individual processing failed for record {record.get_id()}: {str(individual_error)}")
+                record.set_ai_check("Warnung --> Diese Aktivität hatte einen Fehler bei der Verarbeitung, bitte überprufen Sie sie")
+
+
+def lambda_handler(event, context):
+    """
+    AWS Lambda handler function for processing table details with AI validation
+
+    Expected event body format:
+    {
+        "TableDetails": [
+            {
+                "id": 1,
+                "date": "2024-01-15",
+                "onsite": 8.0,
+                "remote": null,
+                "jira": "PROJ-123",
+                "descriptions": "Description text here",
+                "AMIF": "Development",
+                "GEAS": "Backend",
+                "ai_check": null,
+                "hours_check": [],
+                "warnings": null
+            }
+        ],
+        "test": false,  // Optional: If true, inference runs without database logging (default: false)
+        "llm": true     // Optional: If true, allows LLM for uncertain cases; if false, BERT-only (default: true)
+    }
+    """
+    
+    try:
+        print(f"Lambda invoked with event: {json.dumps(event)[:500]}...")
+        
+        # Handle API Gateway event format
+        if 'body' in event:
+            # API Gateway passes request body as string
+            if isinstance(event['body'], str):
+                body = json.loads(event['body'])
+            else:
+                body = event['body']
+        else:
+            # Direct Lambda invocation
+            body = event
+        
+        # Extract optional parameters (ensure boolean type)
+        test_mode = bool(body.get('test', False))
+        llm_enabled = bool(body.get('llm', True))
+        print(f"🧪 Test mode: {test_mode}, LLM enabled: {llm_enabled}")
+
+        # Validate request structure
+        try:
+            table_details = validate_table_details_request(body)
+        except ValueError as ve:
+            print(f"Validation error: {str(ve)}")
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({
+                    'error': 'Validation failed',
+                    'details': str(ve)
+                })
+            }
+        
+        print(f"\n🔍 Starting Lambda processing of {len(table_details)} table details")
+
+        # Filter out records with null/empty descriptions before batching
+        records_to_process = [record for record in table_details if record.has_valid_description()]
+        records_skipped = len(table_details) - len(records_to_process)
+
+        print(f"📊 Total records: {len(table_details)}")
+        print(f"📊 Records with descriptions to process: {len(records_to_process)}")
+        print(f"📊 Records skipped (null/empty descriptions): {records_skipped}")
+
+        # Only process records that have valid descriptions
+        if records_to_process:
+            # Process in batches (only records with descriptions)
+            batches = create_batches(records_to_process, 5)
+
+            for idx, batch in enumerate(batches):
+                print(f"\n📦 Processing batch {idx + 1} of {len(batches)}")
+                process_batch_with_fallback(batch, test=test_mode, llm=llm_enabled)
+
+            print(f"\n✅ Completed processing {len(batches)} batches ({len(records_to_process)} records)")
+        else:
+            print("⚠️ No records with descriptions to process")
+
+        # Records with null descriptions keep their original ai_check (typically null)
+        if records_skipped > 0:
+            print(f"ℹ️ {records_skipped} records with null/empty descriptions were not processed")
+        
+        # Convert back to original format
+        result = {
+            'TableDetails': [record.to_dict() for record in table_details]
+        }
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps(result, ensure_ascii=False)
+        }
+        
+    except requests.exceptions.RequestException as re:
+        print(f"Request error: {str(re)}")
+        return {
+            'statusCode': 502,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'error': 'External API error',
+                'details': str(re)
+            })
+        }
+        
+    except json.JSONDecodeError as je:
+        print(f"JSON decode error: {str(je)}")
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'error': 'Invalid JSON format',
+                'details': str(je)
+            })
+        }
+        
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'body': json.dumps({
+                'error': 'Internal server error',
+                'details': str(e)
+            })
+        }
+
+
+# For local testing (optional)
+if __name__ == "__main__":
+    # Test with sample event
+    test_event = {
+        "TableDetails": [
+            {
+                "id": 1,
+                "date": "2024-01-15",
+                "onsite": 8.0,
+                "remote": None,
+                "jira": "PROJ-123",
+                "descriptions": "Test description for Lambda function",
+                "AMIF": "Development",
+                "GEAS": "Backend",
+                "ai_check": None,
+                "hours_check": [],
+                "warnings": None
+            }
+        ]
+    }
+    
+    result = lambda_handler(test_event, None)
+    print(f"Local test result: {json.dumps(result, indent=2)}")

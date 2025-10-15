@@ -1,0 +1,107 @@
+{
+  "language": "yaml",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "services": [
+      "^\\s*services:\\s*$",
+      "^\\s{2,}(\\w+(?:-\\w+)*):\\s*$",
+      "^\\s*-?\\s*name:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "docker_images": [
+      "^\\s*image:\\s*['\"]?([\\w./:@-]+)['\"]?\\s*$",
+      "^\\s*from:\\s*['\"]?([\\w./:@-]+)['\"]?\\s*$"
+    ],
+    "depends_on": [
+      "^\\s*depends_on:\\s*$",
+      "^\\s*-\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "ports": [
+      "^\\s*ports:\\s*$",
+      "^\\s*-\\s*['\"]?(\\d+):(\\d+)['\"]?\\s*$",
+      "^\\s*containerPort:\\s*(\\d+)\\s*$",
+      "^\\s*hostPort:\\s*(\\d+)\\s*$"
+    ],
+    "volumes": [
+      "^\\s*volumes:\\s*$",
+      "^\\s*-\\s*['\"]?([^:]+):([^:]+)['\"]?",
+      "^\\s*mountPath:\\s*['\"]?([^'\"]+)['\"]?\\s*$"
+    ],
+    "environment": [
+      "^\\s*environment:\\s*$",
+      "^\\s*env:\\s*$",
+      "^\\s*-?\\s*(\\w+):\\s*['\"]?([^'\"]*)['\"]?\\s*$",
+      "^\\s*-\\s*(\\w+)=['\"]?([^'\"]*)['\"]?\\s*$"
+    ],
+    "networks": [
+      "^\\s*networks:\\s*$",
+      "^\\s*-\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "containers": [
+      "^\\s*containers:\\s*$",
+      "^\\s*-\\s*name:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "deployments": [
+      "^\\s*kind:\\s*Deployment\\s*$",
+      "^\\s*kind:\\s*StatefulSet\\s*$",
+      "^\\s*kind:\\s*DaemonSet\\s*$",
+      "^\\s*replicas:\\s*(\\d+)\\s*$"
+    ],
+    "configmaps": [
+      "^\\s*kind:\\s*ConfigMap\\s*$",
+      "^\\s*configMap:\\s*$",
+      "^\\s*configMapRef:\\s*$",
+      "^\\s*name:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "secrets": [
+      "^\\s*kind:\\s*Secret\\s*$",
+      "^\\s*secret:\\s*$",
+      "^\\s*secretRef:\\s*$",
+      "^\\s*secretName:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "kubernetes_services": [
+      "^\\s*kind:\\s*Service\\s*$",
+      "^\\s*type:\\s*(ClusterIP|NodePort|LoadBalancer|ExternalName)\\s*$",
+      "^\\s*selector:\\s*$"
+    ],
+    "ingress": [
+      "^\\s*kind:\\s*Ingress\\s*$",
+      "^\\s*host:\\s*['\"]?([\\w.-]+)['\"]?\\s*$",
+      "^\\s*path:\\s*['\"]?([^'\"]+)['\"]?\\s*$"
+    ],
+    "pipelines": [
+      "^\\s*stages:\\s*$",
+      "^\\s*jobs:\\s*$",
+      "^\\s*steps:\\s*$",
+      "^\\s*-?\\s*stage:\\s*['\"]?([\\w-]+)['\"]?\\s*$",
+      "^\\s*-?\\s*job:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "github_actions": [
+      "^\\s*name:\\s*['\"]?([^'\"]+)['\"]?\\s*$",
+      "^\\s*on:\\s*$",
+      "^\\s*runs-on:\\s*['\"]?([\\w-]+)['\"]?\\s*$",
+      "^\\s*uses:\\s*['\"]?([\\w./@-]+)['\"]?\\s*$"
+    ],
+    "labels": [
+      "^\\s*labels:\\s*$",
+      "^\\s*app:\\s*['\"]?([\\w-]+)['\"]?\\s*$",
+      "^\\s*tier:\\s*['\"]?([\\w-]+)['\"]?\\s*$"
+    ],
+    "healthchecks": [
+      "^\\s*healthcheck:\\s*$",
+      "^\\s*livenessProbe:\\s*$",
+      "^\\s*readinessProbe:\\s*$",
+      "^\\s*test:\\s*\\[?['\"]?([^'\"\\]]+)['\"]?\\]?\\s*$"
+    ],
+    "build": [
+      "^\\s*build:\\s*$",
+      "^\\s*context:\\s*['\"]?([^'\"]+)['\"]?\\s*$",
+      "^\\s*dockerfile:\\s*['\"]?([^'\"]+)['\"]?\\s*$"
+    ],
+    "commands": [
+      "^\\s*command:\\s*['\"]?([^'\"]+)['\"]?\\s*$",
+      "^\\s*entrypoint:\\s*['\"]?([^'\"]+)['\"]?\\s*$",
+      "^\\s*cmd:\\s*['\"]?([^'\"]+)['\"]?\\s*$"
+    ]
+  }
+}
