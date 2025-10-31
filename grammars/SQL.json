@@ -1,7 +1,7 @@
 {
   "language": "sql",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "1.1",
+  "last_updated": "2025-01-27",
   "patterns": {
     "tables": [
       "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?\\s*\\(",
@@ -73,6 +73,27 @@
       "DROP\\s+SCHEMA\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
       "USE\\s+[`'\"]?(\\w+)[`'\"]?",
       "[`'\"]?(\\w+)[`'\"]?\\.[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "sqlite_specific": [
+      "PRAGMA\\s+(\\w+)",
+      "ATTACH\\s+DATABASE\\s+['\"]([^'\"]+)['\"]",
+      "DETACH\\s+DATABASE\\s+[`'\"]?(\\w+)[`'\"]?",
+      "VACUUM",
+      "REINDEX",
+      "ANALYZE\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "embedded_sql_patterns": [
+      "execute\\(['\"]\\s*(SELECT\\s+.*?FROM\\s+(\\w+).*?)['\"]",
+      "execute\\(['\"]\\s*(INSERT\\s+INTO\\s+(\\w+).*?)['\"]",
+      "execute\\(['\"]\\s*(UPDATE\\s+(\\w+).*?)['\"]",
+      "execute\\(['\"]\\s*(DELETE\\s+FROM\\s+(\\w+).*?)['\"]",
+      "execute\\(f['\"]\\s*(SELECT\\s+.*?FROM\\s+(\\w+).*?)['\"]",
+      "execute\\(f['\"]\\s*(INSERT\\s+INTO\\s+(\\w+).*?)['\"]",
+      "execute\\(f['\"]\\s*(UPDATE\\s+(\\w+).*?)['\"]",
+      "execute\\(f['\"]\\s*(DELETE\\s+FROM\\s+(\\w+).*?)['\"]",
+      "executescript\\(['\"]([^'\"]+)['\"]",
+      "\\?\\s*,\\s*\\(",
+      "\\(\\s*\\?\\s*(?:,\\s*\\?)*\\s*\\)"
     ]
   }
 }

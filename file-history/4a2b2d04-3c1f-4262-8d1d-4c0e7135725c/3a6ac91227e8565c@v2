@@ -1,0 +1,121 @@
+"""
+Main program for CFF Maintenance Crew Scheduling System.
+
+This solves the daily maintenance crew scheduling problem using Integer Programming
+with Google OR-Tools. It handles all Swiss Labor Law constraints and provides
+infeasibility diagnosis when no solution exists.
+
+Usage:
+    python main.py [options]
+
+Options:
+    --input PATH       Path to input JSON file (default: mock_data.json)
+    --output PATH      Path to output JSON file (default: solution.json)
+    --time-limit SECS  Solver time limit in seconds (default: 300)
+    --diagnose         Run infeasibility analysis regardless of result
+"""
+import sys
+import argparse
+from ortools.init.python import init
+
+from data_models import parse_json_data
+from solver import CFFScheduler
+from infeasibility_analyzer import InfeasibilityAnalyzer
+from output_formatter import OutputFormatter
+
+
+def main():
+    """Main entry point."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='CFF Maintenance Crew Scheduling System'
+    )
+    parser.add_argument(
+        '--input',
+        type=str,
+        default='mock_data.json',
+        help='Path to input JSON file (default: mock_data.json)'
+    )
+    parser.add_argument(
+        '--output',
+        type=str,
+        default='solution.json',
+        help='Path to output JSON file (default: solution.json)'
+    )
+    parser.add_argument(
+        '--time-limit',
+        type=int,
+        default=300,
+        help='Solver time limit in seconds (default: 300)'
+    )
+    parser.add_argument(
+        '--diagnose',
+        action='store_true',
+        help='Run infeasibility analysis regardless of result'
+    )
+
+    args = parser.parse_args()
+
+    # Initialize OR-Tools (simplified to avoid timezone issues)
+    print("Initializing OR-Tools...")
+    print(f"OR-Tools version: {init.OrToolsVersion.version_string()}")
+
+    # Load problem data
+    print(f"\nLoading data from: {args.input}")
+    try:
+        problem_data = parse_json_data(args.input)
+        print(f"✓ Data loaded successfully")
+        print(f"  - {len(problem_data.resources)} resources")
+        print(f"  - {len(problem_data.requests)} requests")
+        print(f"  - Planning period: {problem_data.planning_start} to {problem_data.planning_end}")
+    except Exception as e:
+        print(f"✗ Error loading data: {e}")
+        return 1
+
+    # Create and solve
+    scheduler = CFFScheduler(problem_data)
+    solution_found = scheduler.build_and_solve(time_limit=args.time_limit)
+
+    if solution_found:
+        # Solution exists - output results
+        print("\n✓ Solution found!")
+
+        solution = scheduler.get_solution()
+        formatter = OutputFormatter(problem_data, solution)
+
+        # Export to file
+        formatter.export_to_json(args.output)
+
+        # Print summary
+        formatter.print_summary()
+
+        # Run diagnosis if requested
+        if args.diagnose:
+            print("\nRunning infeasibility analysis (diagnostic mode)...")
+            analyzer = InfeasibilityAnalyzer(problem_data)
+            issues = analyzer.analyze()
+            analyzer.print_report(issues)
+
+        return 0
+
+    else:
+        # No solution - run infeasibility analysis
+        print("\n✗ No feasible solution found")
+        print("\nRunning infeasibility analysis to identify resource gaps...")
+
+        analyzer = InfeasibilityAnalyzer(problem_data)
+        issues = analyzer.analyze()
+        analyzer.print_report(issues)
+
+        # Optionally export diagnosis to JSON
+        diagnosis_output = args.output.replace('.json', '_diagnosis.json')
+        import json
+        with open(diagnosis_output, 'w') as f:
+            json.dump(issues, f, indent=2)
+        print(f"\nDiagnosis exported to: {diagnosis_output}")
+
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

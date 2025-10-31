@@ -1,0 +1,169 @@
+[DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/CFF/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 4 allow rule(s) to destination 'localSettings': ["Bash(mkdir:*)","Bash(python3:*)","Bash(pip install:*)","Bash(cat:*)"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Total LSP servers loaded: 0
+[DEBUG] LSP manager initialized with 0 servers
+[DEBUG] LSP server manager initialized successfully
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/CFF/.claude/skills
+[DEBUG] >>>>> getPluginSkills CALLED <<<<<
+[DEBUG] Creating shell snapshot for bash (/bin/bash)
+[DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+[DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761908391661-e5zrpi.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7-agent-91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7.json.tmp.97980.1761908391665
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7-agent-91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7.json.tmp.97980.1761908391665 to /home/javiervel/.claude/todos/91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7-agent-91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7.json
+[DEBUG] File /home/javiervel/.claude/todos/91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7-agent-91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908391677
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66737 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908391677 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] getPluginSkills: Processing 0 enabled plugins
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+[DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (4977 bytes)
+[DEBUG] Summarizing last 5 of 62 messages (~114406 tokens)
+[DEBUG] Total plugin agents loaded: 0
+[DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908391785
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66737 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908391785 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908391821
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908391821 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908391827
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908391827 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908391833
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908391833 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] performStartupChecks called
+[DEBUG] Starting background plugin installations
+[DEBUG] performBackgroundPluginInstallations called
+[DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+[DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+[ERROR] MCP server "context7" Server stderr: Context7 Documentation MCP Server running on stdio
+[DEBUG] MCP server "knowledge-graph": Successfully connected to stdio server in 956ms
+[DEBUG] MCP server "knowledge-graph": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph","version":"1.13.1"}}
+[DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 952ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+[DEBUG] MCP server "context7": Successfully connected to stdio server in 973ms
+[DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.26"}}
+[ERROR] MCP server "knowledge-graph" Server stderr: [10/31/25 11:59:52] INFO     Processing request of type            server.py:624
+                             ListToolsRequest
+[ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [10/31/25 11:59:52] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[ERROR] MCP server "knowledge-graph" Server stderr: INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "ide": Successfully connected to ws-ide server in 21ms
+[DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.29"}}
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908392799
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908392799 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908392805
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908392805 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908392811
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908392811 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908392820
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908392820 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908392828
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66737 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908392828 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[ERROR] AxiosError: AxiosError: Request failed with status code 401
+    at fR (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:24:1136)
+    at IncomingMessage.<anonymous> (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:29:9845)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at b7A.request (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:31:2129)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Hp2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3617:15232)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908393484
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66737 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908393484 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Getting matching hook commands for SessionStart with query: resume
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+[DEBUG] FileHistory: Copied backup b654b027874e0dec@v2 from session 00a96320-ec27-452c-93e4-a5d4ce158149 to 91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7
+[DEBUG] FileHistory: Copied backup ea9d7498e80a94a5@v1 from session 00a96320-ec27-452c-93e4-a5d4ce158149 to 91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7
+[DEBUG] FileHistory: Copied backup ea9d7498e80a94a5@v2 from session 00a96320-ec27-452c-93e4-a5d4ce158149 to 91fff4d6-b3fd-44ca-8ac3-61bdd85bd3a7
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908396553
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66737 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908396553 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908396565
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908396565 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908396571
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908396571 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.97980.1761908396576
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66632 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.97980.1761908396576 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically

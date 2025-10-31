@@ -1,0 +1,50 @@
+"""
+Constraints API routes.
+Endpoints for managing legal constraints (Swiss Labor Law parameters).
+"""
+from flask import Blueprint, jsonify, request, current_app
+
+bp = Blueprint('constraints', __name__)
+
+
+@bp.route('', methods=['GET'])
+def get_constraints():
+    """Get current legal constraints."""
+    db = current_app.config['DB']
+
+    try:
+        constraints = db.get_legal_constraints()
+        return jsonify({
+            'success': True,
+            'data': constraints
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('', methods=['PUT'])
+def update_constraints():
+    """Update legal constraints."""
+    db = current_app.config['DB']
+    data = request.get_json()
+
+    # Validate required fields
+    required_fields = [
+        'max_daily_hours', 'max_weekly_hours', 'min_daily_rest_hours',
+        'min_weekly_rest_hours', 'max_consecutive_workdays',
+        'mandatory_break_after_hours', 'mandatory_break_duration_minutes',
+        'travel_time_counts_as_work', 'night_shift_start', 'night_shift_end'
+    ]
+
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+
+    try:
+        db.update_legal_constraints(data)
+        return jsonify({
+            'success': True,
+            'message': 'Legal constraints updated successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

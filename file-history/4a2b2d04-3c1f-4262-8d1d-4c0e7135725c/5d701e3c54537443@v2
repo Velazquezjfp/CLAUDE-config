@@ -1,0 +1,233 @@
+# CFF Scheduler - Frontend Application
+
+React + Vite frontend for the CFF Scheduler optimization system.
+
+## Running the Application
+
+### Prerequisites
+
+- Node.js 18+ installed
+- Backend API running on `http://localhost:5000`
+
+### Start Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at: **http://localhost:5173**
+
+### Build for Production
+
+```bash
+npm run build
+npm run preview  # Preview production build
+```
+
+## Current Features
+
+### Pages Implemented
+
+1. **Dashboard** - `/`
+   - Overview page (placeholder for KPI cards and charts)
+
+2. **Resources** - `/resources`
+   - List all resources (internal and external workers)
+   - Filter by resource type (All/Internal/External)
+   - Delete resources with confirmation
+   - View resource details: ID, name, type, team, location, contract, cost, qualifications
+   - Ready for Add/Edit form implementation
+
+3. **Requests** - `/requests`
+   - List all work requests
+   - Delete requests with confirmation
+   - View request details: ID, location, date, time window, duration, workers needed, qualifications
+   - Ready for Add/Edit form implementation
+
+4. **Constraints** - `/constraints`
+   - Placeholder for legal constraints editor
+
+5. **Locations** - `/locations`
+   - Placeholder for locations and distance matrix editor
+
+6. **Solver** - `/solver`
+   - Placeholder for solver configuration interface
+
+7. **Plans** - `/plans`
+   - Placeholder for saved plans list and comparison
+
+### Layout Components
+
+- **Header** - Displays logo, title, and live statistics (resources, requests, plans count)
+- **Sidebar** - Navigation menu with active state highlighting
+- **Layout** - Main wrapper that fetches stats every 30 seconds
+
+## Project Structure
+
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   └── Layout/
+│   │       ├── Header.jsx       # Header with stats
+│   │       ├── Sidebar.jsx      # Navigation menu
+│   │       └── Layout.jsx       # Main layout wrapper
+│   ├── pages/
+│   │   ├── DashboardPage.jsx    # Home page
+│   │   ├── ResourcesPage.jsx    # Resources management
+│   │   ├── RequestsPage.jsx     # Requests management
+│   │   ├── ConstraintsPage.jsx  # Legal constraints
+│   │   ├── LocationsPage.jsx    # Locations & distances
+│   │   ├── SolverPage.jsx       # Solver configuration
+│   │   └── PlansPage.jsx        # Plans list
+│   ├── services/
+│   │   └── api.js               # Axios API client
+│   ├── App.jsx                  # Router configuration
+│   ├── main.jsx                 # Application entry point
+│   └── index.css                # Global styles (Tailwind)
+├── .env                         # Environment variables
+├── tailwind.config.js           # Tailwind configuration
+└── package.json
+```
+
+## API Service
+
+All API endpoints are wrapped in `/src/services/api.js`:
+
+```javascript
+// Resources
+getResources(type)      // GET /api/resources?type=internal|external
+getResource(id)         // GET /api/resources/:id
+createResource(data)    // POST /api/resources
+updateResource(id, data) // PUT /api/resources/:id
+deleteResource(id)      // DELETE /api/resources/:id
+
+// Requests
+getRequests()           // GET /api/requests
+getRequest(id)          // GET /api/requests/:id
+createRequest(data)     // POST /api/requests
+updateRequest(id, data) // PUT /api/requests/:id
+deleteRequest(id)       // DELETE /api/requests/:id
+
+// And more...
+```
+
+## Styling
+
+- **Tailwind CSS** - Utility-first CSS framework
+- **Color Scheme:**
+  - Primary: Blue (`primary-600`, `primary-700`) - CFF branding
+  - Background: Gray (`gray-50`, `gray-100`)
+  - Success: Green
+  - Danger: Red
+  - Text: Gray shades
+
+## Next Steps for Development
+
+### 1. Resource & Request Forms
+
+Create modal forms for adding/editing resources and requests:
+
+```jsx
+// Example structure:
+<ResourceForm
+  isOpen={showForm}
+  onClose={() => setShowForm(false)}
+  onSave={handleSave}
+  resource={selectedResource}  // null for add, object for edit
+/>
+```
+
+### 2. Constraints Editor
+
+Build form to edit legal constraints:
+- Max daily hours
+- Max weekly hours
+- Min rest period
+- Night shift hours
+- Team cohesion percentage
+- Max travel time
+
+### 3. Locations & Distance Matrix
+
+- Table showing all locations
+- Distance matrix editor (interactive grid)
+- Add/edit/delete locations
+
+### 4. Solver Configuration
+
+Form to configure and run solver:
+- Plan name input
+- Objective type selector (cost/travel/both)
+- Time limit slider
+- Max travel time
+- Team cohesion percentage
+- Run button with loading state
+- Redirect to Dashboard on completion
+
+### 5. Dashboard with KPIs
+
+Display comprehensive plan metrics:
+- KPI Cards (Total Cost, Travel Distance, etc.)
+- Cost Breakdown Chart (pie/bar)
+- Team Utilization Chart
+- Resource Gantt Timeline
+- Coverage Statistics
+- Constraint Violations (if any)
+
+### 6. Plans Management
+
+- List all saved plans with metadata
+- Compare multiple plans side-by-side
+- View individual plan dashboard
+- Delete plans
+
+## Testing the Current UI
+
+1. **Start Backend:**
+   ```bash
+   cd ../api
+   python app.py
+   ```
+
+2. **Start Frontend:**
+   ```bash
+   npm run dev
+   ```
+
+3. **Navigate to:** http://localhost:5173
+
+4. **Test Features:**
+   - Check header shows correct stats
+   - Navigate between pages using sidebar
+   - View resources list with filters
+   - View requests list
+   - Test delete functionality
+
+## Environment Variables
+
+Edit `.env` to change API URL:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+## Dependencies
+
+- **React 18** - UI library
+- **React Router Dom** - Client-side routing
+- **Axios** - HTTP client
+- **Tailwind CSS** - Styling
+- **Lucide React** - Icons
+- **Recharts** - Charts (for future dashboard)
+
+## Known Issues
+
+- Add/Edit forms not yet implemented (buttons are placeholders)
+- Placeholder pages need full implementation
+- No loading/error states for API calls in some pages
+- No form validation yet
+
+## Support
+
+Refer to the main project README at `/Use_case_1/README_UI.md` for complete system documentation.

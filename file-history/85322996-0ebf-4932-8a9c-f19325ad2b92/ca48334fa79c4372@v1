@@ -1,0 +1,33 @@
+"""
+Test Case: TC-F-001-04
+Requirement: F-001 - Standardize qualification values across frontend, backend, and solver
+Description: Create resource R002 with qualifications ['track_maintenance'], create request REQ002 requiring ['electrical_systems'], run solver, verify R002 is NOT assigned to REQ002 (qualification mismatch)
+Generated: 2025-10-27T00:00:00Z
+"""
+
+def test_TC_F_001_04():
+    """Verify solver correctly excludes resources lacking required qualifications"""
+    # TODO: Implement solver constraint validation test
+    # Based on requirement Changes Required:
+    # - Solver: solver.py:64-76 should add constraint x[r,req]=0 when qualifications don't match
+    # - Data model: data_models.py:40-42 has_qualifications() returns False when subset check fails
+    # - Expected: Resource R002 should be excluded from assignment to REQ002
+
+    # Steps:
+    # 1. Setup: Create resource R002 with qualifications=['track_maintenance'] in database
+    # 2. Setup: Create request REQ002 with required_qualifications=['electrical_systems'] in database
+    # 3. Execute: Run solver with debug logging enabled
+    # 4. Verify: Check solver constraints - must have x[R002,REQ002]=0 constraint added
+    # 5. Verify: Check solver solution - R002 must NOT be assigned to REQ002
+    # 6. Verify: Check debug log contains message about R002 lacking qualifications for REQ002
+    # 7. Cleanup: Remove test resource R002 and request REQ002 from database
+    pass
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_001_04()
+        print("TC-F-001-04: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-001-04: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-001-04: ERROR - {e}")

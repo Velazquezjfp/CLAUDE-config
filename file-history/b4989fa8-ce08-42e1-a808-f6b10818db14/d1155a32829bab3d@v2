@@ -1,0 +1,397 @@
+{
+  "resources": [
+    {
+      "id": "R001",
+      "name": "Hans Müller",
+      "team": "blue",
+      "home_location": "Bern",
+      "qualifications": ["track_maintenance", "safety_officer", "team_leader"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-02-09", "end": "2026-02-13"},
+        {"start": "2026-06-22", "end": "2026-07-03"}
+      ]
+    },
+    {
+      "id": "R002",
+      "name": "Sophie Renaud",
+      "team": "blue",
+      "home_location": "Bern",
+      "qualifications": ["track_maintenance", "welding"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-04-13", "end": "2026-04-17"}
+      ]
+    },
+    {
+      "id": "R003",
+      "name": "Marco Bianchi",
+      "team": "blue",
+      "home_location": "Bern",
+      "qualifications": ["electrical_systems", "signaling"],
+      "contract_type": "mixed",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-08-10", "end": "2026-08-21"}
+      ]
+    },
+    {
+      "id": "R004",
+      "name": "Anna Weber",
+      "team": "blue",
+      "home_location": "Bern",
+      "qualifications": ["track_maintenance", "heavy_equipment"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-03-16", "end": "2026-03-20"}
+      ]
+    },
+    {
+      "id": "R005",
+      "name": "Luca Rossi",
+      "team": "blue",
+      "home_location": "Bern",
+      "qualifications": ["track_maintenance", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-07-27", "end": "2026-08-07"}
+      ]
+    },
+    {
+      "id": "R006",
+      "name": "Françoise Dubois",
+      "team": "orange",
+      "home_location": "Montreux",
+      "qualifications": ["electrical_systems", "team_leader", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-05-04", "end": "2026-05-08"}
+      ]
+    },
+    {
+      "id": "R007",
+      "name": "Thomas Meier",
+      "team": "orange",
+      "home_location": "Montreux",
+      "qualifications": ["electrical_systems", "catenary_work"],
+      "contract_type": "mixed",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-02-16", "end": "2026-02-20"}
+      ]
+    },
+    {
+      "id": "R008",
+      "name": "Elena Moretti",
+      "team": "orange",
+      "home_location": "Lausanne",
+      "qualifications": ["track_maintenance", "welding"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-09-07", "end": "2026-09-18"}
+      ]
+    },
+    {
+      "id": "R009",
+      "name": "Pierre Favre",
+      "team": "orange",
+      "home_location": "Lausanne",
+      "qualifications": ["signaling", "electrical_systems"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-06-15", "end": "2026-06-19"}
+      ]
+    },
+    {
+      "id": "R010",
+      "name": "Julia Steiner",
+      "team": "orange",
+      "home_location": "Interlaken",
+      "qualifications": ["track_maintenance", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-04-06", "end": "2026-04-10"}
+      ]
+    },
+    {
+      "id": "R011",
+      "name": "André Blanc",
+      "team": "red",
+      "home_location": "St. Gallen",
+      "qualifications": ["signaling", "team_leader", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-07-13", "end": "2026-07-24"}
+      ]
+    },
+    {
+      "id": "R012",
+      "name": "Claudia Zimmermann",
+      "team": "red",
+      "home_location": "Zurich",
+      "qualifications": ["signaling", "electrical_systems"],
+      "contract_type": "mixed",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-03-02", "end": "2026-03-06"}
+      ]
+    },
+    {
+      "id": "R013",
+      "name": "Giovanni Conti",
+      "team": "red",
+      "home_location": "Zurich",
+      "qualifications": ["track_maintenance", "heavy_equipment"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-08-24", "end": "2026-09-04"}
+      ]
+    },
+    {
+      "id": "R014",
+      "name": "Sabine Fischer",
+      "team": "red",
+      "home_location": "Winterthur",
+      "qualifications": ["electrical_systems", "catenary_work"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-05-25", "end": "2026-05-29"}
+      ]
+    },
+    {
+      "id": "R015",
+      "name": "Marc Leroy",
+      "team": "red",
+      "home_location": "Zurich",
+      "qualifications": ["track_maintenance", "welding", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-02-02", "end": "2026-02-06"}
+      ]
+    },
+    {
+      "id": "R016",
+      "name": "Isabella Bernasconi",
+      "team": "purple",
+      "home_location": "Bellinzona",
+      "qualifications": ["track_maintenance", "team_leader", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-06-29", "end": "2026-07-10"}
+      ]
+    },
+    {
+      "id": "R017",
+      "name": "Matthias Graf",
+      "team": "purple",
+      "home_location": "Lugano",
+      "qualifications": ["electrical_systems", "signaling"],
+      "contract_type": "mixed",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-04-20", "end": "2026-04-24"}
+      ]
+    },
+    {
+      "id": "R018",
+      "name": "Céline Vidal",
+      "team": "purple",
+      "home_location": "Bellinzona",
+      "qualifications": ["track_maintenance", "heavy_equipment"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-09-14", "end": "2026-09-25"}
+      ]
+    },
+    {
+      "id": "R019",
+      "name": "Stefan Huber",
+      "team": "purple",
+      "home_location": "Lugano",
+      "qualifications": ["catenary_work", "electrical_systems"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-03-23", "end": "2026-03-27"}
+      ]
+    },
+    {
+      "id": "R020",
+      "name": "Marie Perrin",
+      "team": "purple",
+      "home_location": "Lugano",
+      "qualifications": ["welding", "track_maintenance", "safety_officer"],
+      "contract_type": "day",
+      "weekly_hours": 42,
+      "holidays": [
+        {"start": "2026-08-03", "end": "2026-08-14"}
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "id": "REQ001",
+      "location": "Interlaken",
+      "start_date": "2026-02-09",
+      "start_time": "08:00",
+      "duration_hours": 8,
+      "required_qualifications": ["track_maintenance", "safety_officer"],
+      "people_needed": 3,
+      "description": "Track inspection and minor repairs"
+    },
+    {
+      "id": "REQ002",
+      "location": "Montreux",
+      "start_date": "2026-02-09",
+      "start_time": "07:00",
+      "duration_hours": 7,
+      "required_qualifications": ["electrical_systems", "catenary_work", "safety_officer"],
+      "people_needed": 3,
+      "description": "Catenary wire replacement"
+    },
+    {
+      "id": "REQ003",
+      "location": "St. Gallen",
+      "start_date": "2026-02-10",
+      "start_time": "08:30",
+      "duration_hours": 7,
+      "required_qualifications": ["signaling", "electrical_systems", "safety_officer"],
+      "people_needed": 3,
+      "description": "Signal system upgrade"
+    },
+    {
+      "id": "REQ004",
+      "location": "Bellinzona",
+      "start_date": "2026-02-11",
+      "start_time": "07:30",
+      "duration_hours": 7,
+      "required_qualifications": ["track_maintenance", "welding", "heavy_equipment", "safety_officer"],
+      "people_needed": 4,
+      "description": "Rail replacement and welding"
+    },
+    {
+      "id": "REQ005",
+      "location": "Fribourg",
+      "start_date": "2026-02-10",
+      "start_time": "14:00",
+      "duration_hours": 6,
+      "required_qualifications": ["track_maintenance", "safety_officer"],
+      "people_needed": 2,
+      "description": "Track bed maintenance"
+    },
+    {
+      "id": "REQ006",
+      "location": "Winterthur",
+      "start_date": "2026-02-12",
+      "start_time": "08:00",
+      "duration_hours": 8,
+      "required_qualifications": ["electrical_systems", "signaling", "safety_officer"],
+      "people_needed": 3,
+      "description": "Station electrical system maintenance"
+    },
+    {
+      "id": "REQ007",
+      "location": "Interlaken",
+      "start_date": "2026-02-11",
+      "start_time": "13:00",
+      "duration_hours": 5,
+      "required_qualifications": ["track_maintenance", "safety_officer"],
+      "people_needed": 2,
+      "description": "Follow-up inspection from REQ001"
+    },
+    {
+      "id": "REQ008",
+      "location": "Neuchâtel",
+      "start_date": "2026-02-13",
+      "start_time": "07:00",
+      "duration_hours": 7,
+      "required_qualifications": ["catenary_work", "electrical_systems", "safety_officer"],
+      "people_needed": 3,
+      "description": "Overhead line repair"
+    },
+    {
+      "id": "REQ009",
+      "location": "St. Gallen",
+      "start_date": "2026-02-12",
+      "start_time": "14:00",
+      "duration_hours": 6,
+      "required_qualifications": ["signaling", "safety_officer"],
+      "people_needed": 2,
+      "description": "Signal testing continuation from REQ003"
+    },
+    {
+      "id": "REQ010",
+      "location": "Montreux",
+      "start_date": "2026-02-14",
+      "start_time": "08:00",
+      "duration_hours": 8,
+      "required_qualifications": ["electrical_systems", "catenary_work", "safety_officer"],
+      "people_needed": 3,
+      "description": "Final catenary inspection and testing"
+    }
+  ],
+  "distance_matrix": {
+    "description": "Distances in kilometers between locations",
+    "locations": ["Bern", "Lausanne", "Zurich", "Lugano", "Fribourg", "Winterthur", "Interlaken", "Montreux", "St. Gallen", "Bellinzona", "Neuchâtel"],
+    "matrix": [
+      [0, 95, 120, 280, 34, 140, 58, 110, 180, 250, 48],
+      [95, 0, 215, 375, 75, 235, 145, 25, 280, 340, 58],
+      [120, 215, 0, 220, 150, 25, 175, 235, 80, 190, 160],
+      [280, 375, 220, 0, 310, 240, 335, 395, 300, 30, 330],
+      [34, 75, 150, 310, 0, 165, 80, 90, 210, 280, 35],
+      [140, 235, 25, 240, 165, 0, 195, 255, 60, 210, 180],
+      [58, 145, 175, 335, 80, 195, 0, 160, 235, 305, 95],
+      [110, 25, 235, 395, 90, 255, 160, 0, 300, 365, 75],
+      [180, 280, 80, 300, 210, 60, 235, 300, 0, 270, 230],
+      [250, 340, 190, 30, 280, 210, 305, 365, 270, 0, 300],
+      [48, 58, 160, 330, 35, 180, 95, 75, 230, 300, 0]
+    ]
+  },
+  "legal_constraints": {
+    "max_daily_hours": 12,
+    "max_weekly_hours": 50,
+    "min_daily_rest_hours": 11,
+    "min_weekly_rest_hours": 35,
+    "max_consecutive_workdays": 6,
+    "mandatory_break_after_hours": 5,
+    "mandatory_break_duration_minutes": 30,
+    "travel_time_counts_as_work": true,
+    "night_shift_hours": {
+      "start": "23:00",
+      "end": "06:00"
+    },
+    "description": "Swiss Labor Law (LDT) constraints for maintenance workers - ADJUSTED FOR TESTING: max_daily_hours increased to 12h"
+  },
+  "metadata": {
+    "planning_period": {
+      "start": "2026-02-09",
+      "end": "2026-02-14"
+    },
+    "teams": ["blue", "orange", "red", "purple"],
+    "all_qualifications": [
+      "track_maintenance",
+      "electrical_systems",
+      "signaling",
+      "welding",
+      "catenary_work",
+      "heavy_equipment",
+      "safety_officer",
+      "team_leader"
+    ],
+    "notes": "Mock data for CFF workforce planning optimization. Requests overlap in time to create scheduling conflicts. Some resources are on holiday during the planning period."
+  }
+}

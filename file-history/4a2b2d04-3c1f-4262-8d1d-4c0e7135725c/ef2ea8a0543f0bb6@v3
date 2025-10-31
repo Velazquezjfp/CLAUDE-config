@@ -1,0 +1,233 @@
+import { useState, useEffect } from 'react';
+import { getResources, deleteResource } from '../services/api';
+import { Pencil, Trash2, Plus } from 'lucide-react';
+import ResourceForm from '../components/ResourceForm';
+
+export default function ResourcesPage() {
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [showForm, setShowForm] = useState(false);
+  const [selectedResource, setSelectedResource] = useState(null);
+
+  useEffect(() => {
+    fetchResources();
+  }, [filter]);
+
+  const fetchResources = async () => {
+    setLoading(true);
+    try {
+      const type = filter === 'all' ? null : filter;
+      const response = await getResources(type);
+      setResources(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch resources:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this resource?')) return;
+
+    try {
+      await deleteResource(id);
+      fetchResources();
+    } catch (error) {
+      console.error('Failed to delete resource:', error);
+      alert('Failed to delete resource');
+    }
+  };
+
+  const handleAdd = () => {
+    setSelectedResource(null);
+    setShowForm(true);
+  };
+
+  const handleEdit = (resource) => {
+    setSelectedResource(resource);
+    setShowForm(true);
+  };
+
+  const handleFormClose = () => {
+    setShowForm(false);
+    setSelectedResource(null);
+  };
+
+  const handleFormSave = () => {
+    fetchResources();
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Resources</h2>
+        <button
+          onClick={handleAdd}
+          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <Plus className="h-5 w-5" />
+          <span>Add Resource</span>
+        </button>
+      </div>
+
+      <div className="mb-4 flex space-x-2">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === 'all'
+              ? 'bg-primary-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          All ({resources.length})
+        </button>
+        <button
+          onClick={() => setFilter('internal')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === 'internal'
+              ? 'bg-primary-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          Internal
+        </button>
+        <button
+          onClick={() => setFilter('external')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            filter === 'external'
+              ? 'bg-primary-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          External
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+          Loading resources...
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Team
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contract
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cost/Hour
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Qualifications
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {resources.map((resource) => (
+                  <tr key={resource.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {resource.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {resource.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          resource.resource_type === 'internal'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                      >
+                        {resource.resource_type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {resource.team}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {resource.home_location}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {resource.contract_type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      CHF {resource.cost_per_hour}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="flex flex-wrap gap-1">
+                        {resource.qualifications?.slice(0, 2).map((qual, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                          >
+                            {qual}
+                          </span>
+                        ))}
+                        {resource.qualifications?.length > 2 && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                            +{resource.qualifications.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => handleEdit(resource)}
+                          className="text-primary-600 hover:text-primary-900"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(resource.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {resources.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              No resources found. Click "Add Resource" to create one.
+            </div>
+          )}
+        </div>
+      )}
+
+      <ResourceForm
+        isOpen={showForm}
+        onClose={handleFormClose}
+        onSave={handleFormSave}
+        resource={selectedResource}
+      />
+    </div>
+  );
+}

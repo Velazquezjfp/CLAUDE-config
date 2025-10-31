@@ -1,0 +1,127 @@
+"""
+Plans API routes.
+Endpoints for managing saved planning runs.
+"""
+from flask import Blueprint, jsonify, request, current_app
+
+bp = Blueprint('plans', __name__)
+
+
+@bp.route('', methods=['GET'])
+def get_plans():
+    """Get all plans."""
+    db = current_app.config['DB']
+
+    try:
+        plans = db.get_all_plans()
+        return jsonify({
+            'success': True,
+            'count': len(plans),
+            'data': plans
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>', methods=['GET'])
+def get_plan(plan_id):
+    """Get full plan details including assignments and KPIs."""
+    db = current_app.config['DB']
+
+    try:
+        plan = db.get_plan(plan_id)
+        if not plan:
+            return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'data': plan
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>', methods=['DELETE'])
+def delete_plan(plan_id):
+    """Delete a plan."""
+    db = current_app.config['DB']
+
+    # Check if plan exists
+    existing = db.get_plan(plan_id)
+    if not existing:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+    try:
+        db.delete_plan(plan_id)
+        return jsonify({
+            'success': True,
+            'message': 'Plan deleted successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>/dashboard', methods=['GET'])
+def get_plan_dashboard(plan_id):
+    """Get dashboard data for a plan (KPIs + assignments summary)."""
+    db = current_app.config['DB']
+
+    try:
+        plan = db.get_plan(plan_id)
+        if not plan:
+            return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+        # Get assignments grouped by resource and request
+        assignments_by_resource = {}
+        assignments_by_request = {}
+
+        for assignment in plan.get('assignments', []):
+            resource_id = assignment['resource_id']
+            request_id = assignment['request_id']
+
+            if resource_id not in assignments_by_resource:
+                assignments_by_resource[resource_id] = []
+            assignments_by_resource[resource_id].append(assignment)
+
+            if request_id not in assignments_by_request:
+                assignments_by_request[request_id] = []
+            assignments_by_request[request_id].append(assignment)
+
+        # Get resource and request details
+        resources = {}
+        for resource_id in assignments_by_resource.keys():
+            resource = db.get_resource(resource_id)
+            if resource:
+                resources[resource_id] = resource
+
+        requests = {}
+        for request_id in assignments_by_request.keys():
+            req = db.get_request(request_id)
+            if req:
+                requests[request_id] = req
+
+        dashboard_data = {
+            'plan': {
+                'id': plan['id'],
+                'name': plan.get('name'),
+                'created_at': plan.get('created_at'),
+                'status': plan.get('status'),
+                'objective_type': plan.get('objective_type'),
+                'solve_time': plan.get('solve_time_seconds'),
+                'feasible': plan.get('feasible')
+            },
+            'kpis': plan.get('kpis', {}),
+            'assignments': {
+                'by_resource': assignments_by_resource,
+                'by_request': assignments_by_request
+            },
+            'resources': resources,
+            'requests': requests
+        }
+
+        return jsonify({
+            'success': True,
+            'data': dashboard_data
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

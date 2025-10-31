@@ -1,0 +1,1036 @@
+[DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/CFF/algo-test/Use_case_1/.claude/settings.local.json...
+[DEBUG] Applying permission update: Adding 27 allow rule(s) to destination 'localSettings': ["Read(//home/javiervel/.claude/grammars/**)","Bash(find:*)","Bash(mkdir:*)","mcp__knowledge-graph-custom-path__set_graph_path","mcp__knowledge-graph-custom-path__create_entities","mcp__knowledge-graph-custom-path__create_relations","mcp__knowledge-graph-custom-path__get_statistics","mcp__knowledge-graph-custom-path__backup_graph","mcp__knowledge-graph-custom-path__generate_report","Bash(test:*)","Bash(sqlite3:*)","Bash(python3:*)","Bash(git rev-parse:*)","Bash(git -C /home/javiervel/clients/CFF/algo-test/Use_case_1 rev-parse HEAD)","Bash(git log:*)","Bash(tree:*)","Bash(python:*)","mcp__playwright__browser_navigate","mcp__playwright__browser_install","Bash(curl:*)","Bash(pip install requests)","mcp__playwright__browser_click","mcp__playwright__browser_fill_form","mcp__playwright__browser_select_option","mcp__knowledge-graph-custom-path__read_graph","mcp__knowledge-graph-custom-path__add_observations","mcp__knowledge-graph-custom-path__search_nodes"]
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] >>>>> getSkillsIfEnabled() CALLED <<<<<
+[DEBUG] ENABLE_SKILLS value: true, type: boolean
+[DEBUG] ENABLE_SKILLS check passed, loading skills...
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/CFF/algo-test/Use_case_1/.claude/skills
+[DEBUG] >>>>> getPluginSkills CALLED <<<<<
+[DEBUG] Creating shell snapshot for bash (/bin/bash)
+[DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+[DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761590468479-zryd1v.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590468483
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590468483 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590468510
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575772 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590468510 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] getPluginSkills: Processing 0 enabled plugins
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+[DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Total plugin agents loaded: 0
+[DEBUG] Shell snapshot created successfully (4555 bytes)
+[DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590468659
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575772 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590468659 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590468766
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575667 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590468766 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590468794
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575667 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590468794 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] performStartupChecks called
+[DEBUG] Starting background plugin installations
+[DEBUG] performBackgroundPluginInstallations called
+[DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+[DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+[DEBUG] MCP server "context7": Successfully connected to stdio server in 1112ms
+[DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.26"}}
+[ERROR] MCP server "context7" Server stderr: Context7 Documentation MCP Server running on stdio
+[DEBUG] MCP server "knowledge-graph": Successfully connected to stdio server in 1097ms
+[DEBUG] MCP server "knowledge-graph": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph","version":"1.13.1"}}
+[DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 1090ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+[DEBUG] MCP server "playwright": Starting connection with timeout of 30000ms
+[ERROR] MCP server "knowledge-graph" Server stderr: [10/27/25 19:41:09] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [10/27/25 19:41:09] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590469822
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575667 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590469822 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590469854
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575667 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590469854 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761590469887
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1575772 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761590469887 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] MCP server "playwright": Successfully connected to stdio server in 972ms
+[DEBUG] MCP server "playwright": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Playwright","version":"0.0.44"}}
+[DEBUG] Stream started - received first chunk
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Metadata string for start-test-requirement:
+[DEBUG] <command-message>start-test-requirement is running…</command-message>
+<command-name>/start-test-requirement</command-name>
+<command-args>D-001  I've successfully implemented all validation and debuggi
+[DEBUG] command-message tags in metadata: 1
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] processPromptSlashCommand creating 3 messages for start-test-requirement
+[DEBUG] Message 1: <command-message>start-test-requirement is running…</command-message>
+<command-name>/start-test-requirement</command-name>
+<command-args>D-001  I've successfully implemented all validation and debuggi
+[DEBUG] Message 2 [META]: [{"type":"text","text":"# Test Requirement\n\nUse the bone-test-executor agent to test requirement **$1**.\n\nImplementation summary: $2\n\nExecute all test cases and update test results.\n\n\nARGUMEN
+[DEBUG] Message 3: [ATTACHMENT]
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] FileHistory: Added snapshot for 8101e68b-f264-4356-9a33-19d68c79a2ef, tracking 0 files
+[DEBUG] Rendering user message with 1 content blocks
+[DEBUG] Block 0: <command-message>start-test-requirement is running…</command-message>
+<command-name>/start-test-requ...
+[DEBUG] UserCommandMessage rendering: "start-test-requirement is running…" (args: "D-001  I've successfully implemented all validation and debugging enhancements for qualification constraint alignment. Here's what was done:
+
+  1. Debug Logging Added to Solver (solver.py:64-76)
+
+  - Added logging import to the solver module
+  - Enhanced add_qualification_constraints() method with debug logging
+  - When a resource lacks required qualifications, the solver now logs:
+    - Resource ID
+    - Request ID
+    - Specific missing qualifications
+  - Log format: "Resource {id} lacks qualifications for {request}: missing {quals}"
+
+  2. Validation Added to Data Models (data_models.py)
+
+  Both Resource and Request dataclasses now include:
+  - Class constant: VALID_QUALIFICATIONS defining the canonical 8 qualifications
+  - __post_init__ validation that:
+    - Ensures qualifications/required_qualifications is a set
+    - Validates non-empty qualification set
+    - Validates all qualifications are in the canonical list
+    - Raises ValueError with clear error messages if validation fails
+
+  3. CHECK Constraints Added to Database (schema.sql)
+
+  Both qualification tables now enforce valid values at the database level:
+  - resource_qualifications.qualification: CHECK constraint added
+  - request_qualifications.qualification: CHECK constraint added
+  - Constraint validates against: 'catenary_work', 'electrical_systems', 'heavy_equipment', 'safety_officer', 'signaling', 'team_leader', 'track_maintenance',
+  'welding'
+
+  Validation Pipeline
+
+  Database (CHECK constraints)
+    ↓
+  DatabaseManager (loads data)
+    ↓
+  Data Models (__post_init__ validation)
+    ↓
+  Solver (constraint generation + debug logging)")
+[DEBUG] isSkillFormat: false, prefix: "/"
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] No hook environment files found
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590553452
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590553452 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590553460
+[DEBUG] Temp file written successfully, size: 1396 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590553460 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590593843
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2210 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590593843 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py.tmp.193889.1761590606384
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2320 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py.tmp.193889.1761590606384 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590614367
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590614367 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590614375
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1400 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590614375 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py.tmp.193889.1761590635789
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3015 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py.tmp.193889.1761590635789 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py.tmp.193889.1761590653009
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2738 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py.tmp.193889.1761590653009 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-05.py.tmp.193889.1761590673511
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3366 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-05.py.tmp.193889.1761590673511 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-05.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-05.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590696973
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3750 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590696973 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590704225
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590704225 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590704232
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1408 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590704232 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590722943
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2233 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590722943 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Grep
+[DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590745380
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2485 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py.tmp.193889.1761590745380 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-01.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py.tmp.193889.1761590761850
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2628 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py.tmp.193889.1761590761850 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-02.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Metrics opt-out API response: enabled=true
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 17,
+  "rejected_count": 0
+}
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py.tmp.193889.1761590778136
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3226 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py.tmp.193889.1761590778136 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-03.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py.tmp.193889.1761590784102
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2761 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py.tmp.193889.1761590784102 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-04.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590791859
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3791 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590791859 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[ERROR] MaxFileReadTokenExceededError: MaxFileReadTokenExceededError: File content (38829 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
+    at nb2 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3390:1682)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Object.call (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3399:1001)
+    at async Bq (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:725:1185)
+    at async file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:1265:1379
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Glob
+[DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Grep
+[DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590914934
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 3802 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590914934 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590939205
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2175 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py.tmp.193889.1761590939205 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/TC-D-001-06.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590965169
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761590965169 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590965177
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1410 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761590965177 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Edit
+[DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/test-results.json.tmp.193889.1761590996792
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2141 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/test-results.json.tmp.193889.1761590996792 to /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/test-results.json
+[DEBUG] File /home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/D-001/test-results.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761591005087
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json.tmp.193889.1761591005087 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-10666e4d-9722-4fb7-8321-bee5eae3e1fc.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761591005094
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json.tmp.193889.1761591005094 to /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json
+[DEBUG] File /home/javiervel/.claude/todos/10666e4d-9722-4fb7-8321-bee5eae3e1fc-agent-f23cdc35-5e00-4121-b295-e66572768a6a.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /kg-infra, /update-code-graph, /analyze-impact, /start-test-requirement, /start-requirement, /update-docs-database, /update-docs-apis, /start-pm
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761591035169
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1577697 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761591035169 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 10,
+  "rejected_count": 0
+}
+[DEBUG] Getting matching hook commands for SessionEnd with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761590468479-zryd1v.sh
+[DEBUG] MCP server "context7": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": Sending SIGINT to MCP server process
+[DEBUG] MCP server "playwright": Sending SIGINT to MCP server process
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter shutdown complete
+[DEBUG] MCP server "context7": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "playwright": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "context7": MCP server process exited cleanly
+[DEBUG] MCP server "knowledge-graph": MCP server process exited cleanly
+[DEBUG] MCP server "knowledge-graph-custom-path": MCP server process exited cleanly
+[DEBUG] MCP server "playwright": MCP server process exited cleanly
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.193889.1761591124443
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1578128 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.193889.1761591124443 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically

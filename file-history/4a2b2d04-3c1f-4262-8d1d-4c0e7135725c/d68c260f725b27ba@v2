@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""
+Test script to verify that different solver configurations produce different results.
+Tests objective types (cost vs travel) and constraints (max travel time).
+"""
+import sys
+from pathlib import Path
+from datetime import datetime
+
+# Add parent directory to path
+parent_dir = Path(__file__).parent.parent
+sys.path.append(str(parent_dir))
+sys.path.append(str(parent_dir / 'api'))
+
+from solver_service import SolverService
+from database.db_manager import DatabaseManager
+
+def create_test_plan(name, objective_type, max_travel_minutes):
+    """Create a plan configuration for testing."""
+    plan_id = f"test_{objective_type}_{max_travel_minutes}_{datetime.now().strftime('%H%M%S')}"
+
+    return {
+        'id': plan_id,
+        'name': name,
+        'objective_type': objective_type,
+        'max_travel_minutes': max_travel_minutes,
+        'team_cohesion_min': 70,
+        'time_limit_seconds': 300
+    }
+
+def run_test_plan(db, solver_service, plan_config):
+    """Run a single test plan and return results."""
+    print("\n" + "=" * 80)
+    print(f"TESTING: {plan_config['name']}")
+    print("=" * 80)
+    print(f"  Objective: {plan_config['objective_type']}")
+    print(f"  Max Travel: {plan_config['max_travel_minutes']} minutes")
+    print()
+
+    # Create plan in database
+    db.create_plan(plan_config)
+
+    try:
+        # Run solver
+        results = solver_service.run_solver(plan_config)
+
+        # Update plan with results
+        db.update_plan_results(plan_config['id'], results)
+
+        if results['feasible']:
+            print(f"✓ Solution found!")
+            print(f"  Solve time: {results['solve_time']:.2f}s")
+            print(f"  Objective value: {results['objective_value']}")
+            print(f"  Assignments: {len(results['assignments'])}")
+
+            # Extract key metrics from KPIs
+            kpis = results['kpis']
+            efficiency = kpis.get('efficiency', {})
+            print(f"\n  Key Metrics:")
+            print(f"    Total Cost: CHF {efficiency.get('total_cost_chf', 0):.2f}")
+            print(f"    Avg Travel Time: {efficiency.get('avg_travel_time_minutes', 0):.1f} min")
+            print(f"    Team Continuity: {efficiency.get('team_continuity_score', 0):.2%}")
+
+            coverage = kpis.get('coverage', {})
+            print(f"\n  Coverage:")
+            print(f"    Total Requests: {coverage.get('total_requests', 0)}")
+            print(f"    Covered (Internal): {coverage.get('covered_internal', 0)}")
+            print(f"    Covered (External): {coverage.get('covered_external', 0)}")
+            print(f"    Uncovered: {coverage.get('uncovered', 0)}")
+
+            return {
+                'feasible': True,
+                'plan_id': plan_config['id'],
+                'total_cost': efficiency.get('total_cost_chf', 0),
+                'avg_travel_time': efficiency.get('avg_travel_time_minutes', 0),
+                'assignments': len(results['assignments']),
+                'objective_value': results['objective_value']
+            }
+        else:
+            print(f"✗ No solution found")
+            print(f"  Error: {results['error_message']}")
+            return {
+                'feasible': False,
+                'plan_id': plan_config['id'],
+                'error': results['error_message']
+            }
+
+    except Exception as e:
+        print(f"✗ Error running solver: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'feasible': False,
+            'plan_id': plan_config['id'],
+            'error': str(e)
+        }
+
+def main():
+    """Run comparative tests with different configurations."""
+    print("\n" + "=" * 80)
+    print("SOLVER CONFIGURATION COMPARISON TEST")
+    print("=" * 80)
+    print("\nThis test verifies that different solver configurations produce different results.")
+    print("We'll run 4 scenarios with drastically different settings:\n")
+
+    # Initialize
+    db = DatabaseManager()
+    solver_service = SolverService(db)
+
+    # Define test scenarios
+    scenarios = [
+        create_test_plan(
+            "Test A: Minimize Cost Only (No Travel Limit)",
+            objective_type='cost',
+            max_travel_minutes=None  # No limit
+        ),
+        create_test_plan(
+            "Test B: Minimize Travel Only (No Travel Limit)",
+            objective_type='travel',
+            max_travel_minutes=None  # No limit
+        ),
+        create_test_plan(
+            "Test C: Minimize Cost with Strict Travel Limit",
+            objective_type='cost',
+            max_travel_minutes=30  # Very strict
+        ),
+        create_test_plan(
+            "Test D: Balanced (Cost + Travel) with Moderate Limit",
+            objective_type='both',
+            max_travel_minutes=120  # Moderate
+        ),
+    ]
+
+    # Run all scenarios
+    results = []
+    for scenario in scenarios:
+        result = run_test_plan(db, solver_service, scenario)
+        results.append(result)
+
+    # Compare results
+    print("\n" + "=" * 80)
+    print("COMPARISON SUMMARY")
+    print("=" * 80)
+    print()
+
+    feasible_results = [r for r in results if r.get('feasible')]
+
+    if len(feasible_results) < 2:
+        print("⚠️  Not enough feasible solutions to compare!")
+        print("    This might indicate that the problem is over-constrained.")
+        return
+
+    # Create comparison table
+    print(f"{'Scenario':<50} {'Cost (CHF)':<15} {'Avg Travel (min)':<20} {'Assignments':<15}")
+    print("-" * 100)
+
+    for i, result in enumerate(results):
+        if result.get('feasible'):
+            scenario_name = scenarios[i]['name'].split(': ')[1]  # Get short name
+            cost = result.get('total_cost', 0)
+            travel = result.get('avg_travel_time', 0)
+            assignments = result.get('assignments', 0)
+            print(f"{scenario_name:<50} {cost:>12.2f}   {travel:>15.1f}     {assignments:>10}")
+        else:
+            scenario_name = scenarios[i]['name'].split(': ')[1]
+            print(f"{scenario_name:<50} {'INFEASIBLE':<15}")
+
+    print()
+
+    # Analysis
+    print("\nANALYSIS:")
+    print("-" * 80)
+
+    costs = [r.get('total_cost', 0) for r in feasible_results]
+    travels = [r.get('avg_travel_time', 0) for r in feasible_results]
+
+    if len(set(costs)) == 1:
+        print("⚠️  WARNING: All plans have IDENTICAL costs!")
+        print("    This suggests cost optimization is not working.")
+    else:
+        cost_range = max(costs) - min(costs)
+        cost_variance = (cost_range / min(costs)) * 100 if min(costs) > 0 else 0
+        print(f"✓ Cost varies across plans:")
+        print(f"    Range: CHF {min(costs):.2f} - CHF {max(costs):.2f} (±{cost_variance:.1f}%)")
+
+    print()
+
+    if len(set(travels)) == 1 and travels[0] > 0:
+        print("⚠️  WARNING: All plans have IDENTICAL travel times!")
+        print("    This suggests travel optimization is not working.")
+    else:
+        if max(travels) > 0:
+            travel_range = max(travels) - min(travels)
+            travel_variance = (travel_range / max(travels)) * 100 if max(travels) > 0 else 0
+            print(f"✓ Travel time varies across plans:")
+            print(f"    Range: {min(travels):.1f} - {max(travels):.1f} min (±{travel_variance:.1f}%)")
+        else:
+            print("ℹ️  Note: All plans have 0 travel time (might indicate all resources at same location)")
+
+    print()
+
+    # Check if cost-optimized plan has lower cost
+    cost_opt_results = [r for r, s in zip(results, scenarios) if r.get('feasible') and s['objective_type'] == 'cost']
+    travel_opt_results = [r for r, s in zip(results, scenarios) if r.get('feasible') and s['objective_type'] == 'travel']
+
+    if cost_opt_results and travel_opt_results:
+        cost_opt_cost = min([r['total_cost'] for r in cost_opt_results])
+        travel_opt_cost = min([r['total_cost'] for r in travel_opt_results])
+
+        if cost_opt_cost < travel_opt_cost:
+            savings = travel_opt_cost - cost_opt_cost
+            print(f"✓ Cost optimization WORKS: Cost-optimized plan saves CHF {savings:.2f} vs travel-optimized")
+        elif cost_opt_cost == travel_opt_cost:
+            print(f"⚠️  Cost-optimized and travel-optimized plans have SAME cost!")
+        else:
+            print(f"✗ PROBLEM: Cost-optimized plan is MORE expensive than travel-optimized!")
+
+    print()
+    print("=" * 80)
+    print("TEST COMPLETE")
+    print("=" * 80)
+
+if __name__ == '__main__':
+    main()

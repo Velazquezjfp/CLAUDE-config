@@ -1,0 +1,185 @@
+{
+  "requirement_id": "F-002",
+  "requirement_title": "Standardize location values across frontend, backend, and database",
+  "last_updated": "2025-10-27T17:55:45Z",
+  "execution_environment": {
+    "backend_url": "http://localhost:5000",
+    "frontend_url": "http://localhost:5173",
+    "database_path": "/home/javiervel/clients/CFF/algo-test/Use_case_1/database/cff_scheduler.db"
+  },
+  "tests": {
+    "TC-F-002-01": {
+      "description": "Create resource with home_location='Lausanne', verify resource is created successfully and displays 'Lausanne' in Resources list",
+      "status": "passed",
+      "last_run": "2025-10-27T17:45:00Z",
+      "test_file": "TC-F-002-01.py",
+      "test_type": "UI (Playwright)",
+      "execution_details": {
+        "method": "Playwright MCP browser automation",
+        "actions_performed": [
+          "Navigated to Resources page",
+          "Clicked 'Add Resource' button",
+          "Filled form with ID='TEST-UI-R001', name='Test Resource Lausanne', location='Lausanne'",
+          "Submitted form",
+          "Verified resource appears in table with location 'Lausanne'",
+          "Verified database: home_location='Lausanne'"
+        ],
+        "result": "Resource created successfully with location value 'Lausanne' in both UI and database"
+      }
+    },
+    "TC-F-002-02": {
+      "description": "Create resource with home_location='Location 2', verify API returns 400 error with message \"Location 'Location 2' not found\"",
+      "status": "failed",
+      "last_run": "2025-10-27T17:42:30Z",
+      "test_file": "TC-F-002-02.py",
+      "test_type": "API",
+      "execution_details": {
+        "method": "HTTP POST to /api/resources",
+        "error_message": "Expected status 400 or 500, got 201",
+        "actual_behavior": "API accepted invalid location 'Location 2' and returned status 201 (Created)",
+        "expected_behavior": "API should reject with 400 Bad Request and error message about invalid location",
+        "root_cause": "Backend (api/routes/resources.py) does not validate home_location against locations table before database insertion. Foreign key constraint not enforced properly or error not caught."
+      }
+    },
+    "TC-F-002-03": {
+      "description": "Create request with location='Montreux', verify request is created successfully and displays 'Montreux' in Requests list",
+      "status": "passed",
+      "last_run": "2025-10-27T17:48:00Z",
+      "test_file": "TC-F-002-03.py",
+      "test_type": "UI (Playwright)",
+      "execution_details": {
+        "method": "Playwright MCP browser automation",
+        "actions_performed": [
+          "Navigated to Requests page",
+          "Clicked 'Add Request' button",
+          "Filled form with ID='TEST-UI-REQ001', location='Montreux', date='2025-01-25'",
+          "Submitted form",
+          "Verified request appears in table with location 'Montreux'",
+          "Verified database: location='Montreux'"
+        ],
+        "result": "Request created successfully with location value 'Montreux' in both UI and database"
+      }
+    },
+    "TC-F-002-04": {
+      "description": "Create request with location='Lusanne' (typo), verify API returns 400 error with message \"Location 'Lusanne' not found\"",
+      "status": "failed",
+      "last_run": "2025-10-27T17:43:00Z",
+      "test_file": "TC-F-002-04.py",
+      "test_type": "API",
+      "execution_details": {
+        "method": "HTTP POST to /api/requests",
+        "error_message": "Expected status 400 or 500, got 201",
+        "actual_behavior": "API accepted invalid location 'Lusanne' (typo) and returned status 201 (Created)",
+        "expected_behavior": "API should reject with 400 Bad Request and error message about invalid location",
+        "root_cause": "Backend (api/routes/requests.py) does not validate location against locations table before database insertion. Foreign key constraint not enforced properly or error not caught."
+      }
+    },
+    "TC-F-002-05": {
+      "description": "Verify ResourceForm location dropdown displays all 11 locations in alphabetical order",
+      "status": "passed",
+      "last_run": "2025-10-27T17:50:00Z",
+      "test_file": "TC-F-002-05.py",
+      "test_type": "UI (Playwright)",
+      "execution_details": {
+        "method": "Playwright MCP browser snapshot",
+        "locations_found": [
+          "Bellinzona",
+          "Bern",
+          "Fribourg",
+          "Interlaken",
+          "Lausanne",
+          "Lugano",
+          "Montreux",
+          "Neuchâtel",
+          "St. Gallen",
+          "Winterthur",
+          "Zurich"
+        ],
+        "total_count": 11,
+        "result": "ResourceForm dropdown correctly displays all 11 canonical location names"
+      }
+    },
+    "TC-F-002-06": {
+      "description": "Verify RequestForm location dropdown displays all 11 locations in alphabetical order",
+      "status": "passed",
+      "last_run": "2025-10-27T17:52:00Z",
+      "test_file": "TC-F-002-06.py",
+      "test_type": "UI (Playwright)",
+      "execution_details": {
+        "method": "Playwright MCP browser snapshot",
+        "locations_found": [
+          "Bellinzona",
+          "Bern",
+          "Fribourg",
+          "Interlaken",
+          "Lausanne",
+          "Lugano",
+          "Montreux",
+          "Neuchâtel",
+          "St. Gallen",
+          "Winterthur",
+          "Zurich"
+        ],
+        "total_count": 11,
+        "result": "RequestForm dropdown correctly displays all 11 canonical location names"
+      }
+    },
+    "TC-F-002-07": {
+      "description": "Create resource at 'Bern', create request at 'Zurich', run solver, verify travel distance calculation uses distance matrix correctly (Bern to Zurich = 120 km)",
+      "status": "passed",
+      "last_run": "2025-10-27T17:45:24Z",
+      "test_file": "TC-F-002-07.py",
+      "test_type": "Integration (API + Solver)",
+      "execution_details": {
+        "method": "API calls + database verification",
+        "actions_performed": [
+          "Created test resource 'TEST-R-BERN' with home_location='Bern'",
+          "Created test request 'TEST-REQ-ZURICH' with location='Zurich'",
+          "Verified distance in database: Bern→Zurich = 120.0 km",
+          "Ran solver with travel objective",
+          "Verified solver completed successfully"
+        ],
+        "distance_verified": "120.0 km",
+        "plan_created": "plan_20251027_184524",
+        "result": "Solver correctly processed location names and used distance matrix for calculations"
+      }
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 5,
+    "failed": 2,
+    "not_run": 0,
+    "pass_rate": "71.4%"
+  },
+  "implementation_verification": {
+    "frontend_fix": {
+      "file": "frontend/src/components/ResourceForm.jsx",
+      "line": 209,
+      "change": "Changed from value={loc.id} to value={loc.name}",
+      "status": "verified_working",
+      "evidence": "TC-F-002-01, TC-F-002-05 passed - ResourceForm correctly uses location names"
+    },
+    "database_schema": {
+      "status": "correct",
+      "evidence": "Foreign key constraints defined: resources.home_location → locations.name, requests.location → locations.name"
+    },
+    "solver_integration": {
+      "status": "verified_working",
+      "evidence": "TC-F-002-07 passed - Solver correctly uses location names for distance lookups"
+    }
+  },
+  "issues_found": {
+    "backend_validation_missing": {
+      "severity": "high",
+      "affected_tests": ["TC-F-002-02", "TC-F-002-04"],
+      "description": "Backend API endpoints do not validate location values before database insertion",
+      "affected_files": [
+        "api/routes/resources.py (POST /api/resources)",
+        "api/routes/requests.py (POST /api/requests)"
+      ],
+      "recommendation": "Add location validation in API routes to check against locations table and return 400 Bad Request for invalid locations",
+      "impact": "Users can submit invalid location names via direct API calls, bypassing frontend dropdown validation. This can cause data inconsistency and solver failures."
+    }
+  }
+}

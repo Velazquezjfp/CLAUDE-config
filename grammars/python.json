@@ -1,7 +1,7 @@
 {
   "language": "python",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "1.1",
+  "last_updated": "2025-01-27",
   "patterns": {
     "imports": [
       "^\\s*from\\s+([\\w.]+)\\s+import",
@@ -12,19 +12,25 @@
       "^\\s*async\\s+def\\s+(\\w+)\\s*\\("
     ],
     "classes": [
-      "^\\s*class\\s+(\\w+)\\s*[\\(:]"
+      "^\\s*class\\s+(\\w+)\\s*[\\(:]",
+      "@dataclass\\s*(?:\\([^)]*\\))?\\s*(?:\\n\\s*)?class\\s+(\\w+)"
     ],
     "api_endpoints": [
       "@app\\.route\\(['\"]([^'\"]+)['\"](?:.*methods\\s*=\\s*\\[([^\\]]+)\\])?",
+      "@bp\\.route\\(['\"]([^'\"]+)['\"](?:.*methods\\s*=\\s*\\[([^\\]]+)\\])?",
+      "@bp\\.(get|post|put|delete|patch|options|head)\\(['\"]([^'\"]+)['\"]",
       "@router\\.(get|post|put|delete|patch|options)\\(['\"]([^'\"]+)['\"]",
       "@app\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]",
       "@api_view\\(\\[([^\\]]+)\\]\\)",
-      "class\\s+\\w+\\(.*APIView.*\\):"
+      "class\\s+\\w+\\(.*APIView.*\\):",
+      "app\\.register_blueprint\\(([^,]+)(?:,\\s*url_prefix=['\"]([^'\"]+)['\"])?",
+      "Blueprint\\(['\"]([^'\"]+)['\"]"
     ],
     "database_models": [
       "class\\s+(\\w+)\\(.*(?:Model|Base|Document).*\\):",
       "class\\s+(\\w+)\\(db\\.Model\\):",
-      "__tablename__\\s*=\\s*['\"]([^'\"]+)['\"]"
+      "__tablename__\\s*=\\s*['\"]([^'\"]+)['\"]",
+      "@dataclass\\s*(?:\\([^)]*\\))?\\s*(?:\\n\\s*)?class\\s+(\\w+).*:"
     ],
     "database_queries": [
       "\\.query\\((\\w+)\\)",
@@ -37,10 +43,45 @@
       "DELETE\\s+FROM\\s+(\\w+)",
       "db\\.session\\.query\\((\\w+)\\)",
       "\\.filter_by\\(",
-      "\\.get\\(\\s*(\\w+)\\s*,"
+      "\\.get\\(\\s*(\\w+)\\s*,",
+      "conn\\.execute\\(\\s*['\"]([^'\"]+)['\"]",
+      "conn\\.execute\\(f['\"]([^'\"]+)['\"]",
+      "cursor\\.execute\\(\\s*['\"]([^'\"]+)['\"]",
+      "cursor\\.execute\\(f['\"]([^'\"]+)['\"]",
+      "db\\.execute\\(\\s*['\"]([^'\"]+)['\"]",
+      "session\\.execute\\(\\s*['\"]([^'\"]+)['\"]",
+      "conn\\.executemany\\(",
+      "cursor\\.executemany\\(",
+      "conn\\.executescript\\(",
+      "cursor\\.executescript\\("
     ],
     "decorators": [
-      "@(\\w+)(?:\\.\\w+)*"
+      "@(\\w+)(?:\\.\\w+)*",
+      "@dataclass(?:\\([^)]*\\))?",
+      "@app\\.before_request",
+      "@app\\.after_request",
+      "@app\\.errorhandler\\((\\d+)\\)",
+      "@bp\\.before_request",
+      "@bp\\.after_request",
+      "@bp\\.errorhandler\\((\\d+)\\)"
+    ],
+    "flask_configuration": [
+      "app\\.config\\[['\"]([^'\"]+)['\"]\\]",
+      "app\\.config\\.from_",
+      "CORS\\(app",
+      "app\\.json_encoder",
+      "app\\.url_map"
+    ],
+    "sqlite_specific": [
+      "sqlite3\\.connect\\(['\"]([^'\"]+)['\"]",
+      "conn\\.commit\\(\\)",
+      "conn\\.rollback\\(\\)",
+      "conn\\.close\\(\\)",
+      "cursor\\.fetchone\\(\\)",
+      "cursor\\.fetchall\\(\\)",
+      "cursor\\.fetchmany\\(",
+      "conn\\.row_factory",
+      "sqlite3\\.Row"
     ]
   }
 }

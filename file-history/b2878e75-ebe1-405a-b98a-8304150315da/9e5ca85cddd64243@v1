@@ -1,0 +1,78 @@
+{
+  "language": "sql",
+  "version": "1.0",
+  "last_updated": "2025-01-15",
+  "patterns": {
+    "tables": [
+      "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?\\s*\\(",
+      "ALTER\\s+TABLE\\s+[`'\"]?(\\w+)[`'\"]?",
+      "DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "TRUNCATE\\s+TABLE\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "columns": [
+      "^\\s*[`'\"]?(\\w+)[`'\"]?\\s+(?:INTEGER|INT|BIGINT|SMALLINT|TINYINT|DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL|VARCHAR|CHAR|TEXT|BLOB|DATE|DATETIME|TIMESTAMP|TIME|BOOLEAN|BOOL|JSON|JSONB|UUID|SERIAL|BIGSERIAL)",
+      "ADD\\s+COLUMN\\s+[`'\"]?(\\w+)[`'\"]?",
+      "DROP\\s+COLUMN\\s+[`'\"]?(\\w+)[`'\"]?",
+      "ALTER\\s+COLUMN\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "foreign_keys": [
+      "FOREIGN\\s+KEY\\s*\\([`'\"]?(\\w+)[`'\"]?\\)\\s*REFERENCES\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\([`'\"]?(\\w+)[`'\"]?\\)",
+      "REFERENCES\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\([`'\"]?(\\w+)[`'\"]?\\)",
+      "CONSTRAINT\\s+\\w+\\s+FOREIGN\\s+KEY\\s*\\([^)]+\\)\\s*REFERENCES\\s+[`'\"]?(\\w+)[`'\"]?",
+      "ADD\\s+FOREIGN\\s+KEY\\s*\\([^)]+\\)\\s*REFERENCES\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "primary_keys": [
+      "PRIMARY\\s+KEY\\s*\\([`'\"]?(\\w+)[`'\"]?",
+      "[`'\"]?(\\w+)[`'\"]?\\s+[^,]*PRIMARY\\s+KEY"
+    ],
+    "indexes": [
+      "CREATE\\s+(?:UNIQUE\\s+)?INDEX\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?\\s+ON\\s+[`'\"]?(\\w+)[`'\"]?",
+      "DROP\\s+INDEX\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "INDEX\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\([^)]+\\)",
+      "KEY\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\([^)]+\\)"
+    ],
+    "queries": [
+      "SELECT\\s+.*\\s+FROM\\s+[`'\"]?(\\w+)[`'\"]?",
+      "INSERT\\s+INTO\\s+[`'\"]?(\\w+)[`'\"]?",
+      "UPDATE\\s+[`'\"]?(\\w+)[`'\"]?\\s+SET",
+      "DELETE\\s+FROM\\s+[`'\"]?(\\w+)[`'\"]?",
+      "JOIN\\s+[`'\"]?(\\w+)[`'\"]?\\s+ON",
+      "LEFT\\s+JOIN\\s+[`'\"]?(\\w+)[`'\"]?",
+      "RIGHT\\s+JOIN\\s+[`'\"]?(\\w+)[`'\"]?",
+      "INNER\\s+JOIN\\s+[`'\"]?(\\w+)[`'\"]?",
+      "OUTER\\s+JOIN\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "views": [
+      "CREATE\\s+(?:OR\\s+REPLACE\\s+)?VIEW\\s+[`'\"]?(\\w+)[`'\"]?\\s+AS",
+      "DROP\\s+VIEW\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "stored_procedures": [
+      "CREATE\\s+(?:OR\\s+REPLACE\\s+)?PROCEDURE\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\(",
+      "DROP\\s+PROCEDURE\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "CALL\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\("
+    ],
+    "functions": [
+      "CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+[`'\"]?(\\w+)[`'\"]?\\s*\\(",
+      "DROP\\s+FUNCTION\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "triggers": [
+      "CREATE\\s+(?:OR\\s+REPLACE\\s+)?TRIGGER\\s+[`'\"]?(\\w+)[`'\"]?",
+      "DROP\\s+TRIGGER\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "BEFORE\\s+(?:INSERT|UPDATE|DELETE)\\s+ON\\s+[`'\"]?(\\w+)[`'\"]?",
+      "AFTER\\s+(?:INSERT|UPDATE|DELETE)\\s+ON\\s+[`'\"]?(\\w+)[`'\"]?"
+    ],
+    "constraints": [
+      "CONSTRAINT\\s+[`'\"]?(\\w+)[`'\"]?",
+      "UNIQUE\\s*\\([`'\"]?(\\w+)[`'\"]?",
+      "CHECK\\s*\\([^)]+\\)",
+      "NOT\\s+NULL",
+      "DEFAULT\\s+"
+    ],
+    "schemas": [
+      "CREATE\\s+SCHEMA\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "DROP\\s+SCHEMA\\s+(?:IF\\s+EXISTS\\s+)?[`'\"]?(\\w+)[`'\"]?",
+      "USE\\s+[`'\"]?(\\w+)[`'\"]?",
+      "[`'\"]?(\\w+)[`'\"]?\\.[`'\"]?(\\w+)[`'\"]?"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+import { Link, useLocation } from 'react-router-dom';
+import { Users, ClipboardList, Settings, BarChart3, FolderOpen, PlayCircle, MapPin } from 'lucide-react';
+
+export default function Sidebar() {
+  const location = useLocation();
+
+  const menuItems = [
+    { path: '/', icon: BarChart3, label: 'Dashboard', exact: true },
+    { path: '/resources', icon: Users, label: 'Resources' },
+    { path: '/requests', icon: ClipboardList, label: 'Requests' },
+    { path: '/constraints', icon: Settings, label: 'Constraints' },
+    { path: '/locations', icon: MapPin, label: 'Locations' },
+    { path: '/solver', icon: PlayCircle, label: 'Run Solver' },
+    { path: '/plans', icon: FolderOpen, label: 'Plans' },
+  ];
+
+  const isActive = (path, exact = false) => {
+    if (exact) {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
+      <nav className="p-4 space-y-2">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path, item.exact);
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                active
+                  ? 'bg-primary-50 text-primary-700 font-medium'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className={`h-5 w-5 ${active ? 'text-primary-600' : 'text-gray-500'}`} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}

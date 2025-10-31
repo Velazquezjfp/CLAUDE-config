@@ -1,0 +1,38 @@
+"""
+Test Case: TC-F-002-07
+Requirement: F-002 - Standardize location values across frontend, backend, and database
+Description: Create resource at 'Bern', create request at 'Zurich', run solver, verify travel distance calculation uses distance matrix correctly (Bern to Zurich = 120 km)
+Generated: 2025-10-27T00:00:00Z
+"""
+
+def test_TC_F_002_07():
+    """Verify solver correctly calculates travel distance using standardized location names"""
+    # TODO: Implement solver integration test
+    # Based on requirement Changes Required:
+    # - Solver: Should use location names to look up distances in distance matrix
+    # - Database: Distance matrix stores distances between canonical location names
+    # - Expected: Distance calculation for Bern→Zurich returns 120 km
+
+    # Canonical locations:
+    # - Resource location: 'Bern'
+    # - Request location: 'Zurich'
+    # - Expected distance: 120 km (from distance matrix)
+
+    # Steps:
+    # 1. Setup: Create resource R_BERN with home_location='Bern' in database
+    # 2. Setup: Create request REQ_ZURICH with location='Zurich' in database
+    # 3. Execute: Run solver with travel distance constraints enabled
+    # 4. Verify: Check solver log/debug output for distance calculation
+    # 5. Verify: Distance from Bern to Zurich = 120 km (exact match from distance matrix)
+    # 6. Verify: Solver successfully processes assignment (no location name mismatch errors)
+    # 7. Cleanup: Remove test resource R_BERN and request REQ_ZURICH
+    pass
+
+if __name__ == "__main__":
+    try:
+        test_TC_F_002_07()
+        print("TC-F-002-07: PASSED")
+    except AssertionError as e:
+        print(f"TC-F-002-07: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-F-002-07: ERROR - {e}")

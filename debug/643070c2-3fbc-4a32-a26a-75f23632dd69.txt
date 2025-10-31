@@ -1,0 +1,170 @@
+[DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json...
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] >>>>> getSkillsIfEnabled() CALLED <<<<<
+[DEBUG] ENABLE_SKILLS value: true, type: boolean
+[DEBUG] ENABLE_SKILLS check passed, loading skills...
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/CFF/algo-test/Use_case_1/.claude/skills
+[DEBUG] >>>>> getPluginSkills CALLED <<<<<
+[DEBUG] Creating shell snapshot for bash (/bin/bash)
+[DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+[DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761209796284-ciiwyy.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/643070c2-3fbc-4a32-a26a-75f23632dd69-agent-643070c2-3fbc-4a32-a26a-75f23632dd69.json.tmp.65447.1761209796286
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/643070c2-3fbc-4a32-a26a-75f23632dd69-agent-643070c2-3fbc-4a32-a26a-75f23632dd69.json.tmp.65447.1761209796286 to /home/javiervel/.claude/todos/643070c2-3fbc-4a32-a26a-75f23632dd69-agent-643070c2-3fbc-4a32-a26a-75f23632dd69.json
+[DEBUG] File /home/javiervel/.claude/todos/643070c2-3fbc-4a32-a26a-75f23632dd69-agent-643070c2-3fbc-4a32-a26a-75f23632dd69.json written atomically
+[DEBUG] getPluginSkills: Processing 0 enabled plugins
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loaded 0 skills total (managed: 0, user: 0, project: 0)
+[DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (4977 bytes)
+[DEBUG] Total plugin agents loaded: 0
+[DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209796441
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209796441 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionStart with query: startup
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209796519
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545567 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209796519 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209796553
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545567 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209796553 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] performStartupChecks called
+[DEBUG] Starting background plugin installations
+[DEBUG] performBackgroundPluginInstallations called
+[DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+[DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+[ERROR] MCP server "context7" Server stderr: Context7 Documentation MCP Server running on stdio
+[DEBUG] Summarizing all 2 messages (~3001 tokens)
+[DEBUG] MCP server "knowledge-graph": Successfully connected to stdio server in 1088ms
+[DEBUG] MCP server "knowledge-graph": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph","version":"1.13.1"}}
+[DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 1081ms
+[DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+[DEBUG] MCP server "context7": Successfully connected to stdio server in 1112ms
+[DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.25"}}
+[DEBUG] MCP server "playwright": Starting connection with timeout of 30000ms
+[DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+[ERROR] MCP server "knowledge-graph" Server stderr: [10/23/25 10:56:37] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [10/23/25 10:56:37] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+[ERROR] Error streaming, falling back to non-streaming mode: Connection error.
+[ERROR] Error streaming, falling back to non-streaming mode: Connection error.
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209798147
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545567 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209798147 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209798173
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545567 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209798173 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761209798200
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761209798200 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] MCP server "ide": Successfully connected to ws-ide server in 701ms
+[DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.19"}}
+[DEBUG] MCP server "playwright": Successfully connected to stdio server in 904ms
+[DEBUG] MCP server "playwright": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Playwright","version":"0.0.43"}}
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /start-pm, /start-requirement, /update-code-graph, /update-docs-database, /update-docs-apis, /start-test-requirement, /kg-infra, /analyze-impact
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761210045783
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761210045783 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] UserCommandMessage rendering: "resume" (args: "none")
+[DEBUG] isSkillFormat: false, prefix: "/"
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761210047766
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761210047766 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761210055502
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761210055502 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] UserCommandMessage rendering: "resume" (args: "none")
+[DEBUG] isSkillFormat: false, prefix: "/"
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761210055559
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545672 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761210055559 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionEnd with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761209796284-ciiwyy.sh
+[DEBUG] MCP server "knowledge-graph": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": Sending SIGINT to MCP server process
+[DEBUG] MCP server "context7": Sending SIGINT to MCP server process
+[DEBUG] MCP server "playwright": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "context7": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "playwright": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph": MCP server process exited cleanly
+[DEBUG] MCP server "knowledge-graph-custom-path": MCP server process exited cleanly
+[DEBUG] MCP server "context7": MCP server process exited cleanly
+[DEBUG] MCP server "playwright": MCP server process exited cleanly
+[DEBUG] Metrics opt-out API response: enabled=true
+[ERROR] OpenTelemetry telemetry flush timed out after 1000ms
+
+To resolve this issue, you can:
+1. Increase the timeout by setting CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS env var (e.g., 5000 for 5 seconds)
+2. Check if your OpenTelemetry backend is experiencing scalability issues
+3. Disable OpenTelemetry by unsetting CLAUDE_CODE_ENABLE_TELEMETRY env var
+
+Current timeout: 1000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.65447.1761210073360
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1546057 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.65447.1761210073360 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically

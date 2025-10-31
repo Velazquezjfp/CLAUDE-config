@@ -1,0 +1,37 @@
+"""
+Test Case: TC-NFR-001-04
+Requirement: NFR-001 - Establish single source of truth for domain value validation
+Description: Update ResourceForm to fetch qualifications from /api/reference, verify dropdown displays all values correctly
+Generated: 2025-10-27T00:00:00Z
+
+Note: This test uses MCP Playwright
+Ensure Playwright MCP server is available
+"""
+
+def test_TC_NFR_001_04():
+    """Verify ResourceForm fetches and displays qualifications from centralized /api/reference"""
+    # TODO: Implement Playwright test using MCP Playwright
+    # Based on requirement Changes Required:
+    # - Frontend: ResourceForm.jsx should fetch from /api/reference (not hardcoded QUALIFICATIONS)
+    # - API: GET /api/reference returns qualifications array
+    # - Expected: Dropdown displays all qualifications from /api/reference
+
+    # Steps:
+    # 1. Navigate to Resources module
+    # 2. Monitor network requests (if possible with Playwright)
+    # 3. Verify ResourceForm makes GET request to /api/reference on load
+    # 4. Locate QUALIFICATIONS dropdown
+    # 5. Open dropdown to view options
+    # 6. Verify dropdown contains exactly 8 options
+    # 7. Verify each option matches response from /api/reference endpoint
+    # 8. Verify no hardcoded QUALIFICATIONS constant is used (implementation check)
+    pass
+
+if __name__ == "__main__":
+    try:
+        test_TC_NFR_001_04()
+        print("TC-NFR-001-04: PASSED")
+    except AssertionError as e:
+        print(f"TC-NFR-001-04: FAILED - {e}")
+    except Exception as e:
+        print(f"TC-NFR-001-04: ERROR - {e}")

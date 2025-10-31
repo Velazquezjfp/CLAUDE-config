@@ -1,0 +1,346 @@
+# CFF Scheduler - Web UI Application
+
+Complete full-stack application for CFF (Swiss Federal Railways) maintenance crew scheduling with optimization solver and comprehensive UI.
+
+## 🎯 Features Implemented
+
+### Phase 1: Database Layer ✅
+- **SQLite Database** with 7 tables
+- **Database Manager** with full CRUD operations
+- **Migration Script** to import JSON data
+- 65 resources (20 internal + 45 external)
+- 10 work requests
+- 11 locations with distance matrix
+- Legal constraints management
+
+### Phase 2: Flask API Backend ✅
+- **REST API** with 6 blueprint modules
+- **Solver Service** integrating OR-Tools
+- **Async plan execution** with result storage
+
+**API Endpoints:**
+```
+GET    /api/health                    - Health check
+GET    /api/stats                     - Database statistics
+
+GET    /api/resources                 - List all resources
+GET    /api/resources/<id>            - Get resource details
+POST   /api/resources                 - Create resource
+PUT    /api/resources/<id>            - Update resource
+DELETE /api/resources/<id>            - Delete resource
+GET    /api/resources/stats           - Resource statistics
+
+GET    /api/requests                  - List all requests
+GET    /api/requests/<id>             - Get request details
+POST   /api/requests                  - Create request
+PUT    /api/requests/<id>             - Update request
+DELETE /api/requests/<id>             - Delete request
+
+GET    /api/constraints               - Get legal constraints
+PUT    /api/constraints               - Update constraints
+
+GET    /api/locations                 - List locations
+GET    /api/locations/distances       - Get distance matrix
+PUT    /api/locations/distances       - Update distance
+
+POST   /api/solver/run                - Run solver (create plan)
+
+GET    /api/plans                     - List all plans
+GET    /api/plans/<id>                - Get plan details
+GET    /api/plans/<id>/dashboard      - Get dashboard data
+DELETE /api/plans/<id>                - Delete plan
+```
+
+### Phase 3: React Frontend (In Progress)
+- **Vite + React** setup complete
+- **Dependencies installed**: react-router-dom, axios, recharts, lucide-react
+- Ready for UI component development
+
+## 📁 Project Structure
+
+```
+Use_case_1/
+├── database/
+│   ├── schema.sql              # Database schema (7 tables)
+│   ├── db_manager.py           # CRUD operations
+│   ├── migrations.py           # JSON → SQLite migration
+│   └── cff_scheduler.db        # SQLite database file
+│
+├── api/
+│   ├── app.py                  # Flask application
+│   ├── solver_service.py       # Solver integration
+│   └── routes/
+│       ├── resources.py        # Resource management
+│       ├── requests.py         # Request management
+│       ├── constraints.py      # Constraint management
+│       ├── locations.py        # Location & distance matrix
+│       ├── solver.py           # Solver execution
+│       └── plans.py            # Plan management
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/         # (To be built)
+│   │   ├── pages/              # (To be built)
+│   │   ├── hooks/              # (To be built)
+│   │   └── services/           # (To be built)
+│   ├── package.json
+│   └── vite.config.js
+│
+├── solver.py                   # OR-Tools scheduler
+├── kpi_calculator.py           # KPI metrics
+├── data_models.py              # Data structures
+├── helpers.py                  # Utility functions
+├── infeasibility_analyzer.py  # Constraint analysis
+└── output_formatter.py         # Result formatting
+```
+
+## 🚀 Quick Start
+
+### 1. Database Setup
+
+```bash
+# Run migration to create database and import data
+python database/migrations.py
+```
+
+**Output:**
+```
+============================================================
+CFF SCHEDULER - DATA MIGRATION
+============================================================
+✓ Imported 11 locations
+✓ Imported 121 distance entries
+✓ Imported 20 internal resources
+✓ Imported 45 external resources
+✓ Imported 10 requests
+✓ Updated legal constraints
+
+Database file: database/cff_scheduler.db
+```
+
+### 2. Start Backend API
+
+```bash
+# Install dependencies
+pip install Flask==3.0.0 Flask-CORS==4.0.0 python-dotenv==1.0.0
+
+# Start Flask server
+python api/app.py
+```
+
+**API will be available at:** `http://localhost:5000`
+
+**Test API:**
+```bash
+# Health check
+curl http://localhost:5000/api/health
+
+# Get statistics
+curl http://localhost:5000/api/stats
+
+# List resources
+curl http://localhost:5000/api/resources
+```
+
+### 3. Start Frontend (Next Step)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Frontend will be available at:** `http://localhost:5173`
+
+## 🛠️ Next Steps - Frontend Development
+
+### Components to Build:
+
+#### 1. **Data Management Pages**
+- `ResourcesPage.jsx` - List/Add/Edit/Delete resources
+- `RequestsPage.jsx` - List/Add/Edit/Delete requests
+- `ConstraintsPage.jsx` - View/Edit legal constraints
+- `LocationsPage.jsx` - View/Edit distance matrix
+
+#### 2. **Solver Configuration**
+- `SolverPage.jsx` - Configure and run solver
+  - Objective selection (cost/travel/both)
+  - Max travel time slider
+  - Team cohesion percentage
+  - Time limit
+  - Run button → triggers API call
+
+#### 3. **Dashboard & Visualization**
+- `DashboardPage.jsx` - Main KPI dashboard
+  - KPI summary cards
+  - Cost breakdown chart (pie/bar)
+  - Team utilization chart
+  - Resource Gantt timeline
+  - Coverage statistics
+
+#### 4. **Plan Management**
+- `PlansPage.jsx` - List of all saved plans
+  - Plan comparison view
+  - Delete plans
+  - View plan dashboard
+
+### Key React Components:
+
+```jsx
+// Example structure
+src/
+├── components/
+│   ├── Layout/
+│   │   ├── Header.jsx
+│   │   ├── Sidebar.jsx
+│   │   └── Layout.jsx
+│   ├── Resources/
+│   │   ├── ResourceList.jsx
+│   │   ├── ResourceForm.jsx
+│   │   └── ResourceCard.jsx
+│   ├── Requests/
+│   │   ├── RequestList.jsx
+│   │   ├── RequestForm.jsx
+│   │   └── RequestCalendar.jsx
+│   ├── Dashboard/
+│   │   ├── KPICards.jsx
+│   │   ├── CostBreakdown.jsx
+│   │   ├── TeamUtilization.jsx
+│   │   └── ResourceGantt.jsx
+│   └── Solver/
+│       ├── SolverConfig.jsx
+│       └── SolverProgress.jsx
+├── pages/
+│   ├── HomePage.jsx
+│   ├── ResourcesPage.jsx
+│   ├── RequestsPage.jsx
+│   ├── ConstraintsPage.jsx
+│   ├── SolverPage.jsx
+│   ├── DashboardPage.jsx
+│   └── PlansPage.jsx
+├── services/
+│   └── api.js  # Axios API client
+└── App.jsx  # Router setup
+```
+
+## 📊 Database Schema
+
+**Key Tables:**
+- `resources` - Workers (internal/external)
+- `resource_qualifications` - Skills
+- `resource_holidays` - Time off
+- `requests` - Work orders
+- `request_qualifications` - Required skills
+- `locations` - Sites
+- `location_distances` - Travel times
+- `legal_constraints` - Labor law parameters
+- `plans` - Saved solver runs
+- `plan_assignments` - Resource-request mappings
+- `plan_kpis` - Performance metrics
+
+## 🔧 Technology Stack
+
+**Backend:**
+- Python 3.x
+- Flask 3.0
+- SQLite 3
+- OR-Tools 9.x
+
+**Frontend:**
+- React 18
+- Vite
+- React Router Dom
+- Axios
+- Recharts (charts)
+- Lucide React (icons)
+- TailwindCSS (recommended)
+
+## 📝 API Usage Examples
+
+### Run Solver
+
+```bash
+curl -X POST http://localhost:5000/api/solver/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Plan 1",
+    "objective_type": "travel",
+    "time_limit_seconds": 300
+  }'
+```
+
+### Get Plan Dashboard
+
+```bash
+curl http://localhost:5000/api/plans/<plan_id>/dashboard
+```
+
+### Update Resource
+
+```bash
+curl -X PUT http://localhost:5000/api/resources/R001 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Hans Müller",
+    "team": "blue",
+    "home_location": "Bern",
+    "contract_type": "day",
+    "weekly_hours": 42,
+    "qualifications": ["track_maintenance", "safety_officer"],
+    "holidays": [],
+    "resource_type": "internal",
+    "cost_per_hour": 30.0
+  }'
+```
+
+## 🎨 UI Design Guidelines
+
+### Pages Layout:
+1. **Header** - Navigation, logo, stats summary
+2. **Sidebar** - Menu (Resources, Requests, Solver, Plans, Settings)
+3. **Main Content** - Page-specific content
+4. **Modals** - Forms for add/edit operations
+
+### Color Scheme:
+- Primary: Blue (CFF branding)
+- Success: Green (feasible solutions)
+- Warning: Yellow (warnings/alerts)
+- Danger: Red (errors/infeasible)
+- Neutral: Gray (backgrounds)
+
+### Key Interactions:
+- **Tables** - Sortable, filterable, paginated
+- **Forms** - Validation, error messages, success feedback
+- **Solver** - Progress indicator, real-time status
+- **Dashboard** - Interactive charts, drill-down capabilities
+
+## 🚧 Current Status
+
+✅ **Completed (Phases 1 & 2):**
+- Database schema and migration
+- Complete REST API backend
+- Solver integration
+- Plan management system
+
+🔄 **In Progress (Phase 3):**
+- React frontend initialization
+- Component development
+- UI/UX implementation
+
+📋 **Next Tasks:**
+1. Build API service layer (axios)
+2. Create routing structure
+3. Implement data management pages
+4. Build solver configuration interface
+5. Create dashboard with visualizations
+6. Add plan comparison feature
+7. Polish UI/UX
+8. End-to-end testing
+
+## 📞 Support
+
+For questions or issues, refer to the main project documentation or the IMPLEMENTATION_SUMMARY.md file.
+
+---
+
+**Note:** This is a comprehensive scheduling system built for Swiss Federal Railways (CFF) maintenance crew optimization with full CRUD capabilities and advanced constraint solving.

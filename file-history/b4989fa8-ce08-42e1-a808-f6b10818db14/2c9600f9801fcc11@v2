@@ -1,0 +1,162 @@
+"""
+Migration script to import JSON data into SQLite database.
+Reads mock_data.json and external_resources.json and populates the database.
+"""
+import json
+from pathlib import Path
+from db_manager import DatabaseManager
+
+
+def import_json_data(db_manager: DatabaseManager, mock_data_path: str, external_data_path: str):
+    """Import all data from JSON files to SQLite database."""
+
+    print("=" * 60)
+    print("CFF SCHEDULER - DATA MIGRATION")
+    print("=" * 60)
+
+    # Load JSON files
+    print(f"\nLoading {mock_data_path}...")
+    with open(mock_data_path, 'r') as f:
+        mock_data = json.load(f)
+
+    print(f"Loading {external_data_path}...")
+    with open(external_data_path, 'r') as f:
+        external_data = json.load(f)
+
+    # Import locations
+    print("\nImporting locations...")
+    locations = mock_data['distance_matrix']['locations']
+    with db_manager.get_connection() as conn:
+        for location in locations:
+            conn.execute(
+                "INSERT OR IGNORE INTO locations (name, description) VALUES (?, ?)",
+                (location, f"Location: {location}")
+            )
+        conn.commit()
+    print(f"  ✓ Imported {len(locations)} locations")
+
+    # Import distance matrix
+    print("\nImporting distance matrix...")
+    matrix_data = mock_data['distance_matrix']['matrix']
+    distance_count = 0
+    with db_manager.get_connection() as conn:
+        for i, from_location in enumerate(locations):
+            for j, to_location in enumerate(locations):
+                distance_km = matrix_data[i][j]
+                conn.execute("""
+                    INSERT OR REPLACE INTO location_distances (from_location, to_location, distance_km)
+                    VALUES (?, ?, ?)
+                """, (from_location, to_location, distance_km))
+                distance_count += 1
+        conn.commit()
+    print(f"  ✓ Imported {distance_count} distance entries")
+
+    # Import internal resources
+    print("\nImporting internal resources...")
+    internal_count = 0
+    for resource_data in mock_data['resources']:
+        resource = {
+            'id': resource_data['id'],
+            'name': resource_data['name'],
+            'team': resource_data['team'],
+            'home_location': resource_data['home_location'],
+            'qualifications': resource_data['qualifications'],
+            'contract_type': resource_data['contract_type'],
+            'weekly_hours': resource_data['weekly_hours'],
+            'holidays': resource_data['holidays'],
+            'resource_type': 'internal',
+            'cost_per_hour': 30.0
+        }
+        db_manager.create_resource(resource)
+        internal_count += 1
+    print(f"  ✓ Imported {internal_count} internal resources")
+
+    # Import external resources
+    print("\nImporting external resources...")
+    external_count = 0
+    for resource_data in external_data['resources']:
+        resource = {
+            'id': resource_data['id'],
+            'name': resource_data['name'],
+            'team': resource_data['team'],
+            'home_location': resource_data['home_location'],
+            'qualifications': resource_data['qualifications'],
+            'contract_type': resource_data['contract_type'],
+            'weekly_hours': resource_data['weekly_hours'],
+            'holidays': resource_data.get('holidays', []),
+            'resource_type': 'external',
+            'cost_per_hour': resource_data.get('cost_per_hour', 50.0)
+        }
+        db_manager.create_resource(resource)
+        external_count += 1
+    print(f"  ✓ Imported {external_count} external resources")
+
+    # Import requests
+    print("\nImporting requests...")
+    request_count = 0
+    for request_data in mock_data['requests']:
+        request = {
+            'id': request_data['id'],
+            'location': request_data['location'],
+            'start_date': request_data['start_date'],
+            'start_time': request_data['start_time'],
+            'duration_hours': request_data['duration_hours'],
+            'required_qualifications': request_data['required_qualifications'],
+            'people_needed': request_data['people_needed'],
+            'description': request_data['description']
+        }
+        db_manager.create_request(request)
+        request_count += 1
+    print(f"  ✓ Imported {request_count} requests")
+
+    # Update legal constraints
+    print("\nUpdating legal constraints...")
+    constraints_data = mock_data['legal_constraints']
+    # Flatten night_shift_hours structure
+    night_shift = constraints_data.get('night_shift_hours', {})
+    constraints = {
+        'max_daily_hours': constraints_data['max_daily_hours'],
+        'max_weekly_hours': constraints_data['max_weekly_hours'],
+        'min_daily_rest_hours': constraints_data['min_daily_rest_hours'],
+        'min_weekly_rest_hours': constraints_data['min_weekly_rest_hours'],
+        'max_consecutive_workdays': constraints_data['max_consecutive_workdays'],
+        'mandatory_break_after_hours': constraints_data['mandatory_break_after_hours'],
+        'mandatory_break_duration_minutes': constraints_data['mandatory_break_duration_minutes'],
+        'travel_time_counts_as_work': constraints_data['travel_time_counts_as_work'],
+        'night_shift_start': night_shift.get('start', '23:00'),
+        'night_shift_end': night_shift.get('end', '06:00'),
+        'description': constraints_data.get('description', '')
+    }
+    db_manager.update_legal_constraints(constraints)
+    print(f"  ✓ Updated legal constraints")
+
+    print("\n" + "=" * 60)
+    print("MIGRATION COMPLETE")
+    print("=" * 60)
+    print(f"\nDatabase Summary:")
+    print(f"  - Locations: {len(locations)}")
+    print(f"  - Internal Resources: {internal_count}")
+    print(f"  - External Resources: {external_count}")
+    print(f"  - Total Resources: {internal_count + external_count}")
+    print(f"  - Requests: {request_count}")
+    print(f"  - Distance Matrix: {distance_count} entries")
+    print(f"\nDatabase file: {db_manager.db_path}")
+
+
+if __name__ == "__main__":
+    # Initialize database manager
+    db = DatabaseManager()
+
+    # Get paths relative to project root
+    project_root = Path(__file__).parent.parent
+    mock_data_path = project_root / "mock_data.json"
+    external_data_path = project_root / "external_resources.json"
+
+    # Import data
+    import_json_data(
+        db,
+        str(mock_data_path),
+        str(external_data_path)
+    )
+
+    print("\n✓ Migration successful! Database is ready.")

@@ -1,0 +1,106 @@
+"""
+Requests API routes.
+Endpoints for managing work requests/orders.
+"""
+from flask import Blueprint, jsonify, request, current_app
+
+bp = Blueprint('requests', __name__)
+
+
+@bp.route('', methods=['GET'])
+def get_requests():
+    """Get all requests."""
+    db = current_app.config['DB']
+
+    try:
+        requests = db.get_all_requests()
+        return jsonify({
+            'success': True,
+            'count': len(requests),
+            'data': requests
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<request_id>', methods=['GET'])
+def get_request(request_id):
+    """Get a single request by ID."""
+    db = current_app.config['DB']
+
+    try:
+        req = db.get_request(request_id)
+        if not req:
+            return jsonify({'success': False, 'error': 'Request not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'data': req
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('', methods=['POST'])
+def create_request():
+    """Create a new request."""
+    db = current_app.config['DB']
+    data = request.get_json()
+
+    # Validate required fields
+    required_fields = ['id', 'location', 'start_date', 'start_time', 'duration_hours', 'people_needed']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+
+    try:
+        request_id = db.create_request(data)
+        return jsonify({
+            'success': True,
+            'message': 'Request created successfully',
+            'data': {'id': request_id}
+        }), 201
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<request_id>', methods=['PUT'])
+def update_request(request_id):
+    """Update an existing request."""
+    db = current_app.config['DB']
+    data = request.get_json()
+
+    # Check if request exists
+    existing = db.get_request(request_id)
+    if not existing:
+        return jsonify({'success': False, 'error': 'Request not found'}), 404
+
+    try:
+        db.update_request(request_id, data)
+        return jsonify({
+            'success': True,
+            'message': 'Request updated successfully',
+            'data': {'id': request_id}
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<request_id>', methods=['DELETE'])
+def delete_request(request_id):
+    """Delete a request."""
+    db = current_app.config['DB']
+
+    # Check if request exists
+    existing = db.get_request(request_id)
+    if not existing:
+        return jsonify({'success': False, 'error': 'Request not found'}), 404
+
+    try:
+        db.delete_request(request_id)
+        return jsonify({
+            'success': True,
+            'message': 'Request deleted successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

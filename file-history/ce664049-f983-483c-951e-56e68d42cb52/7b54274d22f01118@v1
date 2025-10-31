@@ -1,0 +1,55 @@
+{
+  "requirement_id": "F-002",
+  "requirement_title": "Standardize location values across frontend, backend, and database",
+  "last_updated": "2025-10-27T00:00:00Z",
+  "tests": {
+    "TC-F-002-01": {
+      "description": "Create resource with home_location='Lausanne', verify resource is created successfully and displays 'Lausanne' in Resources list",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-01.py"
+    },
+    "TC-F-002-02": {
+      "description": "Create resource with home_location='Location 2', verify API returns 400 error with message \"Location 'Location 2' not found\"",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-02.py"
+    },
+    "TC-F-002-03": {
+      "description": "Create request with location='Montreux', verify request is created successfully and displays 'Montreux' in Requests list",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-03.py"
+    },
+    "TC-F-002-04": {
+      "description": "Create request with location='Lusanne' (typo), verify API returns 400 error with message \"Location 'Lusanne' not found\"",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-04.py"
+    },
+    "TC-F-002-05": {
+      "description": "Verify ResourceForm location dropdown displays all 11 locations in alphabetical order",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-05.py"
+    },
+    "TC-F-002-06": {
+      "description": "Verify RequestForm location dropdown displays all 11 locations in alphabetical order",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-06.py"
+    },
+    "TC-F-002-07": {
+      "description": "Create resource at 'Bern', create request at 'Zurich', run solver, verify travel distance calculation uses distance matrix correctly (Bern to Zurich = 120 km)",
+      "status": "not_run",
+      "last_run": null,
+      "test_file": "TC-F-002-07.py"
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 0,
+    "failed": 0,
+    "not_run": 7
+  }
+}

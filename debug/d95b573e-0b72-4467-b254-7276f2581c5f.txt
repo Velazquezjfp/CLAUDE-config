@@ -1,0 +1,7 @@
+[DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/CFF/algo-test/.claude/settings.local.json...
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.40875.1761207845695
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1545506 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.40875.1761207845695 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically

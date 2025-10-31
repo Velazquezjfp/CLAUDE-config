@@ -1,0 +1,501 @@
+"""
+Database manager for CFF Scheduler.
+Provides CRUD operations and connection management for SQLite database.
+"""
+import sqlite3
+import json
+from typing import List, Dict, Optional, Tuple
+from pathlib import Path
+from datetime import datetime, date, time
+from contextlib import contextmanager
+
+
+class DatabaseManager:
+    """Manages SQLite database operations for CFF Scheduler."""
+
+    def __init__(self, db_path: str = "database/cff_scheduler.db"):
+        self.db_path = db_path
+        self._ensure_database_exists()
+
+    def _ensure_database_exists(self):
+        """Create database and tables if they don't exist."""
+        db_file = Path(self.db_path)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read and execute schema
+        schema_path = Path(__file__).parent / "schema.sql"
+        with open(schema_path, 'r') as f:
+            schema_sql = f.read()
+
+        with self.get_connection() as conn:
+            conn.executescript(schema_sql)
+            conn.commit()
+
+    @contextmanager
+    def get_connection(self):
+        """Context manager for database connections."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    # ============================================================
+    # RESOURCES
+    # ============================================================
+
+    def get_all_resources(self, resource_type: Optional[str] = None) -> List[Dict]:
+        """Get all resources, optionally filtered by type."""
+        with self.get_connection() as conn:
+            if resource_type:
+                cursor = conn.execute(
+                    """SELECT * FROM resources
+                       WHERE resource_type = ?
+                       ORDER BY id""",
+                    (resource_type,)
+                )
+            else:
+                cursor = conn.execute("SELECT * FROM resources ORDER BY id")
+
+            resources = [dict(row) for row in cursor.fetchall()]
+
+            # Load qualifications and holidays for each resource
+            for resource in resources:
+                resource['qualifications'] = self._get_resource_qualifications(conn, resource['id'])
+                resource['holidays'] = self._get_resource_holidays(conn, resource['id'])
+
+            return resources
+
+    def get_resource(self, resource_id: str) -> Optional[Dict]:
+        """Get a single resource by ID."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM resources WHERE id = ?", (resource_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                return None
+
+            resource = dict(row)
+            resource['qualifications'] = self._get_resource_qualifications(conn, resource_id)
+            resource['holidays'] = self._get_resource_holidays(conn, resource_id)
+
+            return resource
+
+    def _get_resource_qualifications(self, conn, resource_id: str) -> List[str]:
+        """Get qualifications for a resource."""
+        cursor = conn.execute(
+            "SELECT qualification FROM resource_qualifications WHERE resource_id = ?",
+            (resource_id,)
+        )
+        return [row['qualification'] for row in cursor.fetchall()]
+
+    def _get_resource_holidays(self, conn, resource_id: str) -> List[Dict]:
+        """Get holidays for a resource."""
+        cursor = conn.execute(
+            "SELECT start_date, end_date FROM resource_holidays WHERE resource_id = ?",
+            (resource_id,)
+        )
+        return [{'start': row['start_date'], 'end': row['end_date']} for row in cursor.fetchall()]
+
+    def create_resource(self, resource_data: Dict) -> str:
+        """Create a new resource."""
+        with self.get_connection() as conn:
+            # Insert main resource record
+            conn.execute("""
+                INSERT INTO resources (
+                    id, name, team, home_location, contract_type, weekly_hours,
+                    resource_type, cost_per_hour
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                resource_data['id'],
+                resource_data['name'],
+                resource_data['team'],
+                resource_data['home_location'],
+                resource_data['contract_type'],
+                resource_data['weekly_hours'],
+                resource_data.get('resource_type', 'internal'),
+                resource_data.get('cost_per_hour', 30.0)
+            ))
+
+            # Insert qualifications
+            for qual in resource_data.get('qualifications', []):
+                conn.execute(
+                    "INSERT INTO resource_qualifications (resource_id, qualification) VALUES (?, ?)",
+                    (resource_data['id'], qual)
+                )
+
+            # Insert holidays
+            for holiday in resource_data.get('holidays', []):
+                conn.execute(
+                    "INSERT INTO resource_holidays (resource_id, start_date, end_date) VALUES (?, ?, ?)",
+                    (resource_data['id'], holiday['start'], holiday['end'])
+                )
+
+            conn.commit()
+            return resource_data['id']
+
+    def update_resource(self, resource_id: str, resource_data: Dict) -> bool:
+        """Update an existing resource."""
+        with self.get_connection() as conn:
+            # Update main record
+            conn.execute("""
+                UPDATE resources SET
+                    name = ?, team = ?, home_location = ?, contract_type = ?,
+                    weekly_hours = ?, resource_type = ?, cost_per_hour = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                resource_data['name'],
+                resource_data['team'],
+                resource_data['home_location'],
+                resource_data['contract_type'],
+                resource_data['weekly_hours'],
+                resource_data.get('resource_type', 'internal'),
+                resource_data.get('cost_per_hour', 30.0),
+                resource_id
+            ))
+
+            # Delete and re-insert qualifications
+            conn.execute("DELETE FROM resource_qualifications WHERE resource_id = ?", (resource_id,))
+            for qual in resource_data.get('qualifications', []):
+                conn.execute(
+                    "INSERT INTO resource_qualifications (resource_id, qualification) VALUES (?, ?)",
+                    (resource_id, qual)
+                )
+
+            # Delete and re-insert holidays
+            conn.execute("DELETE FROM resource_holidays WHERE resource_id = ?", (resource_id,))
+            for holiday in resource_data.get('holidays', []):
+                conn.execute(
+                    "INSERT INTO resource_holidays (resource_id, start_date, end_date) VALUES (?, ?, ?)",
+                    (resource_id, holiday['start'], holiday['end'])
+                )
+
+            conn.commit()
+            return True
+
+    def delete_resource(self, resource_id: str) -> bool:
+        """Delete a resource."""
+        with self.get_connection() as conn:
+            conn.execute("DELETE FROM resources WHERE id = ?", (resource_id,))
+            conn.commit()
+            return True
+
+    # ============================================================
+    # REQUESTS
+    # ============================================================
+
+    def get_all_requests(self) -> List[Dict]:
+        """Get all requests."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM requests ORDER BY start_date, start_time")
+            requests = [dict(row) for row in cursor.fetchall()]
+
+            # Load qualifications for each request
+            for request in requests:
+                request['required_qualifications'] = self._get_request_qualifications(conn, request['id'])
+
+            return requests
+
+    def get_request(self, request_id: str) -> Optional[Dict]:
+        """Get a single request by ID."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM requests WHERE id = ?", (request_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                return None
+
+            request = dict(row)
+            request['required_qualifications'] = self._get_request_qualifications(conn, request_id)
+
+            return request
+
+    def _get_request_qualifications(self, conn, request_id: str) -> List[str]:
+        """Get required qualifications for a request."""
+        cursor = conn.execute(
+            "SELECT qualification FROM request_qualifications WHERE request_id = ?",
+            (request_id,)
+        )
+        return [row['qualification'] for row in cursor.fetchall()]
+
+    def create_request(self, request_data: Dict) -> str:
+        """Create a new request."""
+        with self.get_connection() as conn:
+            # Insert main request record
+            conn.execute("""
+                INSERT INTO requests (
+                    id, location, start_date, start_time, duration_hours,
+                    people_needed, description
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                request_data['id'],
+                request_data['location'],
+                request_data['start_date'],
+                request_data['start_time'],
+                request_data['duration_hours'],
+                request_data['people_needed'],
+                request_data.get('description', '')
+            ))
+
+            # Insert required qualifications
+            for qual in request_data.get('required_qualifications', []):
+                conn.execute(
+                    "INSERT INTO request_qualifications (request_id, qualification) VALUES (?, ?)",
+                    (request_data['id'], qual)
+                )
+
+            conn.commit()
+            return request_data['id']
+
+    def update_request(self, request_id: str, request_data: Dict) -> bool:
+        """Update an existing request."""
+        with self.get_connection() as conn:
+            # Update main record
+            conn.execute("""
+                UPDATE requests SET
+                    location = ?, start_date = ?, start_time = ?, duration_hours = ?,
+                    people_needed = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (
+                request_data['location'],
+                request_data['start_date'],
+                request_data['start_time'],
+                request_data['duration_hours'],
+                request_data['people_needed'],
+                request_data.get('description', ''),
+                request_id
+            ))
+
+            # Delete and re-insert qualifications
+            conn.execute("DELETE FROM request_qualifications WHERE request_id = ?", (request_id,))
+            for qual in request_data.get('required_qualifications', []):
+                conn.execute(
+                    "INSERT INTO request_qualifications (request_id, qualification) VALUES (?, ?)",
+                    (request_id, qual)
+                )
+
+            conn.commit()
+            return True
+
+    def delete_request(self, request_id: str) -> bool:
+        """Delete a request."""
+        with self.get_connection() as conn:
+            conn.execute("DELETE FROM requests WHERE id = ?", (request_id,))
+            conn.commit()
+            return True
+
+    # ============================================================
+    # LOCATIONS & DISTANCE MATRIX
+    # ============================================================
+
+    def get_all_locations(self) -> List[Dict]:
+        """Get all locations."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM locations ORDER BY name")
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_distance_matrix(self) -> Dict[str, Dict[str, float]]:
+        """Get complete distance matrix as nested dictionary."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT from_location, to_location, distance_km FROM location_distances")
+
+            matrix = {}
+            for row in cursor.fetchall():
+                from_loc = row['from_location']
+                to_loc = row['to_location']
+                distance = row['distance_km']
+
+                if from_loc not in matrix:
+                    matrix[from_loc] = {}
+                matrix[from_loc][to_loc] = distance
+
+            return matrix
+
+    def update_distance(self, from_location: str, to_location: str, distance_km: float) -> bool:
+        """Update distance between two locations."""
+        with self.get_connection() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO location_distances (from_location, to_location, distance_km)
+                VALUES (?, ?, ?)
+            """, (from_location, to_location, distance_km))
+            conn.commit()
+            return True
+
+    # ============================================================
+    # LEGAL CONSTRAINTS
+    # ============================================================
+
+    def get_legal_constraints(self) -> Dict:
+        """Get current legal constraints."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM legal_constraints WHERE id = 1")
+            row = cursor.fetchone()
+            return dict(row) if row else {}
+
+    def update_legal_constraints(self, constraints_data: Dict) -> bool:
+        """Update legal constraints."""
+        with self.get_connection() as conn:
+            conn.execute("""
+                UPDATE legal_constraints SET
+                    max_daily_hours = ?,
+                    max_weekly_hours = ?,
+                    min_daily_rest_hours = ?,
+                    min_weekly_rest_hours = ?,
+                    max_consecutive_workdays = ?,
+                    mandatory_break_after_hours = ?,
+                    mandatory_break_duration_minutes = ?,
+                    travel_time_counts_as_work = ?,
+                    night_shift_start = ?,
+                    night_shift_end = ?,
+                    description = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = 1
+            """, (
+                constraints_data['max_daily_hours'],
+                constraints_data['max_weekly_hours'],
+                constraints_data['min_daily_rest_hours'],
+                constraints_data['min_weekly_rest_hours'],
+                constraints_data['max_consecutive_workdays'],
+                constraints_data['mandatory_break_after_hours'],
+                constraints_data['mandatory_break_duration_minutes'],
+                constraints_data['travel_time_counts_as_work'],
+                constraints_data['night_shift_start'],
+                constraints_data['night_shift_end'],
+                constraints_data.get('description', '')
+            ))
+            conn.commit()
+            return True
+
+    # ============================================================
+    # PLANS
+    # ============================================================
+
+    def get_all_plans(self) -> List[Dict]:
+        """Get all plans with basic info."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT p.*, k.total_cost_chf
+                FROM plans p
+                LEFT JOIN plan_kpis k ON p.id = k.plan_id
+                ORDER BY p.created_at DESC
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_plan(self, plan_id: str) -> Optional[Dict]:
+        """Get full plan details including assignments and KPIs."""
+        with self.get_connection() as conn:
+            # Get plan info
+            cursor = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            plan = dict(row)
+
+            # Get assignments
+            cursor = conn.execute("""
+                SELECT * FROM plan_assignments WHERE plan_id = ?
+            """, (plan_id,))
+            plan['assignments'] = [dict(row) for row in cursor.fetchall()]
+
+            # Get KPIs
+            cursor = conn.execute("SELECT * FROM plan_kpis WHERE plan_id = ?", (plan_id,))
+            kpi_row = cursor.fetchone()
+            plan['kpis'] = dict(kpi_row) if kpi_row else {}
+
+            return plan
+
+    def create_plan(self, plan_data: Dict) -> str:
+        """Create a new plan."""
+        with self.get_connection() as conn:
+            conn.execute("""
+                INSERT INTO plans (
+                    id, name, status, objective_type, max_travel_minutes,
+                    team_cohesion_min, time_limit_seconds
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                plan_data['id'],
+                plan_data.get('name', f"Plan {plan_data['id']}"),
+                'pending',
+                plan_data.get('objective_type', 'travel'),
+                plan_data.get('max_travel_minutes'),
+                plan_data.get('team_cohesion_min'),
+                plan_data.get('time_limit_seconds', 300)
+            ))
+            conn.commit()
+            return plan_data['id']
+
+    def update_plan_results(self, plan_id: str, results: Dict) -> bool:
+        """Update plan with solver results."""
+        with self.get_connection() as conn:
+            # Update plan status
+            conn.execute("""
+                UPDATE plans SET
+                    status = ?,
+                    solve_time_seconds = ?,
+                    objective_value = ?,
+                    feasible = ?,
+                    error_message = ?
+                WHERE id = ?
+            """, (
+                results.get('status', 'completed'),
+                results.get('solve_time'),
+                results.get('objective_value'),
+                results.get('feasible', True),
+                results.get('error_message'),
+                plan_id
+            ))
+
+            # Insert assignments
+            if 'assignments' in results:
+                for assignment in results['assignments']:
+                    conn.execute("""
+                        INSERT INTO plan_assignments (
+                            plan_id, resource_id, request_id, total_work_hours
+                        ) VALUES (?, ?, ?, ?)
+                    """, (
+                        plan_id,
+                        assignment['resource_id'],
+                        assignment['request_id'],
+                        assignment['total_work_hours']
+                    ))
+
+            # Insert KPIs
+            if 'kpis' in results:
+                kpis = results['kpis']
+                conn.execute("""
+                    INSERT INTO plan_kpis (
+                        plan_id, total_requests, covered_internal, covered_external, uncovered,
+                        ldt_violations, skill_mismatches, fatigue_warnings,
+                        avg_travel_time_minutes, total_cost_chf, team_continuity_score,
+                        internal_cost, external_cost, internal_hours, external_hours
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    plan_id,
+                    kpis['coverage']['total_requests'],
+                    kpis['coverage']['covered_internal'],
+                    kpis['coverage']['covered_external'],
+                    kpis['coverage']['uncovered'],
+                    kpis['compliance']['ldt_violations'],
+                    kpis['compliance']['skill_mismatches'],
+                    kpis['compliance']['fatigue_warnings'],
+                    kpis['efficiency']['avg_travel_time_minutes'],
+                    kpis['efficiency']['total_cost_chf'],
+                    kpis['efficiency']['team_continuity_score'],
+                    kpis['cost_breakdown']['internal_cost'],
+                    kpis['cost_breakdown']['external_cost'],
+                    kpis['cost_breakdown']['internal_hours'],
+                    kpis['cost_breakdown']['external_hours']
+                ))
+
+            conn.commit()
+            return True
+
+    def delete_plan(self, plan_id: str) -> bool:
+        """Delete a plan and all associated data."""
+        with self.get_connection() as conn:
+            conn.execute("DELETE FROM plans WHERE id = ?", (plan_id,))
+            conn.commit()
+            return True

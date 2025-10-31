@@ -1,0 +1,147 @@
+"""
+Plans API routes.
+Endpoints for managing saved planning runs.
+"""
+from flask import Blueprint, jsonify, request, current_app
+
+bp = Blueprint('plans', __name__)
+
+
+@bp.route('', methods=['GET'])
+def get_plans():
+    """Get all plans."""
+    db = current_app.config['DB']
+
+    try:
+        plans = db.get_all_plans()
+        return jsonify({
+            'success': True,
+            'count': len(plans),
+            'data': plans
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>', methods=['GET'])
+def get_plan(plan_id):
+    """Get full plan details including assignments and KPIs."""
+    db = current_app.config['DB']
+
+    try:
+        plan = db.get_plan(plan_id)
+        if not plan:
+            return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'data': plan
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>', methods=['DELETE'])
+def delete_plan(plan_id):
+    """Delete a plan."""
+    db = current_app.config['DB']
+
+    # Check if plan exists
+    existing = db.get_plan(plan_id)
+    if not existing:
+        return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+    try:
+        db.delete_plan(plan_id)
+        return jsonify({
+            'success': True,
+            'message': 'Plan deleted successfully'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/<plan_id>/dashboard', methods=['GET'])
+def get_plan_dashboard(plan_id):
+    """Get dashboard data for a plan (KPIs + assignments summary)."""
+    db = current_app.config['DB']
+
+    try:
+        plan = db.get_plan(plan_id)
+        if not plan:
+            return jsonify({'success': False, 'error': 'Plan not found'}), 404
+
+        # Get assignments grouped by resource and request
+        assignments_by_resource = {}
+        assignments_by_request = {}
+
+        for assignment in plan.get('assignments', []):
+            resource_id = assignment['resource_id']
+            request_id = assignment['request_id']
+
+            if resource_id not in assignments_by_resource:
+                assignments_by_resource[resource_id] = []
+            assignments_by_resource[resource_id].append(assignment)
+
+            if request_id not in assignments_by_request:
+                assignments_by_request[request_id] = []
+            assignments_by_request[request_id].append(assignment)
+
+        # Get resource and request details
+        resources = {}
+        for resource_id in assignments_by_resource.keys():
+            resource = db.get_resource(resource_id)
+            if resource:
+                resources[resource_id] = resource
+
+        requests = {}
+        for request_id in assignments_by_request.keys():
+            req = db.get_request(request_id)
+            if req:
+                requests[request_id] = req
+
+        # Transform KPIs to match frontend expectations
+        raw_kpis = plan.get('kpis', {})
+
+        # Calculate total travel distance from assignments (if distance data available)
+        # For now, use avg_travel_time as proxy (assuming 60 km/h average speed)
+        avg_travel_time_mins = raw_kpis.get('avg_travel_time_minutes', 0)
+        total_assignments = len([a for assigns in assignments_by_resource.values() for a in assigns])
+        total_travel_km = (avg_travel_time_mins * total_assignments * 60) / 60 if avg_travel_time_mins > 0 else 0
+
+        transformed_kpis = {
+            'total_cost': raw_kpis.get('total_cost_chf'),
+            'total_travel_km': round(total_travel_km, 1),
+            'resources_used': len(assignments_by_resource),
+            'total_work_hours': round(raw_kpis.get('internal_hours', 0) + raw_kpis.get('external_hours', 0), 1),
+            'requests_covered': raw_kpis.get('covered_internal', 0) + raw_kpis.get('covered_external', 0),
+            'team_continuity_score': raw_kpis.get('team_continuity_score'),
+            # Include all original KPI fields as well
+            **raw_kpis
+        }
+
+        dashboard_data = {
+            'plan': {
+                'id': plan['id'],
+                'name': plan.get('name'),
+                'created_at': plan.get('created_at'),
+                'status': plan.get('status'),
+                'objective': plan.get('objective_type'),
+                'solve_time': plan.get('solve_time_seconds'),
+                'feasible': plan.get('feasible')
+            },
+            'kpis': transformed_kpis,
+            'assignments': {
+                'by_resource': assignments_by_resource,
+                'by_request': assignments_by_request
+            },
+            'resources': resources,
+            'requests': requests
+        }
+
+        return jsonify({
+            'success': True,
+            'data': dashboard_data
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

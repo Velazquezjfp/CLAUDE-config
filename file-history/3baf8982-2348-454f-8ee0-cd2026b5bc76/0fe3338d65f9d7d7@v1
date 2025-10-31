@@ -1,0 +1,111 @@
+"""
+Flask API application for CFF Scheduler.
+Provides REST endpoints for managing resources, requests, constraints, and running solver.
+"""
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import sys
+import logging
+from pathlib import Path
+from datetime import datetime
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+
+from database.db_manager import DatabaseManager
+from api.routes import resources, requests as req_routes, constraints, locations, solver, plans
+
+# Configure logging
+log_dir = Path(__file__).parent.parent / 'logs'
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / f"solver_{datetime.now().strftime('%Y%m%d')}.log"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger('cff_scheduler')
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS for frontend
+
+# Initialize database
+db = DatabaseManager()
+
+# Store db instance in app config for routes to access
+app.config['DB'] = db
+
+logger.info("="* 60)
+logger.info("CFF Scheduler API Starting")
+logger.info(f"Log file: {log_file}")
+logger.info("="* 60)
+
+# Register blueprints
+app.register_blueprint(resources.bp, url_prefix='/api/resources')
+app.register_blueprint(req_routes.bp, url_prefix='/api/requests')
+app.register_blueprint(constraints.bp, url_prefix='/api/constraints')
+app.register_blueprint(locations.bp, url_prefix='/api/locations')
+app.register_blueprint(solver.bp, url_prefix='/api/solver')
+app.register_blueprint(plans.bp, url_prefix='/api/plans')
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint."""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'CFF Scheduler API',
+        'version': '1.0.0'
+    })
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Get database statistics."""
+    db = app.config['DB']
+
+    internal_resources = db.get_all_resources('internal')
+    external_resources = db.get_all_resources('external')
+    all_requests = db.get_all_requests()
+    all_plans = db.get_all_plans()
+    locations = db.get_all_locations()
+
+    return jsonify({
+        'resources': {
+            'internal': len(internal_resources),
+            'external': len(external_resources),
+            'total': len(internal_resources) + len(external_resources)
+        },
+        'requests': len(all_requests),
+        'plans': len(all_plans),
+        'locations': len(locations)
+    })
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors."""
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors."""
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+if __name__ == '__main__':
+    print("=" * 60)
+    print("CFF SCHEDULER API")
+    print("=" * 60)
+    print("Starting Flask server...")
+    print("API available at: http://localhost:5000")
+    print("Docs: http://localhost:5000/api/health")
+    print("=" * 60)
+
+    app.run(debug=True, host='0.0.0.0', port=5000)

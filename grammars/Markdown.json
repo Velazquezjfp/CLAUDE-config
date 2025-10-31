@@ -1,0 +1,46 @@
+{
+  "name": "Markdown",
+  "description": "Grammar for Markdown documentation files",
+  "file_extensions": [".md", ".markdown"],
+  "entity_types": {
+    "heading": {
+      "pattern": "^#{1,6}\\s+(.+)$",
+      "description": "Markdown heading (H1-H6)"
+    },
+    "code_block": {
+      "pattern": "```(\\w+)?\\s*$",
+      "description": "Fenced code block with optional language"
+    },
+    "link": {
+      "pattern": "\\[([^\\]]+)\\]\\(([^)]+)\\)",
+      "description": "Markdown link with text and URL"
+    },
+    "image": {
+      "pattern": "!\\[([^\\]]*)\\]\\(([^)]+)\\)",
+      "description": "Markdown image with alt text and source"
+    },
+    "list_item": {
+      "pattern": "^\\s*[-*+]\\s+(.+)$",
+      "description": "Unordered list item"
+    },
+    "numbered_item": {
+      "pattern": "^\\s*\\d+\\.\\s+(.+)$",
+      "description": "Ordered list item"
+    },
+    "table": {
+      "pattern": "^\\|(.+)\\|$",
+      "description": "Markdown table row"
+    }
+  },
+  "relation_types": {
+    "links_to": {
+      "description": "Document links to another resource"
+    },
+    "contains": {
+      "description": "Heading or section contains content"
+    },
+    "references": {
+      "description": "Code block references source code or API"
+    }
+  }
+}

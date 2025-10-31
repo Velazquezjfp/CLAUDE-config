@@ -1,0 +1,247 @@
+import { useState, useEffect } from 'react';
+import { getConstraints, updateConstraints } from '../services/api';
+import { Save } from 'lucide-react';
+
+export default function ConstraintsPage() {
+  const [constraints, setConstraints] = useState({
+    max_daily_hours: 12,
+    max_weekly_hours: 48,
+    min_rest_hours: 11,
+    night_shift_start: '23:00',
+    night_shift_end: '06:00',
+    team_cohesion_percentage: 70,
+    max_travel_time_minutes: 120
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    fetchConstraints();
+  }, []);
+
+  const fetchConstraints = async () => {
+    setLoading(true);
+    try {
+      const response = await getConstraints();
+      setConstraints(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch constraints:', error);
+      setMessage({ type: 'error', text: 'Failed to load constraints' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setConstraints(prev => ({ ...prev, [field]: value }));
+    setMessage(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      await updateConstraints(constraints);
+      setMessage({ type: 'success', text: 'Constraints updated successfully!' });
+    } catch (error) {
+      console.error('Failed to update constraints:', error);
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to update constraints' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Loading constraints...
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Legal Constraints</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Configure Swiss Labor Law parameters for the optimization solver
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow">
+        <div className="p-6 space-y-6">
+          {/* Working Hours */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Working Hours</h3>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Daily Hours
+                </label>
+                <input
+                  type="number"
+                  value={constraints.max_daily_hours}
+                  onChange={(e) => handleChange('max_daily_hours', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  min="8"
+                  max="16"
+                />
+                <p className="text-xs text-gray-500 mt-1">Swiss law default: 12h</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Weekly Hours
+                </label>
+                <input
+                  type="number"
+                  value={constraints.max_weekly_hours}
+                  onChange={(e) => handleChange('max_weekly_hours', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  min="40"
+                  max="60"
+                />
+                <p className="text-xs text-gray-500 mt-1">Swiss law default: 48h</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Min Rest Hours
+                </label>
+                <input
+                  type="number"
+                  value={constraints.min_rest_hours}
+                  onChange={(e) => handleChange('min_rest_hours', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  min="8"
+                  max="24"
+                />
+                <p className="text-xs text-gray-500 mt-1">Between shifts</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Night Shift */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Night Shift Hours</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Night Shift Start
+                </label>
+                <input
+                  type="time"
+                  value={constraints.night_shift_start}
+                  onChange={(e) => handleChange('night_shift_start', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Typically 23:00</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Night Shift End
+                </label>
+                <input
+                  type="time"
+                  value={constraints.night_shift_end}
+                  onChange={(e) => handleChange('night_shift_end', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Typically 06:00</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Optimization Parameters */}
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Optimization Parameters</h3>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Team Cohesion Percentage (%)
+                </label>
+                <input
+                  type="number"
+                  value={constraints.team_cohesion_percentage}
+                  onChange={(e) => handleChange('team_cohesion_percentage', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  min="0"
+                  max="100"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Preference for keeping same team together (0-100%)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Travel Time (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={constraints.max_travel_time_minutes}
+                  onChange={(e) => handleChange('max_travel_time_minutes', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  min="30"
+                  max="240"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum travel time per resource per day
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Message */}
+          {message && (
+            <div
+              className={`px-4 py-3 rounded-lg ${
+                message.type === 'success'
+                  ? 'bg-green-50 border border-green-200 text-green-700'
+                  : 'bg-red-50 border border-red-200 text-red-700'
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end space-x-3 rounded-b-lg">
+          <button
+            type="button"
+            onClick={fetchConstraints}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Reset
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="h-4 w-4" />
+            <span>{saving ? 'Saving...' : 'Save Constraints'}</span>
+          </button>
+        </div>
+      </form>
+
+      {/* Information Box */}
+      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="font-semibold text-blue-900 mb-2">Swiss Labor Law Reference</h4>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• Maximum daily working hours: 12 hours (including overtime)</li>
+          <li>• Maximum weekly working hours: 48 hours (50 hours temporary)</li>
+          <li>• Minimum rest period: 11 consecutive hours between shifts</li>
+          <li>• Night work: 23:00 to 06:00 (requires special authorization)</li>
+        </ul>
+      </div>
+    </div>
+  );
+}

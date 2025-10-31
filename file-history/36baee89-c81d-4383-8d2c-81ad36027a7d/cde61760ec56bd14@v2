@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""
+Test Case Setup Script
+Sets up different request scenarios to test constraint system validation.
+"""
+import sys
+import sqlite3
+from datetime import date, timedelta
+
+def get_test_dates():
+    """Get test dates for next week (Monday-Friday)."""
+    today = date.today()
+    # Find next Monday
+    days_ahead = 0 - today.weekday()  # Monday = 0
+    if days_ahead <= 0:
+        days_ahead += 7
+    next_monday = today + timedelta(days_ahead)
+
+    return {
+        'mon': next_monday.isoformat(),
+        'tue': (next_monday + timedelta(days=1)).isoformat(),
+        'wed': (next_monday + timedelta(days=2)).isoformat(),
+        'thu': (next_monday + timedelta(days=3)).isoformat(),
+        'fri': (next_monday + timedelta(days=4)).isoformat(),
+    }
+
+def clear_all_requests(cursor):
+    """Clear all existing requests and their qualifications."""
+    cursor.execute('DELETE FROM request_qualifications')
+    cursor.execute('DELETE FROM requests')
+    print("✓ Cleared all existing requests")
+
+def add_request(cursor, req_id, start_date, start_time, duration, people, location, description, qualifications):
+    """Add a single request with qualifications."""
+    cursor.execute('''
+        INSERT INTO requests (id, location, start_date, start_time, duration_hours, people_needed, description)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (req_id, location, start_date, start_time, duration, people, description))
+
+    for qual in qualifications:
+        cursor.execute('''
+            INSERT INTO request_qualifications (request_id, qualification)
+            VALUES (?, ?)
+        ''', (req_id, qual))
+
+    print(f"  Added {req_id}: {location}, {start_date} {start_time}, {duration}h, {people} people")
+    print(f"    Qualifications: {', '.join(qualifications)}")
+
+def setup_test_case_1(conn):
+    """
+    TEST CASE 1: Normal Week Schedule (FEASIBLE)
+    Purpose: Baseline test - should always work
+
+    5 requests across the week, reasonable durations, common qualifications
+    """
+    print("\n" + "="*80)
+    print("SETTING UP TEST CASE 1: Normal Week Schedule")
+    print("="*80)
+
+    cursor = conn.cursor()
+    clear_all_requests(cursor)
+
+    dates = get_test_dates()
+
+    requests = [
+        ('TC1-REQ1', dates['mon'], '08:00', 6.0, 2, 'Bern', 'Track maintenance - Bern station',
+         ['safety_officer', 'track_maintenance']),
+        ('TC1-REQ2', dates['tue'], '08:00', 6.0, 2, 'Zurich', 'Track maintenance - Zurich HB',
+         ['safety_officer', 'track_maintenance']),
+        ('TC1-REQ3', dates['wed'], '08:00', 6.0, 2, 'Lausanne', 'Track inspection',
+         ['safety_officer', 'track_maintenance']),
+        ('TC1-REQ4', dates['thu'], '08:00', 6.0, 2, 'Bern', 'Electrical systems check',
+         ['electrical_systems', 'safety_officer']),
+        ('TC1-REQ5', dates['fri'], '08:00', 6.0, 2, 'Zurich', 'Signal maintenance',
+         ['electrical_systems', 'safety_officer']),
+    ]
+
+    for req in requests:
+        add_request(cursor, *req)
+
+    conn.commit()
+
+    print("\n✓ TEST CASE 1 SETUP COMPLETE")
+    print("  Expected: FEASIBLE with any reasonable constraints")
+    print("  Test with: objective='both', max_travel=120min")
+
+def setup_test_case_2(conn):
+    """
+    TEST CASE 2: Travel Constraint Test (FEASIBLE)
+    Purpose: Validate max_travel_time constraint works
+
+    Requests at various distances to test travel filtering
+    """
+    print("\n" + "="*80)
+    print("SETTING UP TEST CASE 2: Travel Constraint Test")
+    print("="*80)
+
+    cursor = conn.cursor()
+    clear_all_requests(cursor)
+
+    dates = get_test_dates()
+
+    requests = [
+        ('TC2-REQ1', dates['mon'], '08:00', 5.0, 2, 'Bern', 'Central location task',
+         ['safety_officer']),
+        ('TC2-REQ2', dates['mon'], '09:00', 5.0, 2, 'Zurich', 'Close to Bern',
+         ['safety_officer']),
+        ('TC2-REQ3', dates['mon'], '10:00', 5.0, 2, 'Lugano', 'Very far south',
+         ['safety_officer']),
+        ('TC2-REQ4', dates['tue'], '08:00', 5.0, 2, 'Montreux', 'Very far west',
+         ['safety_officer']),
+        ('TC2-REQ5', dates['tue'], '09:00', 5.0, 2, 'Bern', 'Back to central',
+         ['safety_officer']),
+    ]
+
+    for req in requests:
+        add_request(cursor, *req)
+
+    conn.commit()
+
+    print("\n✓ TEST CASE 2 SETUP COMPLETE")
+    print("  Test A: max_travel=300min → Should use distant resources if needed")
+    print("  Test B: max_travel=60min → Should only use nearby resources")
+    print("  Expected: Different assignments and costs between A and B")
+
+def setup_test_case_3(conn):
+    """
+    TEST CASE 3: Daily Hours Limit Test (FEASIBLE)
+    Purpose: Validate max_daily_hours impacts solution
+
+    Multiple requests same day to test daily hour limits
+    """
+    print("\n" + "="*80)
+    print("SETTING UP TEST CASE 3: Daily Hours Limit Test")
+    print("="*80)
+
+    cursor = conn.cursor()
+    clear_all_requests(cursor)
+
+    dates = get_test_dates()
+
+    requests = [
+        ('TC3-REQ1', dates['mon'], '08:00', 7.0, 3, 'Bern', 'Morning shift - 7 hours',
+         ['safety_officer']),
+        ('TC3-REQ2', dates['mon'], '16:00', 4.0, 2, 'Bern', 'Afternoon shift - 4 hours (same day!)',
+         ['safety_officer']),
+        ('TC3-REQ3', dates['tue'], '08:00', 7.0, 3, 'Zurich', 'Tuesday work',
+         ['safety_officer']),
+    ]
+
+    for req in requests:
+        add_request(cursor, *req)
+
+    conn.commit()
+
+    print("\n✓ TEST CASE 3 SETUP COMPLETE")
+    print("  Test A: max_daily_hours=12 → Same resource can do REQ1+REQ2 (7h+4h+travel)")
+    print("  Test B: max_daily_hours=8 → Requires different resources for REQ1 and REQ2")
+    print("  Expected: Config A reuses resources (lower cost), Config B uses more resources")
+
+def setup_test_case_4(conn):
+    """
+    TEST CASE 4: Over-Constrained Scenario (INFEASIBLE)
+    Purpose: Demonstrate system identifies impossible situations
+
+    Requires more qualified resources than exist simultaneously
+    """
+    print("\n" + "="*80)
+    print("SETTING UP TEST CASE 4: Over-Constrained (INFEASIBLE)")
+    print("="*80)
+
+    cursor = conn.cursor()
+    clear_all_requests(cursor)
+
+    dates = get_test_dates()
+
+    # All on same day with strict qualification requirements
+    requests = [
+        ('TC4-REQ1', dates['mon'], '08:00', 8.0, 4, 'Lugano', 'Specialized team needed',
+         ['safety_officer', 'heavy_equipment', 'welding', 'track_maintenance']),
+        ('TC4-REQ2', dates['mon'], '09:00', 8.0, 4, 'Montreux', 'Another specialized team',
+         ['safety_officer', 'heavy_equipment', 'welding', 'track_maintenance']),
+        ('TC4-REQ3', dates['mon'], '10:00', 8.0, 4, 'Bellinzona', 'Third specialized team',
+         ['safety_officer', 'heavy_equipment', 'welding', 'track_maintenance']),
+    ]
+
+    for req in requests:
+        add_request(cursor, *req)
+
+    conn.commit()
+
+    print("\n✓ TEST CASE 4 SETUP COMPLETE")
+    print("  Why INFEASIBLE:")
+    print("    - Requires 12 people total with ALL 4 qualifications")
+    print("    - Only ~7 resources have all 4: heavy_equipment+welding+track_maintenance+safety")
+    print("    - Travel distances exceed max_travel (Lugano-Montreux: 316 min)")
+    print("  Expected: NO FEASIBLE SOLUTION")
+    print("  Frontend should show: Clear error message with diagnostics")
+
+def main():
+    """Main entry point."""
+    if len(sys.argv) < 2:
+        print("Usage: python setup_test_case.py <case_number>")
+        print("  case_number: 1, 2, 3, or 4")
+        print()
+        print("Test Cases:")
+        print("  1 - Normal Week Schedule (FEASIBLE baseline)")
+        print("  2 - Travel Constraint Test (FEASIBLE with different configs)")
+        print("  3 - Daily Hours Limit Test (FEASIBLE with different configs)")
+        print("  4 - Over-Constrained (INFEASIBLE)")
+        sys.exit(1)
+
+    case_num = sys.argv[1]
+
+    conn = sqlite3.connect('database/cff_scheduler.db')
+
+    try:
+        if case_num == '1':
+            setup_test_case_1(conn)
+        elif case_num == '2':
+            setup_test_case_2(conn)
+        elif case_num == '3':
+            setup_test_case_3(conn)
+        elif case_num == '4':
+            setup_test_case_4(conn)
+        else:
+            print(f"Error: Invalid case number '{case_num}'. Use 1, 2, 3, or 4.")
+            sys.exit(1)
+
+    finally:
+        conn.close()
+
+    print("\n" + "="*80)
+    print("✅ DATABASE UPDATED - Ready to test from frontend")
+    print("="*80)
+    print("\nNext steps:")
+    print("  1. Go to frontend 'Run Solver' page")
+    print("  2. Configure solver settings as specified above")
+    print("  3. Run solver and observe results")
+    print("  4. Check logs: tail -f logs/solver_*.log")
+    print()
+
+if __name__ == '__main__':
+    main()

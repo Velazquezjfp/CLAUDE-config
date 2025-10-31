@@ -1,0 +1,363 @@
+"""
+Infeasibility diagnosis for CFF scheduling problem.
+When no solution exists, identifies which resources are missing.
+"""
+from typing import Dict, List, Set, Tuple
+from collections import defaultdict
+from data_models import Resource, Request, ProblemData
+from helpers import (
+    calculate_total_work_time,
+    get_request_time_window,
+    time_windows_overlap,
+    check_daily_rest_period
+)
+
+
+class InfeasibilityAnalyzer:
+    """Analyzes why a scheduling problem is infeasible."""
+
+    def __init__(self, problem_data: ProblemData):
+        self.data = problem_data
+
+    def analyze(self) -> Dict:
+        """
+        Perform comprehensive infeasibility analysis.
+
+        Returns:
+            Dictionary with diagnostic information and recommendations
+        """
+        print("\n" + "=" * 60)
+        print("INFEASIBILITY ANALYSIS")
+        print("=" * 60)
+
+        issues = {
+            'qualification_gaps': self._analyze_qualification_gaps(),
+            'capacity_shortfalls': self._analyze_capacity_shortfalls(),
+            'geographic_gaps': self._analyze_geographic_coverage(),
+            'temporal_conflicts': self._analyze_temporal_conflicts(),
+            'contract_type_issues': self._analyze_contract_types(),
+            'recommendations': []
+        }
+
+        # Generate recommendations
+        issues['recommendations'] = self._generate_recommendations(issues)
+
+        return issues
+
+    def _analyze_qualification_gaps(self) -> List[Dict]:
+        """Identify requests that lack sufficient qualified workers."""
+        print("\nAnalyzing qualification gaps...")
+
+        gaps = []
+
+        for request in self.data.requests:
+            # Count available qualified workers (considering holidays)
+            qualified_count = 0
+            available_resources = []
+
+            for resource in self.data.resources:
+                if (resource.has_qualifications(request.required_qualifications) and
+                        resource.is_available(request.start_date)):
+                    qualified_count += 1
+                    available_resources.append(resource.id)
+
+            if qualified_count < request.people_needed:
+                gap = {
+                    'request_id': request.id,
+                    'location': request.location,
+                    'date': str(request.start_date),
+                    'required_qualifications': sorted(list(request.required_qualifications)),
+                    'people_needed': request.people_needed,
+                    'qualified_available': qualified_count,
+                    'shortage': request.people_needed - qualified_count,
+                    'available_resources': available_resources
+                }
+                gaps.append(gap)
+                print(f"  ✗ {request.id}: Need {request.people_needed}, "
+                      f"only {qualified_count} qualified & available")
+
+        if not gaps:
+            print("  ✓ All requests have sufficient qualified workers")
+
+        return gaps
+
+    def _analyze_capacity_shortfalls(self) -> List[Dict]:
+        """Identify time periods with insufficient overall capacity."""
+        print("\nAnalyzing capacity shortfalls...")
+
+        shortfalls = []
+        planning_days = self.data.get_planning_days()
+
+        for day in planning_days:
+            # Get all requests on this day
+            day_requests = [r for r in self.data.requests if r.start_date == day]
+
+            if not day_requests:
+                continue
+
+            # Calculate total people needed
+            total_needed = sum(r.people_needed for r in day_requests)
+
+            # Count available resources on this day
+            available_count = sum(
+                1 for r in self.data.resources if r.is_available(day)
+            )
+
+            if total_needed > available_count:
+                shortfall = {
+                    'date': str(day),
+                    'requests': [r.id for r in day_requests],
+                    'total_people_needed': total_needed,
+                    'available_resources': available_count,
+                    'shortage': total_needed - available_count
+                }
+                shortfalls.append(shortfall)
+                print(f"  ✗ {day}: Need {total_needed} people, "
+                      f"only {available_count} available")
+
+        if not shortfalls:
+            print("  ✓ Sufficient capacity on all days")
+
+        return shortfalls
+
+    def _analyze_geographic_coverage(self) -> List[Dict]:
+        """Identify locations with poor resource coverage."""
+        print("\nAnalyzing geographic coverage...")
+
+        # Count resources by home location
+        resources_by_location = defaultdict(list)
+        for resource in self.data.resources:
+            resources_by_location[resource.home_location].append(resource)
+
+        # Analyze each request location
+        gaps = []
+
+        for request in self.data.requests:
+            location = request.location
+
+            # Find closest resource locations
+            nearby_resources = []
+            for resource in self.data.resources:
+                distance = self.data.distance_matrix.get_distance(
+                    resource.home_location,
+                    location
+                )
+                if distance <= 100:  # Within 100km
+                    nearby_resources.append((resource.id, distance))
+
+            if len(nearby_resources) < request.people_needed:
+                gap = {
+                    'request_id': request.id,
+                    'location': location,
+                    'people_needed': request.people_needed,
+                    'nearby_resources': len(nearby_resources),
+                    'shortage': request.people_needed - len(nearby_resources)
+                }
+                gaps.append(gap)
+                print(f"  ✗ {location}: Need {request.people_needed} workers, "
+                      f"only {len(nearby_resources)} within 100km")
+
+        if not gaps:
+            print("  ✓ Adequate geographic coverage for all locations")
+
+        return gaps
+
+    def _analyze_temporal_conflicts(self) -> List[Dict]:
+        """Identify time periods with overlapping requests that create conflicts."""
+        print("\nAnalyzing temporal conflicts...")
+
+        conflicts = []
+
+        # Find all overlapping request pairs
+        for i, req1 in enumerate(self.data.requests):
+            for req2 in self.data.requests[i + 1:]:
+                # Check if requests overlap temporally
+                if req1.start_date != req2.start_date:
+                    continue
+
+                # Get time ranges
+                start1 = req1.get_start_datetime()
+                end1 = req1.get_end_datetime()
+                start2 = req2.get_start_datetime()
+                end2 = req2.get_end_datetime()
+
+                if time_windows_overlap((start1, end1), (start2, end2)):
+                    # Count resources that could serve either (considering qualifications)
+                    eligible_for_both = []
+                    for resource in self.data.resources:
+                        if (resource.has_qualifications(req1.required_qualifications) and
+                                resource.has_qualifications(req2.required_qualifications) and
+                                resource.is_available(req1.start_date)):
+                            eligible_for_both.append(resource.id)
+
+                    total_needed = req1.people_needed + req2.people_needed
+                    if len(eligible_for_both) < total_needed:
+                        conflict = {
+                            'request_1': req1.id,
+                            'request_2': req2.id,
+                            'date': str(req1.start_date),
+                            'total_people_needed': total_needed,
+                            'eligible_resources': len(eligible_for_both),
+                            'shortage': total_needed - len(eligible_for_both)
+                        }
+                        conflicts.append(conflict)
+                        print(f"  ✗ {req1.id} & {req2.id} overlap: "
+                              f"Need {total_needed}, only {len(eligible_for_both)} eligible")
+
+        if not conflicts:
+            print("  ✓ No problematic temporal conflicts")
+
+        return conflicts
+
+    def _analyze_contract_types(self) -> List[Dict]:
+        """Identify night shift requests that lack mixed-contract workers."""
+        print("\nAnalyzing contract type coverage...")
+
+        issues = []
+
+        for request in self.data.requests:
+            if request.overlaps_night_shift(
+                    self.data.legal_constraints.night_shift_start,
+                    self.data.legal_constraints.night_shift_end
+            ):
+                # Count available mixed-contract workers
+                mixed_workers = [
+                    r for r in self.data.resources
+                    if r.can_work_night_shift() and
+                       r.has_qualifications(request.required_qualifications) and
+                       r.is_available(request.start_date)
+                ]
+
+                if len(mixed_workers) < request.people_needed:
+                    issue = {
+                        'request_id': request.id,
+                        'location': request.location,
+                        'date': str(request.start_date),
+                        'people_needed': request.people_needed,
+                        'mixed_workers_available': len(mixed_workers),
+                        'shortage': request.people_needed - len(mixed_workers)
+                    }
+                    issues.append(issue)
+                    print(f"  ✗ {request.id} (night shift): Need {request.people_needed}, "
+                          f"only {len(mixed_workers)} mixed-contract workers available")
+
+        if not issues:
+            print("  ✓ Adequate contract type coverage")
+
+        return issues
+
+    def _generate_recommendations(self, issues: Dict) -> List[str]:
+        """Generate actionable recommendations based on identified issues."""
+        print("\nGenerating recommendations...")
+
+        recommendations = []
+
+        # Qualification gaps
+        if issues['qualification_gaps']:
+            missing_quals = set()
+            for gap in issues['qualification_gaps']:
+                missing_quals.update(gap['required_qualifications'])
+
+            recommendations.append(
+                f"QUALIFICATION GAPS: Hire or train workers with skills: "
+                f"{', '.join(sorted(missing_quals))}"
+            )
+
+        # Capacity shortfalls
+        if issues['capacity_shortfalls']:
+            max_shortage = max(s['shortage'] for s in issues['capacity_shortfalls'])
+            dates = [s['date'] for s in issues['capacity_shortfalls']]
+
+            recommendations.append(
+                f"CAPACITY SHORTFALL: Add {max_shortage} more workers for dates: "
+                f"{', '.join(dates)}"
+            )
+
+        # Geographic gaps
+        if issues['geographic_gaps']:
+            remote_locations = set(g['location'] for g in issues['geographic_gaps'])
+
+            recommendations.append(
+                f"GEOGRAPHIC GAPS: Establish teams or hire workers near: "
+                f"{', '.join(sorted(remote_locations))}"
+            )
+
+        # Contract type issues
+        if issues['contract_type_issues']:
+            night_shortage = sum(i['shortage'] for i in issues['contract_type_issues'])
+
+            recommendations.append(
+                f"NIGHT SHIFT COVERAGE: Hire {night_shortage} more workers with "
+                f"'mixed' or 'night' contract types"
+            )
+
+        # Temporal conflicts
+        if issues['temporal_conflicts']:
+            recommendations.append(
+                "TEMPORAL CONFLICTS: Consider rescheduling overlapping requests "
+                "or hiring additional workers for peak periods"
+            )
+
+        if not recommendations:
+            recommendations.append("No critical issues identified. Problem may be infeasible "
+                                   "due to complex constraint interactions.")
+
+        print("\nRecommendations:")
+        for i, rec in enumerate(recommendations, 1):
+            print(f"  {i}. {rec}")
+
+        return recommendations
+
+    def print_report(self, issues: Dict):
+        """Print comprehensive infeasibility report."""
+        print("\n" + "=" * 60)
+        print("INFEASIBILITY DIAGNOSTIC REPORT")
+        print("=" * 60)
+
+        # Summary
+        total_issues = (
+                len(issues['qualification_gaps']) +
+                len(issues['capacity_shortfalls']) +
+                len(issues['geographic_gaps']) +
+                len(issues['temporal_conflicts']) +
+                len(issues['contract_type_issues'])
+        )
+
+        print(f"\nTotal issues identified: {total_issues}")
+
+        # Detailed breakdown
+        if issues['qualification_gaps']:
+            print(f"\n1. QUALIFICATION GAPS ({len(issues['qualification_gaps'])} requests affected)")
+            for gap in issues['qualification_gaps']:
+                print(f"   - {gap['request_id']}: Short {gap['shortage']} workers with "
+                      f"{', '.join(gap['required_qualifications'])}")
+
+        if issues['capacity_shortfalls']:
+            print(f"\n2. CAPACITY SHORTFALLS ({len(issues['capacity_shortfalls'])} days affected)")
+            for shortfall in issues['capacity_shortfalls']:
+                print(f"   - {shortfall['date']}: Short {shortfall['shortage']} workers")
+
+        if issues['geographic_gaps']:
+            print(f"\n3. GEOGRAPHIC GAPS ({len(issues['geographic_gaps'])} locations affected)")
+            for gap in issues['geographic_gaps']:
+                print(f"   - {gap['location']}: Short {gap['shortage']} nearby workers")
+
+        if issues['contract_type_issues']:
+            print(f"\n4. CONTRACT TYPE ISSUES ({len(issues['contract_type_issues'])} night shifts affected)")
+            for issue in issues['contract_type_issues']:
+                print(f"   - {issue['request_id']}: Short {issue['shortage']} mixed-contract workers")
+
+        if issues['temporal_conflicts']:
+            print(f"\n5. TEMPORAL CONFLICTS ({len(issues['temporal_conflicts'])} conflicts)")
+            for conflict in issues['temporal_conflicts']:
+                print(f"   - {conflict['request_1']} & {conflict['request_2']}: "
+                      f"Short {conflict['shortage']} workers")
+
+        # Recommendations
+        print("\n" + "-" * 60)
+        print("RECOMMENDATIONS:")
+        print("-" * 60)
+        for i, rec in enumerate(issues['recommendations'], 1):
+            print(f"{i}. {rec}")
+
+        print("\n" + "=" * 60)

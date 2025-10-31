@@ -1,0 +1,299 @@
+"""
+Helper functions for CFF scheduling problem.
+Handles travel time calculations, time windows, and overlap detection.
+"""
+from datetime import datetime, timedelta
+from typing import Tuple, List
+from data_models import Resource, Request, ProblemData
+
+
+def calculate_travel_time(
+    from_location: str,
+    to_location: str,
+    distance_matrix,
+    avg_speed_kmh: float = 80.0
+) -> float:
+    """
+    Calculate one-way travel time in hours between two locations.
+
+    Args:
+        from_location: Starting location
+        to_location: Destination location
+        distance_matrix: DistanceMatrix object
+        avg_speed_kmh: Average travel speed in km/h (default 80 km/h)
+
+    Returns:
+        Travel time in hours (one-way)
+    """
+    distance_km = distance_matrix.get_distance(from_location, to_location)
+    return distance_km / avg_speed_kmh
+
+
+def calculate_round_trip_travel_time(
+    from_location: str,
+    to_location: str,
+    distance_matrix,
+    avg_speed_kmh: float = 80.0
+) -> float:
+    """Calculate round-trip travel time in hours."""
+    return 2 * calculate_travel_time(from_location, to_location, distance_matrix, avg_speed_kmh)
+
+
+def get_request_time_window(
+    resource: Resource,
+    request: Request,
+    distance_matrix,
+    include_travel: bool = True
+) -> Tuple[datetime, datetime]:
+    """
+    Get the complete time window for a resource to complete a request.
+    Includes travel time from resource's home location to work site.
+
+    Args:
+        resource: The worker
+        request: The work request
+        distance_matrix: DistanceMatrix object
+        include_travel: Whether to include travel time in window
+
+    Returns:
+        (start_datetime, end_datetime) tuple
+    """
+    request_start = request.get_start_datetime()
+    request_end = request.get_end_datetime()
+
+    if not include_travel:
+        return request_start, request_end
+
+    # Calculate travel time
+    travel_time_hours = calculate_travel_time(
+        resource.home_location,
+        request.location,
+        distance_matrix
+    )
+    travel_delta = timedelta(hours=travel_time_hours)
+
+    # Resource must leave home early enough to arrive on time
+    window_start = request_start - travel_delta
+    # Resource returns home after work
+    window_end = request_end + travel_delta
+
+    return window_start, window_end
+
+
+def time_windows_overlap(
+    window1: Tuple[datetime, datetime],
+    window2: Tuple[datetime, datetime]
+) -> bool:
+    """
+    Check if two time windows overlap.
+
+    Args:
+        window1: (start, end) tuple
+        window2: (start, end) tuple
+
+    Returns:
+        True if windows overlap, False otherwise
+    """
+    start1, end1 = window1
+    start2, end2 = window2
+    # No overlap if one ends before the other starts
+    return not (end1 <= start2 or end2 <= start1)
+
+
+def calculate_total_work_time(
+    resource: Resource,
+    request: Request,
+    distance_matrix,
+    legal_constraints,
+    include_travel: bool = True
+) -> float:
+    """
+    Calculate total work time for a resource on a request, including:
+    - Request duration
+    - Travel time (if configured)
+    - Mandatory break (if work > 5 hours)
+
+    Args:
+        resource: The worker
+        request: The work request
+        distance_matrix: DistanceMatrix object
+        legal_constraints: LegalConstraints object
+        include_travel: Whether to include travel time
+
+    Returns:
+        Total work time in hours
+    """
+    total_hours = request.duration_hours
+
+    # Add travel time if configured
+    if include_travel and legal_constraints.travel_time_counts_as_work:
+        travel_time = calculate_round_trip_travel_time(
+            resource.home_location,
+            request.location,
+            distance_matrix
+        )
+        total_hours += travel_time
+
+    # Add mandatory break if work exceeds threshold
+    if total_hours > legal_constraints.mandatory_break_after_hours:
+        break_hours = legal_constraints.mandatory_break_duration_minutes / 60.0
+        total_hours += break_hours
+
+    return total_hours
+
+
+def get_requests_on_date(requests: List[Request], check_date) -> List[Request]:
+    """Get all requests that occur on a specific date."""
+    return [req for req in requests if req.start_date == check_date]
+
+
+def check_daily_rest_period(
+    end_time1: datetime,
+    start_time2: datetime,
+    min_rest_hours: int
+) -> bool:
+    """
+    Check if there is sufficient rest time between two work periods.
+
+    Args:
+        end_time1: End of first work period
+        start_time2: Start of second work period
+        min_rest_hours: Minimum required rest hours
+
+    Returns:
+        True if rest period is sufficient, False otherwise
+    """
+    rest_period = start_time2 - end_time1
+    return rest_period >= timedelta(hours=min_rest_hours)
+
+
+def find_overlapping_request_pairs(
+    resource: Resource,
+    requests: List[Request],
+    distance_matrix
+) -> List[Tuple[Request, Request]]:
+    """
+    Find all pairs of requests that would overlap for a given resource
+    (considering travel time).
+
+    Args:
+        resource: The worker
+        requests: List of all requests
+        distance_matrix: DistanceMatrix object
+
+    Returns:
+        List of (request1, request2) tuples that overlap
+    """
+    overlapping_pairs = []
+
+    for i, req1 in enumerate(requests):
+        window1 = get_request_time_window(resource, req1, distance_matrix)
+
+        for req2 in requests[i + 1:]:
+            window2 = get_request_time_window(resource, req2, distance_matrix)
+
+            if time_windows_overlap(window1, window2):
+                overlapping_pairs.append((req1, req2))
+
+    return overlapping_pairs
+
+
+def calculate_team_cohesion_score(
+    assigned_resources: List[Resource]
+) -> float:
+    """
+    Calculate team cohesion score for a group of assigned resources.
+    Higher score if more resources are from the same team.
+
+    Args:
+        assigned_resources: List of resources assigned to a request
+
+    Returns:
+        Cohesion score (0.0 to 1.0)
+    """
+    if not assigned_resources:
+        return 0.0
+
+    # Count resources by team
+    team_counts = {}
+    for resource in assigned_resources:
+        team_counts[resource.team] = team_counts.get(resource.team, 0) + 1
+
+    # Score is based on largest team representation
+    max_team_size = max(team_counts.values())
+    total_resources = len(assigned_resources)
+
+    return max_team_size / total_resources
+
+
+def get_consecutive_workday_windows(
+    planning_days: List,
+    max_window_size: int = 7
+) -> List[List]:
+    """
+    Generate all consecutive day windows for checking max consecutive workdays constraint.
+
+    Args:
+        planning_days: List of dates in planning period
+        max_window_size: Maximum window size to check
+
+    Returns:
+        List of day windows (each window is a list of consecutive dates)
+    """
+    windows = []
+    for window_size in range(2, min(max_window_size + 1, len(planning_days) + 1)):
+        for start_idx in range(len(planning_days) - window_size + 1):
+            window = planning_days[start_idx:start_idx + window_size]
+            windows.append(window)
+    return windows
+
+
+def calculate_assignment_cost(
+    resource: Resource,
+    request: Request,
+    distance_matrix,
+    legal_constraints
+) -> float:
+    """
+    Calculate total cost for assigning a resource to a request.
+
+    Cost = resource.cost_per_hour × total_work_hours
+
+    Args:
+        resource: The worker
+        request: The work request
+        distance_matrix: DistanceMatrix object
+        legal_constraints: LegalConstraints object
+
+    Returns:
+        Total cost in CHF for this assignment
+    """
+    work_hours = calculate_total_work_time(
+        resource,
+        request,
+        distance_matrix,
+        legal_constraints
+    )
+    return resource.cost_per_hour * work_hours
+
+
+def calculate_travel_time_minutes(
+    from_location: str,
+    to_location: str,
+    distance_matrix,
+    avg_speed_kmh: float = 80.0
+) -> float:
+    """
+    Calculate one-way travel time in minutes.
+
+    Args:
+        from_location: Starting location
+        to_location: Destination location
+        distance_matrix: DistanceMatrix object
+        avg_speed_kmh: Average travel speed in km/h
+
+    Returns:
+        Travel time in minutes (one-way)
+    """
+    hours = calculate_travel_time(from_location, to_location, distance_matrix, avg_speed_kmh)
+    return hours * 60.0

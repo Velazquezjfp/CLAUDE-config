@@ -1,0 +1,31 @@
+{
+  "name": "JSON",
+  "description": "Grammar for JSON (JavaScript Object Notation) files",
+  "file_extensions": [".json", ".jsonc"],
+  "entity_types": {
+    "object": {
+      "pattern": "\"([^\"]+)\"\\s*:\\s*\\{",
+      "description": "JSON object with properties"
+    },
+    "array": {
+      "pattern": "\"([^\"]+)\"\\s*:\\s*\\[",
+      "description": "JSON array field"
+    },
+    "property": {
+      "pattern": "\"([^\"]+)\"\\s*:\\s*(?:\"[^\"]*\"|\\d+|true|false|null)",
+      "description": "JSON property with primitive value"
+    },
+    "root_property": {
+      "pattern": "^\\s*\"([^\"]+)\"\\s*:",
+      "description": "Top-level JSON property"
+    }
+  },
+  "relation_types": {
+    "contains": {
+      "description": "Object or array contains another element"
+    },
+    "references": {
+      "description": "Property references another value (e.g., file paths, IDs)"
+    }
+  }
+}

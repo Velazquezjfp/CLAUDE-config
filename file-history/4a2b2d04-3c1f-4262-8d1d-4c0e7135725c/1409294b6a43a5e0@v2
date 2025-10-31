@@ -1,0 +1,465 @@
+# CFF Scheduling: Variables and Constraints Reference
+
+Complete reference of all variables and constraints parsed from mock_data.json and implemented in the solver.
+
+---
+
+## DECISION VARIABLES
+
+### Primary Variables
+
+**x[r, req]** - Binary assignment variable
+```
+x[r, req] ∈ {0, 1}  ∀ r ∈ Resources, req ∈ Requests
+
+Where:
+  1 = resource r is assigned to request req
+  0 = resource r is NOT assigned to request req
+
+Dimensions: 20 resources × 10 requests = 200 variables
+```
+
+### Auxiliary Variables (for constraint enforcement)
+
+**works[r, d]** - Daily work indicator
+```
+works[r, d] ∈ {0, 1}  ∀ r ∈ Resources, d ∈ Days
+
+Where:
+  1 = resource r works on day d
+  0 = resource r does NOT work on day d
+
+Dimensions: 20 resources × 6 days = 120 variables
+```
+
+**hours[r, d]** - Daily work hours (scaled by 100)
+```
+hours[r, d] ∈ [0, 1000]  ∀ r ∈ Resources, d ∈ Days
+
+Where:
+  hours[r, d] = total work hours on day d (scaled: actual hours × 100)
+  Example: 8.5 hours = 850
+
+Dimensions: 20 resources × 6 days = 120 variables
+```
+
+**Total Variables**: 200 + 120 + 120 = **440 variables**
+
+---
+
+## PARAMETERS (Input Data)
+
+### Resources (20 workers)
+
+```python
+Resources = {
+  R001: {team: "blue", location: "Bern", qualifications: {track_maintenance, safety_officer, team_leader}},
+  R002: {team: "blue", location: "Bern", qualifications: {track_maintenance, welding}},
+  R003: {team: "blue", location: "Bern", qualifications: {electrical_systems, signaling}},
+  ...
+  R020: {team: "purple", location: "Lugano", qualifications: {welding, track_maintenance, safety_officer}}
+}
+```
+
+Parsed attributes per resource:
+- **id**: String identifier (R001-R020)
+- **name**: Worker name
+- **team**: Team membership {blue, orange, red, purple}
+- **home_location**: Base station from {Bern, Lausanne, Zurich, Lugano, Fribourg, Winterthur, Bellinzona}
+- **qualifications**: Set of skills
+- **contract_type**: {day, mixed} - determines night shift eligibility
+- **weekly_hours**: Integer (all have 42)
+- **holidays**: List of (start_date, end_date) tuples
+
+### Requests (10 maintenance jobs)
+
+```python
+Requests = {
+  REQ001: {location: "Interlaken", date: 2026-02-09, time: 08:00, duration: 8h, people: 3},
+  REQ002: {location: "Montreux", date: 2026-02-09, time: 07:00, duration: 9h, people: 3},
+  ...
+  REQ010: {location: "Montreux", date: 2026-02-14, time: 08:00, duration: 8h, people: 3}
+}
+```
+
+Parsed attributes per request:
+- **id**: String identifier (REQ001-REQ010)
+- **location**: Work site location
+- **start_date**: Date (2026-02-09 to 2026-02-14)
+- **start_time**: Time (07:00 to 14:00)
+- **duration_hours**: Float (5.0 to 10.0)
+- **required_qualifications**: Set of required skills
+- **people_needed**: Integer (2 to 4)
+- **description**: Job description
+
+### Distance Matrix (11 locations)
+
+```python
+Locations = ["Bern", "Lausanne", "Zurich", "Lugano", "Fribourg",
+             "Winterthur", "Interlaken", "Montreux", "St. Gallen",
+             "Bellinzona", "Neuchâtel"]
+
+distance[i][j] = distance in km from location i to location j
+```
+
+Example distances:
+- Bern ↔ Lausanne: 95 km
+- Bern ↔ Zurich: 120 km
+- Zurich ↔ St. Gallen: 80 km
+- Lugano ↔ Bellinzona: 30 km
+
+### Legal Constraints (Swiss LDT)
+
+```python
+Legal = {
+  max_daily_hours: 10,
+  max_weekly_hours: 50,
+  min_daily_rest_hours: 11,
+  min_weekly_rest_hours: 35,
+  max_consecutive_workdays: 6,
+  mandatory_break_after_hours: 5,
+  mandatory_break_duration_minutes: 30,
+  travel_time_counts_as_work: True,
+  night_shift_hours: (23:00, 06:00)
+}
+```
+
+---
+
+## CONSTRAINTS
+
+### 1. Request Fulfillment (10 constraints)
+
+**Mathematical Form**:
+```
+Σ(r ∈ Resources) x[r, req] = req.people_needed  ∀ req ∈ Requests
+```
+
+**Meaning**: Each request must have exactly the required number of workers assigned.
+
+**Example from mock_data.json**:
+```
+REQ001: Σ(r) x[r, REQ001] = 3  (needs 3 workers)
+REQ004: Σ(r) x[r, REQ004] = 4  (needs 4 workers)
+```
+
+**Implementation**: solver.py:58
+
+---
+
+### 2. Qualification Matching (181 constraints)
+
+**Mathematical Form**:
+```
+x[r, req] = 0  if r.qualifications ⊉ req.required_qualifications
+```
+
+**Meaning**: Workers without required skills cannot be assigned.
+
+**Example from mock_data.json**:
+```
+REQ002 requires: {electrical_systems, catenary_work, safety_officer}
+R002 has: {track_maintenance, welding}
+→ x[R002, REQ002] = 0  (R002 lacks electrical_systems, catenary_work, safety_officer)
+```
+
+**Implementation**: solver.py:66
+
+---
+
+### 3. Availability (9 constraints)
+
+**Mathematical Form**:
+```
+x[r, req] = 0  if req.start_date ∈ r.holidays
+```
+
+**Meaning**: Workers on holiday cannot be assigned.
+
+**Example from mock_data.json**:
+```
+R001 holiday: 2026-02-09 to 2026-02-13
+REQ001 date: 2026-02-09
+→ x[R001, REQ001] = 0  (R001 on holiday)
+```
+
+**Implementation**: solver.py:77
+
+---
+
+### 4. Night Shift (0 constraints in this dataset)
+
+**Mathematical Form**:
+```
+x[r, req] = 0  if req overlaps [23:00, 06:00] AND r.contract_type = "day"
+```
+
+**Meaning**: Only "mixed" contract workers can work night shifts.
+
+**Example** (hypothetical):
+```
+REQ_NIGHT: starts 23:30
+R005: contract_type = "day"
+→ x[R005, REQ_NIGHT] = 0  (day workers cannot work nights)
+```
+
+**Implementation**: solver.py:87
+
+---
+
+### 5. Non-Overlap (80 constraints)
+
+**Mathematical Form**:
+```
+x[r, req1] + x[r, req2] ≤ 1  if TimeWindow(r, req1) ∩ TimeWindow(r, req2) ≠ ∅
+```
+
+**Meaning**: Workers cannot be assigned to overlapping requests (including travel time).
+
+**Time Window Calculation**:
+```
+travel_time = distance(r.home, req.location) / 80 km/h
+window_start = req.start_time - travel_time
+window_end = req.end_time + travel_time
+```
+
+**Example from mock_data.json**:
+```
+REQ001: Interlaken, 2026-02-09 08:00-16:00 (8h)
+REQ002: Montreux, 2026-02-09 07:00-16:00 (9h)
+R001 (from Bern):
+  - Travel to Interlaken: 58km / 80 = 0.725h
+  - Window REQ001: 07:16 to 16:44
+  - Travel to Montreux: 110km / 80 = 1.375h
+  - Window REQ002: 05:37 to 17:22
+  - Windows overlap!
+→ x[R001, REQ001] + x[R001, REQ002] ≤ 1
+```
+
+**Implementation**: solver.py:98
+
+---
+
+### 6. Daily Hour Limits (120 constraints)
+
+**Mathematical Form**:
+```
+hours[r, d] ≤ 1000  ∀ r ∈ Resources, d ∈ Days
+
+Where:
+  hours[r, d] = Σ(req on day d) x[r, req] × WorkTime(r, req) × 100
+
+  WorkTime(r, req) = req.duration
+                    + RoundTripTravel(r.home, req.location)
+                    + Break(if WorkTime > 5h, add 0.5h)
+```
+
+**Meaning**: Workers cannot exceed 10 hours work per day (scaled: 1000 = 10.0 hours).
+
+**Example from mock_data.json**:
+```
+R006 on 2026-02-09:
+  If assigned to REQ002 (Montreux):
+    - Duration: 9h
+    - Travel: Lausanne to Montreux = 25km → 25/80 × 2 = 0.625h
+    - Break: WorkTime > 5h → +0.5h
+    - Total: 9 + 0.625 + 0.5 = 10.125h = 1012.5 (scaled)
+    - 1012.5 > 1000 → VIOLATES constraint!
+```
+
+**Implementation**: solver.py:141
+
+---
+
+### 7. Weekly Hour Limits (20 constraints)
+
+**Mathematical Form**:
+```
+Σ(d ∈ Days) hours[r, d] ≤ 5000  ∀ r ∈ Resources
+```
+
+**Meaning**: Workers cannot exceed 50 hours work per week (scaled: 5000 = 50.0 hours).
+
+**Example from mock_data.json**:
+```
+R006 assigned to:
+  - REQ002 (Feb 9): 10.125h
+  - REQ006 (Feb 12): ~9h
+  - REQ008 (Feb 13): ~10h
+  - REQ010 (Feb 14): ~10h
+Total: ~39h < 50h → OK
+```
+
+**Implementation**: solver.py:150
+
+---
+
+### 8. Rest Period (85 constraints)
+
+**Mathematical Form**:
+```
+x[r, req1] + x[r, req2] ≤ 1
+  if req1.date + 1 = req2.date
+  AND EndTime(r, req1) + 11h > StartTime(r, req2)
+```
+
+**Meaning**: Minimum 11 hours rest between consecutive work days.
+
+**Example from mock_data.json**:
+```
+REQ001: Feb 9, ends ~16:00 (work) + 0.725h (travel) = 16:44
+REQ007: Feb 12, starts 13:00 - 0.725h (travel) = 12:16
+
+Not consecutive days, so no constraint needed.
+
+But if REQ_X on Feb 10 started at 05:00:
+  16:44 + 11h = 03:44 (next day)
+  05:00 < 03:44? No → OK
+  But if REQ_X started at 03:00:
+  → x[r, REQ001] + x[r, REQ_X] ≤ 1 (insufficient rest)
+```
+
+**Implementation**: solver.py:163
+
+---
+
+### 9. Mandatory Break (implicit in work time calculation)
+
+**Mathematical Form**:
+```
+If WorkTime(r, req) > 5h:
+  WorkTime(r, req) += 0.5h
+```
+
+**Meaning**: 30-minute break added to work time if shift exceeds 5 hours.
+
+**Example from mock_data.json**:
+```
+REQ002: duration = 9h > 5h
+  → Add 0.5h break
+  → Total = 9 + travel + 0.5
+```
+
+**Implementation**: helpers.py:99
+
+---
+
+### 10. Max Consecutive Workdays (0 constraints for 6-day period)
+
+**Mathematical Form**:
+```
+Σ(d in Window) works[r, d] < |Window|
+  ∀ Windows of size 7+ days
+```
+
+**Meaning**: Cannot work more than 6 consecutive days.
+
+**Why 0 constraints**: Planning period is only 6 days, so no 7+ day windows exist.
+
+**Implementation**: solver.py:183
+
+---
+
+## OBJECTIVE FUNCTION
+
+**Minimize Total Travel Distance**:
+
+```
+Minimize: Σ(r ∈ Resources) Σ(req ∈ Requests)
+            x[r, req] × distance(r.home, req.location) × 100
+```
+
+**Components**:
+- `x[r, req]`: 1 if assigned, 0 otherwise
+- `distance(r.home, req.location)`: Distance in km from distance matrix
+- `× 100`: Scale to integer (CP-SAT requirement)
+
+**Example from mock_data.json**:
+```
+If x[R001, REQ001] = 1:
+  R001 home: Bern
+  REQ001 location: Interlaken
+  Distance: 58 km
+  Contribution: 1 × 58 × 100 = 5800
+
+If x[R006, REQ002] = 1:
+  R006 home: Lausanne
+  REQ002 location: Montreux
+  Distance: 25 km
+  Contribution: 1 × 25 × 100 = 2500
+
+Total objective = Σ all assignments = minimize this sum
+```
+
+**Implementation**: solver.py:197
+
+---
+
+## CONSTRAINT SUMMARY TABLE
+
+| Constraint Type | Count | Solver Method | Location |
+|----------------|-------|---------------|----------|
+| Request Fulfillment | 10 | `model.Add(sum == req.people_needed)` | solver.py:58 |
+| Qualification Matching | 181 | `model.Add(x[r,req] == 0)` | solver.py:66 |
+| Availability (Holiday) | 9 | `model.Add(x[r,req] == 0)` | solver.py:77 |
+| Night Shift | 0 | `model.Add(x[r,req] == 0)` | solver.py:87 |
+| Non-Overlap | 80 | `model.Add(x[r,req1] + x[r,req2] <= 1)` | solver.py:98 |
+| Daily Hour Limits | 120 | `model.Add(hours[r,d] <= 1000)` | solver.py:141 |
+| Weekly Hour Limits | 20 | `model.Add(sum(hours) <= 5000)` | solver.py:150 |
+| Rest Period | 85 | `model.Add(x[r,req1] + x[r,req2] <= 1)` | solver.py:163 |
+| Max Consecutive Days | 0 | `model.Add(sum(works) < window_size)` | solver.py:183 |
+| **TOTAL** | **505** | | |
+
+---
+
+## DATA FLOW DIAGRAM
+
+```
+mock_data.json
+      ↓
+[data_models.py] parse_json_data()
+      ↓
+ProblemData {
+  resources: List[Resource]
+  requests: List[Request]
+  distance_matrix: DistanceMatrix
+  legal_constraints: LegalConstraints
+}
+      ↓
+[solver.py] CFFScheduler
+      ↓
+Create Variables:
+  - x[r,req] (200 binary)
+  - works[r,d] (120 binary)
+  - hours[r,d] (120 integer)
+      ↓
+Add Constraints:
+  - 505 total constraints
+      ↓
+Set Objective:
+  - Minimize Σ travel_distance
+      ↓
+[CP-SAT Solver]
+      ↓
+   Feasible? ──Yes──→ [output_formatter.py] → solution.json
+      ↓
+     No
+      ↓
+[infeasibility_analyzer.py] → solution_diagnosis.json
+```
+
+---
+
+## REFERENCES
+
+**Solver**: Google OR-Tools CP-SAT (v9.14.6206)
+
+**Code Files**:
+- Variables: solver.py:38-125
+- Constraints: solver.py:53-193
+- Objective: solver.py:195-215
+- Parsing: data_models.py:138-217
+
+**Documentation**:
+- Google OR-Tools: https://developers.google.com/optimization
+- CP-SAT Guide: https://developers.google.com/optimization/cp/cp_solver

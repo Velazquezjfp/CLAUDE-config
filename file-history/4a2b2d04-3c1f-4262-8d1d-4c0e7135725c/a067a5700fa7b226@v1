@@ -1,0 +1,276 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getPlanDashboard } from '../services/api';
+import {
+  ArrowLeft, DollarSign, MapPin, Users, Clock,
+  TrendingUp, CheckCircle, XCircle
+} from 'lucide-react';
+
+export default function PlanDetailPage() {
+  const { planId } = useParams();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchPlanDetails();
+  }, [planId]);
+
+  const fetchPlanDetails = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getPlanDashboard(planId);
+      setData(response.data.data);
+    } catch (err) {
+      console.error('Failed to fetch plan details:', err);
+      setError('Failed to load plan details. The plan may not exist or data is incomplete.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Loading plan details...
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="bg-white rounded-lg shadow p-8">
+        <div className="text-center text-red-600 mb-4">{error}</div>
+        <button
+          onClick={() => navigate('/plans')}
+          className="mx-auto flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Plans</span>
+        </button>
+      </div>
+    );
+  }
+
+  const { plan, kpis, assignments, resources, requests } = data;
+  const assignments_by_resource = assignments?.by_resource || {};
+  const assignments_by_request = assignments?.by_request || {};
+
+  // KPI Cards Configuration
+  const kpiCards = [
+    {
+      title: 'Total Cost',
+      value: kpis?.total_cost ? `CHF ${kpis.total_cost.toFixed(2)}` : 'N/A',
+      icon: DollarSign,
+      color: 'bg-blue-500'
+    },
+    {
+      title: 'Total Travel Distance',
+      value: kpis?.total_travel_km ? `${kpis.total_travel_km.toFixed(1)} km` : 'N/A',
+      icon: MapPin,
+      color: 'bg-green-500'
+    },
+    {
+      title: 'Resources Used',
+      value: kpis?.resources_used || 'N/A',
+      icon: Users,
+      color: 'bg-purple-500'
+    },
+    {
+      title: 'Total Work Hours',
+      value: kpis?.total_work_hours ? `${kpis.total_work_hours.toFixed(1)} h` : 'N/A',
+      icon: Clock,
+      color: 'bg-orange-500'
+    },
+    {
+      title: 'Requests Covered',
+      value: kpis?.requests_covered || 'N/A',
+      icon: CheckCircle,
+      color: 'bg-teal-500'
+    },
+    {
+      title: 'Team Continuity',
+      value: kpis?.team_continuity_score ? `${(kpis.team_continuity_score * 100).toFixed(1)}%` : 'N/A',
+      icon: TrendingUp,
+      color: 'bg-indigo-500'
+    }
+  ];
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="mb-6">
+        <button
+          onClick={() => navigate('/plans')}
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Plans</span>
+        </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{plan.name}</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Created {new Date(plan.created_at).toLocaleString()} •
+              Objective: <span className="capitalize">{plan.objective}</span>
+            </p>
+          </div>
+          <span
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              plan.status === 'completed'
+                ? 'bg-green-100 text-green-800'
+                : plan.status === 'running'
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {plan.status}
+          </span>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-6 mb-6">
+        {kpiCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <div key={index} className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-600">{card.title}</h3>
+                <div className={`${card.color} p-3 rounded-lg`}>
+                  <Icon className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-gray-900">{card.value}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Assignments by Resource */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Resource Assignments ({Object.keys(assignments_by_resource || {}).length} resources)
+          </h3>
+        </div>
+        <div className="p-6">
+          {!assignments_by_resource || Object.keys(assignments_by_resource).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No assignments found
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(assignments_by_resource).map(([resourceId, assignments]) => {
+                const resource = resources?.[resourceId];
+                return (
+                  <div key={resourceId} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <Users className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {resource?.name || resourceId}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {resource?.team || 'Unknown Team'} • {resource?.resource_type || 'internal'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {assignments.length} assignment{assignments.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div className="space-y-2 ml-8">
+                      {assignments.map((assignment, idx) => {
+                        const request = requests?.[assignment.request_id];
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {request?.id || assignment.request_id}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {request?.location || 'Unknown'} • {request?.start_date || 'N/A'} {request?.start_time || ''}
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {assignment.total_work_hours?.toFixed(1) || 'N/A'} hours
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Assignments by Request */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Request Coverage ({Object.keys(assignments_by_request || {}).length} requests)
+          </h3>
+        </div>
+        <div className="p-6">
+          {!assignments_by_request || Object.keys(assignments_by_request).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No request coverage data
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(assignments_by_request).map(([requestId, assignments]) => {
+                const request = requests?.[requestId];
+                return (
+                  <div key={requestId} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {request?.id || requestId}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {request?.location || 'Unknown'} • {request?.start_date || 'N/A'} {request?.start_time || ''} •
+                            Duration: {request?.duration_hours || 'N/A'}h •
+                            Workers needed: {request?.people_needed || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          assignments.length >= (request?.people_needed || 0)
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {assignments.length} / {request?.people_needed || 0} assigned
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1 ml-8">
+                      {assignments.map((assignment, idx) => {
+                        const resource = resources?.[assignment.resource_id];
+                        return (
+                          <div key={idx} className="text-sm text-gray-700 p-2 bg-gray-50 rounded">
+                            <span className="font-medium">{resource?.name || assignment.resource_id}</span>
+                            <span className="text-gray-500"> • {resource?.team || 'Unknown team'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,131 @@
+{
+  "language": "ortools",
+  "version": "1.0",
+  "last_updated": "2025-01-27",
+  "description": "Grammar patterns for Google OR-Tools constraint programming and optimization",
+  "patterns": {
+    "model_creation": [
+      "cp_model\\.CpModel\\(\\)",
+      "pywrapcp\\.Solver\\(['\"]([^'\"]+)['\"]",
+      "routing\\.RoutingIndexManager\\(",
+      "routing\\.RoutingModel\\(",
+      "linear_solver\\.Solver\\(['\"]([^'\"]+)['\"]",
+      "Solver\\.CreateSolver\\(['\"]([^'\"]+)['\"]"
+    ],
+    "variables": [
+      "model\\.NewBoolVar\\(['\"]([^'\"]+)['\"]",
+      "model\\.NewIntVar\\(([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "model\\.NewIntVarFromDomain\\(([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "model\\.NewIntervalVar\\(([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "model\\.NewOptionalIntervalVar\\(",
+      "solver\\.IntVar\\(([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "solver\\.BoolVar\\(['\"]([^'\"]+)['\"]",
+      "shift_requests\\[\\(([^)]+)\\)\\]",
+      "shifts\\[\\(([^)]+)\\)\\]"
+    ],
+    "constraints": [
+      "model\\.Add\\(([^)]+)\\)",
+      "model\\.AddExactlyOne\\(([^)]+)\\)",
+      "model\\.AddAtMostOne\\(([^)]+)\\)",
+      "model\\.AddAtLeastOne\\(([^)]+)\\)",
+      "model\\.AddImplication\\(([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddBoolOr\\(([^)]+)\\)",
+      "model\\.AddBoolAnd\\(([^)]+)\\)",
+      "model\\.AddBoolXOr\\(([^)]+)\\)",
+      "model\\.AddAllDifferent\\(([^)]+)\\)",
+      "model\\.AddElement\\(([^,]+),\\s*([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddCircuit\\(([^)]+)\\)",
+      "model\\.AddCumulative\\(([^)]+)\\)",
+      "model\\.AddNoOverlap\\(([^)]+)\\)",
+      "model\\.AddLinearConstraint\\(([^,]+),\\s*([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddAbsEquality\\(([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddMultiplicationEquality\\(([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddDivisionEquality\\(([^,]+),\\s*([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddModuloEquality\\(([^,]+),\\s*([^,]+),\\s*([^)]+)\\)"
+    ],
+    "objective": [
+      "model\\.Minimize\\(([^)]+)\\)",
+      "model\\.Maximize\\(([^)]+)\\)",
+      "solver\\.Minimize\\(([^,]+),\\s*([^)]+)\\)",
+      "solver\\.Maximize\\(([^,]+),\\s*([^)]+)\\)",
+      "model\\.AddDecisionStrategy\\(([^,]+),\\s*([^,]+),\\s*([^)]+)\\)"
+    ],
+    "solver_operations": [
+      "cp_model\\.CpSolver\\(\\)",
+      "solver\\.Solve\\(([^)]+)\\)",
+      "solver\\.SolveWithSolutionCallback\\(([^,]+),\\s*([^)]+)\\)",
+      "solver\\.SearchForAllSolutions\\(([^,]+),\\s*([^)]+)\\)",
+      "solver\\.parameters\\.([\\w]+)\\s*=",
+      "solver\\.SetTimeLimit\\(([^)]+)\\)",
+      "routing\\.SetArcCostEvaluatorOfAllVehicles\\(([^)]+)\\)",
+      "routing\\.SetFixedCostOfAllVehicles\\(([^)]+)\\)",
+      "routing_parameters\\.([\\w]+)\\s*=",
+      "search_parameters\\.([\\w]+)\\s*="
+    ],
+    "solution_access": [
+      "solver\\.Value\\(([^)]+)\\)",
+      "solver\\.BooleanValue\\(([^)]+)\\)",
+      "solver\\.ObjectiveValue\\(\\)",
+      "solver\\.WallTime\\(\\)",
+      "solver\\.NumBranches\\(\\)",
+      "solver\\.NumConflicts\\(\\)",
+      "solver\\.StatusName\\(([^)]+)\\)",
+      "assignment\\.Value\\(([^)]+)\\)",
+      "assignment\\.Min\\(([^)]+)\\)",
+      "assignment\\.Max\\(([^)]+)\\)"
+    ],
+    "solution_callbacks": [
+      "class\\s+(\\w+)\\(cp_model\\.CpSolverSolutionCallback\\):",
+      "def\\s+OnSolutionCallback\\(self\\):",
+      "self\\.Value\\(([^)]+)\\)",
+      "self\\.BooleanValue\\(([^)]+)\\)",
+      "self\\.StopSearch\\(\\)"
+    ],
+    "routing_specific": [
+      "routing\\.NextVar\\(([^)]+)\\)",
+      "routing\\.VehicleVar\\(([^)]+)\\)",
+      "routing\\.ActiveVar\\(([^)]+)\\)",
+      "routing\\.Start\\(([^)]+)\\)",
+      "routing\\.End\\(([^)]+)\\)",
+      "routing\\.IsStart\\(([^)]+)\\)",
+      "routing\\.IsEnd\\(([^)]+)\\)",
+      "routing\\.GetPickupAndDeliveryPairs\\(\\)",
+      "routing\\.AddDimension\\(([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "routing\\.GetDimensionOrDie\\(['\"]([^'\"]+)['\"]",
+      "manager\\.IndexToNode\\(([^)]+)\\)",
+      "manager\\.NodeToIndex\\(([^)]+)\\)"
+    ],
+    "linear_programming": [
+      "solver\\.NumVar\\(([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "solver\\.IntVar\\(([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "solver\\.BoolVar\\(['\"]([^'\"]+)['\"]",
+      "solver\\.Constraint\\(([^,]+),\\s*([^,]+),\\s*['\"]([^'\"]+)['\"]",
+      "constraint\\.SetCoefficient\\(([^,]+),\\s*([^)]+)\\)",
+      "objective\\.SetCoefficient\\(([^,]+),\\s*([^)]+)\\)",
+      "objective\\.SetMinimization\\(\\)",
+      "objective\\.SetMaximization\\(\\)",
+      "solver\\.Solve\\(\\)"
+    ],
+    "scheduling_patterns": [
+      "shifts\\[(\\w+),\\s*(\\w+),\\s*(\\w+)\\]",
+      "work\\[(\\w+),\\s*(\\w+)\\]",
+      "model\\.NewBoolVar\\(f['\"]shift_n{([^}]+)}d{([^}]+)}s{([^}]+)}['\"]",
+      "model\\.NewBoolVar\\(f['\"]work_n{([^}]+)}d{([^}]+)}['\"]",
+      "weekly_sum_constraints",
+      "penalized_transitions",
+      "shift_constraints",
+      "weekly_cover_demands",
+      "preference_constraints"
+    ],
+    "data_structures": [
+      "@dataclass\\s*(?:\\n\\s*)?class\\s+(\\w+).*:",
+      "class\\s+(\\w+).*\\(.*Callback.*\\):",
+      "distance_matrix\\s*=",
+      "time_matrix\\s*=",
+      "time_windows\\s*=",
+      "data\\[['\"]([^'\"]+)['\"]\\]",
+      "demands\\s*=",
+      "vehicle_capacities\\s*="
+    ]
+  }
+}

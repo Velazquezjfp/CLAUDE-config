@@ -1,0 +1,488 @@
+"""
+OR-Tools CP-SAT solver for CFF maintenance crew scheduling.
+Implements all constraints and optimization objectives.
+"""
+from ortools.sat.python import cp_model
+from typing import Dict, Tuple, List, Optional
+from datetime import date, datetime, timedelta
+from data_models import Resource, Request, ProblemData
+from helpers import (
+    get_request_time_window,
+    time_windows_overlap,
+    calculate_total_work_time,
+    find_overlapping_request_pairs,
+    get_requests_on_date,
+    check_daily_rest_period,
+    calculate_travel_time,
+    get_consecutive_workday_windows
+)
+
+
+class CFFScheduler:
+    """Main scheduler using CP-SAT solver."""
+
+    def __init__(self, problem_data: ProblemData):
+        self.data = problem_data
+        self.model = cp_model.CpModel()
+        self.solver = cp_model.CpSolver()
+
+        # Decision variables: x[resource_id][request_id] = 1 if assigned, 0 otherwise
+        self.assignment_vars: Dict[str, Dict[str, cp_model.IntVar]] = {}
+
+        # Auxiliary variables for tracking
+        self.resource_works_on_day: Dict[str, Dict[date, cp_model.IntVar]] = {}
+        self.daily_hours: Dict[str, Dict[date, cp_model.IntVar]] = {}
+
+        # Solution storage
+        self.solution: Optional[Dict] = None
+
+    def create_decision_variables(self):
+        """Create binary decision variables for resource-request assignments."""
+        print("Creating decision variables...")
+
+        for resource in self.data.resources:
+            self.assignment_vars[resource.id] = {}
+            for request in self.data.requests:
+                var_name = f"x_{resource.id}_{request.id}"
+                self.assignment_vars[resource.id][request.id] = self.model.NewBoolVar(var_name)
+
+        print(f"Created {len(self.data.resources) * len(self.data.requests)} assignment variables")
+
+    def add_request_fulfillment_constraints(self):
+        """Each request must have exactly the required number of workers."""
+        print("Adding request fulfillment constraints...")
+
+        for request in self.data.requests:
+            assigned_workers = []
+            for resource in self.data.resources:
+                assigned_workers.append(self.assignment_vars[resource.id][request.id])
+
+            self.model.Add(sum(assigned_workers) == request.people_needed)
+
+        print(f"Added {len(self.data.requests)} request fulfillment constraints")
+
+    def add_qualification_constraints(self):
+        """Workers must have all required qualifications for assigned requests."""
+        print("Adding qualification constraints...")
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            for request in self.data.requests:
+                # If resource lacks required qualifications, they cannot be assigned
+                if not resource.has_qualifications(request.required_qualifications):
+                    self.model.Add(self.assignment_vars[resource.id][request.id] == 0)
+                    constraint_count += 1
+
+        print(f"Added {constraint_count} qualification constraints")
+
+    def add_availability_constraints(self):
+        """Workers cannot be assigned to requests during their holidays."""
+        print("Adding availability constraints...")
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            for request in self.data.requests:
+                if not resource.is_available(request.start_date):
+                    self.model.Add(self.assignment_vars[resource.id][request.id] == 0)
+                    constraint_count += 1
+
+        print(f"Added {constraint_count} availability constraints")
+
+    def add_night_shift_constraints(self):
+        """Only 'mixed' contract workers can work night shifts."""
+        print("Adding night shift constraints...")
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            if not resource.can_work_night_shift():
+                for request in self.data.requests:
+                    if request.overlaps_night_shift(
+                        self.data.legal_constraints.night_shift_start,
+                        self.data.legal_constraints.night_shift_end
+                    ):
+                        self.model.Add(self.assignment_vars[resource.id][request.id] == 0)
+                        constraint_count += 1
+
+        print(f"Added {constraint_count} night shift constraints")
+
+    def add_non_overlap_constraints(self):
+        """Workers cannot be assigned to overlapping requests."""
+        print("Adding non-overlap constraints...")
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            overlapping_pairs = find_overlapping_request_pairs(
+                resource,
+                self.data.requests,
+                self.data.distance_matrix
+            )
+
+            for req1, req2 in overlapping_pairs:
+                # At most one of these requests can be assigned to this resource
+                self.model.Add(
+                    self.assignment_vars[resource.id][req1.id] +
+                    self.assignment_vars[resource.id][req2.id] <= 1
+                )
+                constraint_count += 1
+
+        print(f"Added {constraint_count} non-overlap constraints")
+
+    def create_daily_tracking_variables(self):
+        """Create auxiliary variables to track daily work and hours."""
+        print("Creating daily tracking variables...")
+
+        planning_days = self.data.get_planning_days()
+
+        for resource in self.data.resources:
+            self.resource_works_on_day[resource.id] = {}
+            self.daily_hours[resource.id] = {}
+
+            for day in planning_days:
+                # Boolean: does resource work on this day?
+                day_str = day.strftime('%Y-%m-%d')
+                work_var = self.model.NewBoolVar(f"works_{resource.id}_{day_str}")
+                self.resource_works_on_day[resource.id][day] = work_var
+
+                # Integer: total work hours on this day (scaled by 100 to avoid floats)
+                hours_var = self.model.NewIntVar(0, 1000, f"hours_{resource.id}_{day_str}")
+                self.daily_hours[resource.id][day] = hours_var
+
+                # Link work variable to assignments
+                requests_on_day = get_requests_on_date(self.data.requests, day)
+                if requests_on_day:
+                    assigned_on_day = [
+                        self.assignment_vars[resource.id][req.id]
+                        for req in requests_on_day
+                    ]
+                    # Work variable is 1 if any assignment on this day
+                    self.model.AddMaxEquality(work_var, assigned_on_day)
+
+                    # Calculate total hours (scaled by 100)
+                    total_hours_scaled = []
+                    for req in requests_on_day:
+                        work_time = calculate_total_work_time(
+                            resource,
+                            req,
+                            self.data.distance_matrix,
+                            self.data.legal_constraints
+                        )
+                        # Scale by 100 and convert to integer
+                        hours_scaled = int(work_time * 100)
+                        total_hours_scaled.append(
+                            self.assignment_vars[resource.id][req.id] * hours_scaled
+                        )
+
+                    self.model.Add(hours_var == sum(total_hours_scaled))
+                else:
+                    # No requests on this day
+                    self.model.Add(work_var == 0)
+                    self.model.Add(hours_var == 0)
+
+        print(f"Created tracking variables for {len(planning_days)} days")
+
+    def add_daily_hour_limits(self):
+        """Workers cannot exceed max daily work hours."""
+        print("Adding daily hour limit constraints...")
+
+        max_daily_hours_scaled = int(self.data.legal_constraints.max_daily_hours * 100)
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            for day, hours_var in self.daily_hours[resource.id].items():
+                self.model.Add(hours_var <= max_daily_hours_scaled)
+                constraint_count += 1
+
+        print(f"Added {constraint_count} daily hour limit constraints")
+
+    def add_weekly_hour_limits(self):
+        """Workers cannot exceed max weekly work hours."""
+        print("Adding weekly hour limit constraints...")
+
+        max_weekly_hours_scaled = int(self.data.legal_constraints.max_weekly_hours * 100)
+        planning_days = self.data.get_planning_days()
+
+        # For this problem, treat entire planning period as one week
+        constraint_count = 0
+        for resource in self.data.resources:
+            weekly_hours = [
+                self.daily_hours[resource.id][day]
+                for day in planning_days
+            ]
+            self.model.Add(sum(weekly_hours) <= max_weekly_hours_scaled)
+            constraint_count += 1
+
+        print(f"Added {constraint_count} weekly hour limit constraints")
+
+    def add_rest_period_constraints(self):
+        """Ensure minimum rest periods between consecutive work days."""
+        print("Adding rest period constraints...")
+
+        planning_days = self.data.get_planning_days()
+        min_rest_hours = self.data.legal_constraints.min_daily_rest_hours
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            for i in range(len(planning_days) - 1):
+                day1 = planning_days[i]
+                day2 = planning_days[i + 1]
+
+                # Get requests on consecutive days
+                requests_day1 = get_requests_on_date(self.data.requests, day1)
+                requests_day2 = get_requests_on_date(self.data.requests, day2)
+
+                # Check all pairs
+                for req1 in requests_day1:
+                    for req2 in requests_day2:
+                        # Get time windows
+                        _, end1 = get_request_time_window(
+                            resource, req1, self.data.distance_matrix
+                        )
+                        start2, _ = get_request_time_window(
+                            resource, req2, self.data.distance_matrix
+                        )
+
+                        # Check if rest period is sufficient
+                        if not check_daily_rest_period(end1, start2, min_rest_hours):
+                            # Cannot assign both
+                            self.model.Add(
+                                self.assignment_vars[resource.id][req1.id] +
+                                self.assignment_vars[resource.id][req2.id] <= 1
+                            )
+                            constraint_count += 1
+
+        print(f"Added {constraint_count} rest period constraints")
+
+    def add_max_consecutive_workdays_constraints(self):
+        """Workers cannot exceed max consecutive workdays."""
+        print("Adding max consecutive workdays constraints...")
+
+        planning_days = self.data.get_planning_days()
+        max_consecutive = self.data.legal_constraints.max_consecutive_workdays
+
+        # Generate all windows that are longer than max_consecutive
+        constraint_count = 0
+        for resource in self.data.resources:
+            for window_size in range(max_consecutive + 1, len(planning_days) + 1):
+                for start_idx in range(len(planning_days) - window_size + 1):
+                    window = planning_days[start_idx:start_idx + window_size]
+                    work_vars = [
+                        self.resource_works_on_day[resource.id][day]
+                        for day in window
+                    ]
+                    # Cannot work all days in this window
+                    self.model.Add(sum(work_vars) < window_size)
+                    constraint_count += 1
+
+        print(f"Added {constraint_count} max consecutive workdays constraints")
+
+    def add_max_travel_time_constraint(self, max_travel_minutes: int):
+        """Add constraint limiting maximum travel time per assignment."""
+        print(f"Adding max travel time constraint ({max_travel_minutes} minutes)...")
+
+        constraint_count = 0
+        for resource in self.data.resources:
+            for request in self.data.requests:
+                travel_time = calculate_travel_time(
+                    resource.home_location,
+                    request.location,
+                    self.data.distance_matrix
+                )
+                # If travel time exceeds limit, prevent this assignment
+                if travel_time > max_travel_minutes:
+                    self.model.Add(self.assignment_vars[resource.id][request.id] == 0)
+                    constraint_count += 1
+
+        print(f"Added {constraint_count} max travel time constraints")
+
+    def set_objective(self, objective_type: str = 'travel', weight_travel: float = 1.0, weight_cost: float = 1.0):
+        """
+        Set optimization objective.
+
+        Args:
+            objective_type: 'travel', 'cost', or 'both'
+            weight_travel: Weight for travel distance term (default: 1.0)
+            weight_cost: Weight for cost term (default: 1.0)
+        """
+        print(f"Setting objective function: {objective_type}...")
+
+        objective_terms = []
+
+        if objective_type in ['travel', 'both']:
+            # Minimize total travel distance (scaled by 100)
+            for resource in self.data.resources:
+                for request in self.data.requests:
+                    travel_time = calculate_travel_time(
+                        resource.home_location,
+                        request.location,
+                        self.data.distance_matrix
+                    )
+                    # Scale by 100 to work with integers
+                    travel_cost_scaled = int(travel_time * 100 * weight_travel)
+                    objective_terms.append(
+                        self.assignment_vars[resource.id][request.id] * travel_cost_scaled
+                    )
+
+        if objective_type in ['cost', 'both']:
+            # Minimize total assignment cost
+            for resource in self.data.resources:
+                for request in self.data.requests:
+                    # Calculate assignment cost
+                    from helpers import calculate_assignment_cost
+                    cost = calculate_assignment_cost(
+                        resource,
+                        request,
+                        self.data.distance_matrix,
+                        self.data.legal_constraints
+                    )
+                    # Scale by 10 to work with integers (costs are already in CHF)
+                    cost_scaled = int(cost * 10 * weight_cost)
+                    objective_terms.append(
+                        self.assignment_vars[resource.id][request.id] * cost_scaled
+                    )
+
+        if objective_terms:
+            self.model.Minimize(sum(objective_terms))
+            print(f"Objective: Minimize {objective_type}")
+        else:
+            print("No objective set (feasibility check only)")
+
+    def solve(self, time_limit_seconds: int = 300) -> bool:
+        """
+        Solve the scheduling problem.
+
+        Args:
+            time_limit_seconds: Maximum time for solver
+
+        Returns:
+            True if solution found, False otherwise
+        """
+        print(f"\nSolving with time limit: {time_limit_seconds}s...")
+        self.solver.parameters.max_time_in_seconds = time_limit_seconds
+
+        status = self.solver.Solve(self.model)
+
+        if status == cp_model.OPTIMAL:
+            print("✓ Optimal solution found!")
+            self._extract_solution()
+            return True
+        elif status == cp_model.FEASIBLE:
+            print("✓ Feasible solution found (not proven optimal)")
+            self._extract_solution()
+            return True
+        elif status == cp_model.INFEASIBLE:
+            print("✗ No feasible solution exists")
+            return False
+        else:
+            print(f"✗ Solver status: {status}")
+            return False
+
+    def _extract_solution(self):
+        """Extract solution from solver."""
+        self.solution = {
+            'assignments': {},
+            'statistics': {
+                'objective_value': self.solver.ObjectiveValue(),
+                'solve_time': self.solver.WallTime(),
+            }
+        }
+
+        # Extract assignments
+        for resource in self.data.resources:
+            assigned_requests = []
+            for request in self.data.requests:
+                if self.solver.Value(self.assignment_vars[resource.id][request.id]) == 1:
+                    assigned_requests.append(request.id)
+
+            if assigned_requests:
+                self.solution['assignments'][resource.id] = assigned_requests
+
+    def build_and_solve(self, time_limit: int = 300, objective_type: str = 'travel',
+                        max_travel_minutes: int = None) -> bool:
+        """
+        Build complete model and solve.
+
+        Args:
+            time_limit: Solver time limit in seconds
+            objective_type: 'travel', 'cost', or 'both'
+            max_travel_minutes: Maximum travel time per assignment (optional override)
+                               If not provided, uses value from legal_constraints
+
+        Returns:
+            True if solution found, False otherwise
+        """
+        # Use constraint from problem data if parameter not provided
+        if max_travel_minutes is None:
+            max_travel_minutes = self.data.legal_constraints.max_travel_time_minutes
+
+        # Get team cohesion from constraints
+        team_cohesion = self.data.legal_constraints.team_cohesion_percentage
+
+        print("=" * 60)
+        print("CFF MAINTENANCE CREW SCHEDULING")
+        print("=" * 60)
+        print(f"Resources: {len(self.data.resources)}")
+        print(f"Requests: {len(self.data.requests)}")
+        print(f"Planning period: {self.data.planning_start} to {self.data.planning_end}")
+        print(f"Objective: {objective_type}")
+        if max_travel_minutes:
+            print(f"Max travel time: {max_travel_minutes} minutes")
+        if team_cohesion:
+            print(f"Team cohesion: {team_cohesion}%")
+        print("=" * 60)
+
+        # Build model
+        self.create_decision_variables()
+        self.add_request_fulfillment_constraints()
+        self.add_qualification_constraints()
+        self.add_availability_constraints()
+        self.add_night_shift_constraints()
+        self.add_non_overlap_constraints()
+
+        self.create_daily_tracking_variables()
+        self.add_daily_hour_limits()
+        self.add_weekly_hour_limits()
+        self.add_rest_period_constraints()
+        self.add_max_consecutive_workdays_constraints()
+
+        # Add max travel time constraint if specified
+        if max_travel_minutes and max_travel_minutes > 0:
+            self.add_max_travel_time_constraint(max_travel_minutes)
+
+        # Set objective based on configuration
+        self.set_objective(objective_type=objective_type)
+
+        # Solve
+        return self.solve(time_limit)
+
+    def get_solution(self) -> Optional[Dict]:
+        """Get the solution dictionary."""
+        return self.solution
+
+    def print_solution_summary(self):
+        """Print human-readable solution summary."""
+        if not self.solution:
+            print("No solution available")
+            return
+
+        print("\n" + "=" * 60)
+        print("SOLUTION SUMMARY")
+        print("=" * 60)
+        print(f"Objective value: {self.solution['statistics']['objective_value']:.2f}")
+        print(f"Solve time: {self.solution['statistics']['solve_time']:.2f}s")
+        print("\nASSIGNMENTS:")
+        print("-" * 60)
+
+        # Print by request
+        for request in self.data.requests:
+            assigned_resources = []
+            for resource_id, request_ids in self.solution['assignments'].items():
+                if request.id in request_ids:
+                    resource = self.data.resource_by_id[resource_id]
+                    assigned_resources.append(f"{resource.name} ({resource.team})")
+
+            print(f"\n{request.id}: {request.description}")
+            print(f"  Location: {request.location}")
+            print(f"  Time: {request.start_date} {request.start_time}, {request.duration_hours}h")
+            print(f"  Assigned: {', '.join(assigned_resources)}")
+
+        print("\n" + "=" * 60)

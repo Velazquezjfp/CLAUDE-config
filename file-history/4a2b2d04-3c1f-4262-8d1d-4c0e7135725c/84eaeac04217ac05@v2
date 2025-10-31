@@ -1,0 +1,45 @@
+import { useState, useEffect } from 'react';
+import Header from './Header';
+import Sidebar from './Sidebar';
+import { getStats } from '../../services/api';
+
+export default function Layout({ children }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await getStats();
+      setStats(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header stats={stats} />
+      <div className="flex">
+        <Sidebar />
+        <main className="flex-1 p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

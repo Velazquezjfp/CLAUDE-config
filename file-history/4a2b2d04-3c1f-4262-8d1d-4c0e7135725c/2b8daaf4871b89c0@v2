@@ -1,0 +1,360 @@
+"""
+KPI Calculator for CFF scheduling solution.
+Calculates comprehensive performance indicators including coverage, compliance, and efficiency metrics.
+"""
+from typing import Dict, List, Optional
+from collections import defaultdict
+from data_models import ProblemData, Resource, Request
+from helpers import (
+    calculate_total_work_time,
+    calculate_assignment_cost,
+    calculate_team_cohesion_score,
+    calculate_travel_time_minutes
+)
+
+
+class KPICalculator:
+    """Calculates key performance indicators for scheduling solutions."""
+
+    def __init__(self, problem_data: ProblemData):
+        self.data = problem_data
+
+    def calculate_kpis(self, solution: Optional[Dict]) -> Dict:
+        """
+        Calculate comprehensive KPIs for the solution.
+
+        Args:
+            solution: Solution dictionary from solver (None if infeasible)
+
+        Returns:
+            Dictionary with all KPIs organized by category
+        """
+        if not solution or 'assignments' not in solution:
+            # No solution - return empty/zero KPIs
+            return self._empty_kpis()
+
+        kpis = {
+            'plan_id': solution.get('plan_id', 'unknown'),
+            'coverage': self._calculate_coverage(solution),
+            'compliance': self._calculate_compliance(solution),
+            'efficiency': self._calculate_efficiency(solution),
+            'cost_breakdown': self._calculate_cost_breakdown(solution),
+            'resource_gaps': self._identify_resource_gaps(solution)
+        }
+
+        return kpis
+
+    def _empty_kpis(self) -> Dict:
+        """Return empty KPI structure when no solution exists."""
+        return {
+            'plan_id': 'no_solution',
+            'coverage': {
+                'total_requests': len(self.data.requests),
+                'covered_internal': 0,
+                'covered_external': 0,
+                'uncovered': len(self.data.requests)
+            },
+            'compliance': {
+                'ldt_violations': 0,
+                'skill_mismatches': 0,
+                'fatigue_warnings': 0
+            },
+            'efficiency': {
+                'avg_travel_time_minutes': 0,
+                'total_cost_chf': 0,
+                'team_continuity_score': 0
+            },
+            'cost_breakdown': {
+                'total_cost': 0,
+                'internal_cost': 0,
+                'external_cost': 0,
+                'internal_hours': 0,
+                'external_hours': 0
+            },
+            'resource_gaps': []
+        }
+
+    def _calculate_coverage(self, solution: Dict) -> Dict:
+        """
+        Calculate coverage metrics.
+
+        Returns:
+            coverage: {
+                total_requests: int,
+                covered_internal: int (requests with only internal workers),
+                covered_external: int (requests with ≥1 external worker),
+                uncovered: int (requests with unfilled slots)
+            }
+        """
+        total_requests = len(self.data.requests)
+        covered_internal_only = 0
+        covered_with_external = 0
+        uncovered = 0
+
+        for request in self.data.requests:
+            assigned_resource_ids = []
+            for resource_id, request_ids in solution['assignments'].items():
+                if request.id in request_ids:
+                    assigned_resource_ids.append(resource_id)
+
+            num_assigned = len(assigned_resource_ids)
+
+            if num_assigned == 0:
+                uncovered += 1
+            elif num_assigned < request.people_needed:
+                uncovered += 1  # Partially filled = uncovered
+            else:
+                # Fully covered - check if any external
+                has_external = any(
+                    self.data.resource_by_id[rid].is_external()
+                    for rid in assigned_resource_ids
+                )
+                if has_external:
+                    covered_with_external += 1
+                else:
+                    covered_internal_only += 1
+
+        return {
+            'total_requests': total_requests,
+            'covered_internal': covered_internal_only,
+            'covered_external': covered_with_external,
+            'uncovered': uncovered
+        }
+
+    def _calculate_compliance(self, solution: Dict) -> Dict:
+        """
+        Calculate compliance metrics.
+
+        Returns:
+            compliance: {
+                ldt_violations: int (always 0 by construction),
+                skill_mismatches: int (always 0 by construction),
+                fatigue_warnings: int (workers near limit)
+            }
+        """
+        # LDT violations and skill mismatches are 0 by construction (hard constraints)
+        ldt_violations = 0
+        skill_mismatches = 0
+
+        # Calculate fatigue warnings: workers with >45h weekly OR >9h daily
+        fatigue_warnings = 0
+        planning_days = self.data.get_planning_days()
+
+        for resource in self.data.resources:
+            if resource.id not in solution['assignments']:
+                continue
+
+            # Calculate total weekly hours
+            weekly_hours = 0
+            daily_hours_list = []
+
+            for request_id in solution['assignments'][resource.id]:
+                request = self.data.request_by_id[request_id]
+                work_hours = calculate_total_work_time(
+                    resource,
+                    request,
+                    self.data.distance_matrix,
+                    self.data.legal_constraints
+                )
+                weekly_hours += work_hours
+
+                # Track daily hours (simplified: assign full work to one day)
+                daily_hours_list.append(work_hours)
+
+            # Check for fatigue conditions
+            if weekly_hours > 45:  # Warning threshold
+                fatigue_warnings += 1
+            elif any(dh > 9 for dh in daily_hours_list):
+                fatigue_warnings += 1
+
+        return {
+            'ldt_violations': ldt_violations,
+            'skill_mismatches': skill_mismatches,
+            'fatigue_warnings': fatigue_warnings
+        }
+
+    def _calculate_efficiency(self, solution: Dict) -> Dict:
+        """
+        Calculate efficiency metrics.
+
+        Returns:
+            efficiency: {
+                avg_travel_time_minutes: float,
+                total_cost_chf: float,
+                team_continuity_score: float (0-1, higher is better)
+            }
+        """
+        total_travel_minutes = 0
+        total_cost = 0
+        assignment_count = 0
+        team_scores = []
+
+        # Calculate for each assignment
+        for resource_id, request_ids in solution['assignments'].items():
+            resource = self.data.resource_by_id[resource_id]
+
+            for request_id in request_ids:
+                request = self.data.request_by_id[request_id]
+
+                # Travel time
+                travel_mins = calculate_travel_time_minutes(
+                    resource.home_location,
+                    request.location,
+                    self.data.distance_matrix
+                )
+                total_travel_minutes += travel_mins
+
+                # Cost
+                cost = calculate_assignment_cost(
+                    resource,
+                    request,
+                    self.data.distance_matrix,
+                    self.data.legal_constraints
+                )
+                total_cost += cost
+
+                assignment_count += 1
+
+        # Average travel time
+        avg_travel_time = total_travel_minutes / assignment_count if assignment_count > 0 else 0
+
+        # Team continuity score (cohesion per request)
+        for request in self.data.requests:
+            assigned_resources = []
+            for resource_id, request_ids in solution['assignments'].items():
+                if request.id in request_ids:
+                    assigned_resources.append(self.data.resource_by_id[resource_id])
+
+            if assigned_resources:
+                cohesion = calculate_team_cohesion_score(assigned_resources)
+                team_scores.append(cohesion)
+
+        team_continuity_score = sum(team_scores) / len(team_scores) if team_scores else 0
+
+        return {
+            'avg_travel_time_minutes': round(avg_travel_time, 1),
+            'total_cost_chf': round(total_cost, 2),
+            'team_continuity_score': round(team_continuity_score, 2)
+        }
+
+    def _calculate_cost_breakdown(self, solution: Dict) -> Dict:
+        """
+        Calculate detailed cost breakdown.
+
+        Returns:
+            cost_breakdown: {
+                total_cost: float,
+                internal_cost: float,
+                external_cost: float,
+                internal_hours: float,
+                external_hours: float,
+                by_resource: List[dict]
+            }
+        """
+        internal_cost = 0
+        external_cost = 0
+        internal_hours = 0
+        external_hours = 0
+        by_resource = []
+
+        for resource_id, request_ids in solution['assignments'].items():
+            resource = self.data.resource_by_id[resource_id]
+
+            resource_hours = 0
+            resource_cost = 0
+
+            for request_id in request_ids:
+                request = self.data.request_by_id[request_id]
+
+                # Calculate work hours
+                work_hours = calculate_total_work_time(
+                    resource,
+                    request,
+                    self.data.distance_matrix,
+                    self.data.legal_constraints
+                )
+                resource_hours += work_hours
+
+                # Calculate cost
+                cost = calculate_assignment_cost(
+                    resource,
+                    request,
+                    self.data.distance_matrix,
+                    self.data.legal_constraints
+                )
+                resource_cost += cost
+
+            # Aggregate by type
+            if resource.is_external():
+                external_hours += resource_hours
+                external_cost += resource_cost
+            else:
+                internal_hours += resource_hours
+                internal_cost += resource_cost
+
+            # Add to by_resource list
+            by_resource.append({
+                'id': resource.id,
+                'name': resource.name,
+                'type': resource.resource_type,
+                'hours': round(resource_hours, 2),
+                'cost_per_hour': resource.cost_per_hour,
+                'cost': round(resource_cost, 2)
+            })
+
+        # Sort by cost (descending)
+        by_resource.sort(key=lambda x: x['cost'], reverse=True)
+
+        total_cost = internal_cost + external_cost
+
+        return {
+            'total_cost': round(total_cost, 2),
+            'internal_cost': round(internal_cost, 2),
+            'external_cost': round(external_cost, 2),
+            'internal_hours': round(internal_hours, 2),
+            'external_hours': round(external_hours, 2),
+            'by_resource': by_resource
+        }
+
+    def _identify_resource_gaps(self, solution: Dict) -> List[Dict]:
+        """
+        Identify resource gaps for uncovered or partially covered requests.
+
+        Returns:
+            List of resource gap dictionaries with site, missing_skill, and date
+        """
+        gaps = []
+
+        for request in self.data.requests:
+            # Count assigned workers
+            assigned_resource_ids = []
+            for resource_id, request_ids in solution['assignments'].items():
+                if request.id in request_ids:
+                    assigned_resource_ids.append(resource_id)
+
+            num_assigned = len(assigned_resource_ids)
+
+            if num_assigned < request.people_needed:
+                # Find which skills are missing
+                assigned_resources = [
+                    self.data.resource_by_id[rid]
+                    for rid in assigned_resource_ids
+                ]
+
+                # Check which required qualifications are covered
+                covered_skills = set()
+                for resource in assigned_resources:
+                    covered_skills.update(resource.qualifications)
+
+                missing_skills = request.required_qualifications - covered_skills
+
+                gap = {
+                    'site': request.location,
+                    'request_id': request.id,
+                    'missing_skill': ', '.join(sorted(missing_skills)) if missing_skills else 'general capacity',
+                    'date': str(request.start_date),
+                    'people_short': request.people_needed - num_assigned
+                }
+                gaps.append(gap)
+
+        return gaps

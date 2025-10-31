@@ -1,0 +1,421 @@
+# Implementation Plan - CFF Maintenance Crew Scheduling System
+
+**Generated:** 2025-10-27
+**Version:** 1.0
+**Status:** Ready for execution
+
+---
+
+## Executive Summary
+
+This implementation plan addresses data consistency issues across frontend, backend, and solver components. Four requirements have been analyzed and organized into three phases based on their dependencies and risk profile.
+
+**Total Requirements:** 4
+**Estimated Complexity:** Moderate
+**Execution Strategy:** Sequential phases with parallel tasks where safe
+
+---
+
+## Requirements Overview
+
+| Requirement ID | Type | Description | Priority | Complexity |
+|----------------|------|-------------|----------|------------|
+| F-001 | Functional | Standardize qualification values | Must-have | Simple |
+| F-002 | Functional | Standardize location values | Must-have | Simple |
+| D-001 | Data | Validate constraint parameter alignment | Must-have | Moderate |
+| NFR-001 | Non-functional | Establish single source of truth | Should-have | Complex |
+
+---
+
+## Dependency Analysis
+
+```
+Phase 1 (Parallel):
+├── F-001: Qualification standardization ← No dependencies
+└── F-002: Location standardization ← No dependencies
+
+Phase 2 (Sequential):
+└── D-001: Constraint validation ← Depends on F-001
+
+Phase 3 (Sequential):
+└── NFR-001: Single source of truth ← Depends on F-001 + F-002
+```
+
+**Critical Path:** F-001 → D-001 → NFR-001
+
+---
+
+## Phase 1: Data Alignment (Parallel Execution Safe)
+
+**Objective:** Fix frontend-backend data mismatches for qualifications and locations
+
+**Requirements:** F-001, F-002
+**Can be executed in parallel:** Yes
+**Estimated time:** 2-3 hours
+
+### F-001: Standardize Qualification Values
+
+**Status:** proposed
+**Priority:** Must-have
+**Complexity:** Simple
+
+**Problem:**
+- ResourceForm.jsx uses incorrect qualifications: ['electrical', 'mechanical', 'hydraulic', 'electronic', 'signaling', 'track_work', 'overhead_lines', 'safety_systems']
+- Database stores correct qualifications: ['catenary_work', 'electrical_systems', 'heavy_equipment', 'safety_officer', 'signaling', 'team_leader', 'track_maintenance', 'welding']
+- RequestForm.jsx already uses correct qualifications
+
+**File Types to Modify:**
+- **Frontend components only** (ResourceForm.jsx)
+- No backend changes required
+- No database changes required
+- No solver changes required
+
+**Changes Required:**
+
+1. **Frontend: ResourceForm.jsx** (line 5)
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/frontend/src/components/ResourceForm.jsx`
+   - Action: Replace QUALIFICATIONS constant
+   - From: `['electrical', 'mechanical', 'hydraulic', 'electronic', 'signaling', 'track_work', 'overhead_lines', 'safety_systems']`
+   - To: `['catenary_work', 'electrical_systems', 'heavy_equipment', 'safety_officer', 'signaling', 'team_leader', 'track_maintenance', 'welding']`
+
+**Affected Components:**
+- frontend/src/components/ResourceForm.jsx (modification)
+
+**Test Cases:** 6 test cases in docs/tests/F-001/
+- TC-F-001-01: Verify qualification saved correctly
+- TC-F-001-02: Verify qualification saved in requests
+- TC-F-001-03: Verify solver eligibility with correct qualifications
+- TC-F-001-04: Verify solver rejects mismatched qualifications
+- TC-F-001-05: Verify UI displays all 8 qualifications
+- TC-F-001-06: Verify all qualifications save to database
+
+**Rationale:** This is a simple frontend-only fix. No backend or database changes needed since they already use correct values. Low risk, high impact.
+
+---
+
+### F-002: Standardize Location Values
+
+**Status:** proposed
+**Priority:** Must-have
+**Complexity:** Simple
+
+**Problem:**
+- ResourceForm.jsx uses `loc.id` instead of `loc.name` in dropdown value attribute
+- Database foreign key constraint requires `resources.home_location` to reference `locations.name` (not ID)
+- RequestForm.jsx already uses correct `loc.name`
+
+**File Types to Modify:**
+- **Frontend components only** (ResourceForm.jsx)
+- No backend changes required
+- No database changes required
+
+**Changes Required:**
+
+1. **Frontend: ResourceForm.jsx** (line 209)
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/frontend/src/components/ResourceForm.jsx`
+   - Action: Change dropdown value attribute
+   - From: `<option key={loc.id} value={loc.id}>{loc.name}</option>`
+   - To: `<option key={loc.id} value={loc.name}>{loc.name}</option>`
+
+**Affected Components:**
+- frontend/src/components/ResourceForm.jsx (modification)
+
+**Test Cases:** 7 test cases in docs/tests/F-002/
+- TC-F-002-01: Create resource with valid location
+- TC-F-002-02: Verify invalid location rejected
+- TC-F-002-03: Create request with valid location
+- TC-F-002-04: Verify typo in location rejected
+- TC-F-002-05: Verify ResourceForm displays all 11 locations
+- TC-F-002-06: Verify RequestForm displays all 11 locations
+- TC-F-002-07: Verify travel distance calculation uses correct locations
+
+**Rationale:** Another simple frontend-only fix. The backend and database already enforce correct foreign key constraints. Low risk, immediate impact.
+
+---
+
+## Phase 2: Data Validation Enhancement
+
+**Objective:** Add comprehensive validation to ensure constraint parameters align with database
+
+**Requirements:** D-001
+**Dependencies:** Must complete F-001 first
+**Estimated time:** 4-5 hours
+
+### D-001: Validate Constraint Function Parameter Alignment
+
+**Status:** proposed
+**Priority:** Must-have
+**Complexity:** Moderate
+
+**Problem:**
+Solver constraint generation must validate that qualification and location values from the database correctly map to mathematical constraints. Need debugging tools and validation checks to catch misalignments early.
+
+**File Types to Modify:**
+- **Backend solver** (solver.py)
+- **Backend data models** (data_models.py)
+- **Database schema** (schema.sql, migrations)
+- **New test files** (tests/solver/)
+
+**Changes Required:**
+
+1. **Solver: solver.py** (lines 64-76)
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/solver.py`
+   - Action: Add debug logging to qualification constraint generation
+   - Purpose: Log resource qualifications vs request requirements when constraints added
+
+2. **Data Models: data_models.py** (lines 20-43)
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/data_models.py`
+   - Action: Add validation properties and __post_init__ checks
+   - Validate: qualifications are non-empty set
+   - Validate: qualifications match allowed values
+
+3. **Database: schema.sql**
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/database/schema.sql`
+   - Action: Add CHECK constraints to qualification columns
+   - Tables: resource_qualifications.qualification, request_qualifications.qualification
+   - Constraint: `qualification IN ('catenary_work', 'electrical_systems', 'heavy_equipment', 'safety_officer', 'signaling', 'team_leader', 'track_maintenance', 'welding')`
+
+4. **Testing: New test file**
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/tests/solver/test_qualification_constraints.py`
+   - Action: Create comprehensive solver constraint validation tests
+
+**Affected Components:**
+- Use_case_1/solver.py (modification)
+- Use_case_1/data_models.py (modification)
+- Use_case_1/database/schema.sql (modification)
+- Use_case_1/database/migrations.py (potential migration script)
+- tests/solver/test_qualification_constraints.py (new file)
+
+**Test Cases:** 6 test cases in docs/tests/D-001/
+- TC-D-001-01: Verify resource qualifications load correctly
+- TC-D-001-02: Verify request qualifications load correctly
+- TC-D-001-03: Verify constraint added for qualification mismatch
+- TC-D-001-04: Verify CHECK constraint rejects invalid qualifications
+- TC-D-001-05: Verify constraint count matches expectations
+- TC-D-001-06: Verify debug logging shows missing qualifications
+
+**Rationale:** This builds on F-001 by adding comprehensive validation. Must complete F-001 first to ensure correct qualification values are in place. Moderate complexity due to multiple layers (solver, data models, database).
+
+---
+
+## Phase 3: Infrastructure & Architecture
+
+**Objective:** Establish centralized reference data management system
+
+**Requirements:** NFR-001
+**Dependencies:** Must complete F-001 and F-002 first
+**Estimated time:** 6-8 hours
+
+### NFR-001: Establish Single Source of Truth
+
+**Status:** proposed
+**Priority:** Should-have
+**Complexity:** Complex
+
+**Problem:**
+Need centralized validation and reference data management to prevent future data alignment issues. While VARIABLES_AND_CONSTRAINTS.md documents the mathematical model, it is NOT the source of truth for domain values.
+
+**File Types to Modify:**
+- **Documentation** (new reference-data.md)
+- **Backend API routes** (new reference.py)
+- **Frontend API service** (api.js)
+- **Frontend forms** (ResourceForm.jsx, RequestForm.jsx, SolverPage.jsx)
+- **Integration tests** (new directory)
+
+**Changes Required:**
+
+1. **Documentation: reference-data.md**
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/docs/database/reference-data.md` (new)
+   - Action: Document all domain value lists and source of truth hierarchy
+   - Content: qualifications, locations, contract types, resource types, validation rules
+
+2. **Backend API: reference.py**
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/api/routes/reference.py` (new)
+   - Action: Create GET /api/reference endpoint
+   - Response: `{qualifications: [], locations: [], contract_types: [], resource_types: [], objective_types: []}`
+
+3. **Frontend API Service: api.js**
+   - File: `/home/javiervel/clients/CFF/algo-test/Use_case_1/frontend/src/services/api.js`
+   - Action: Add `export const getReferenceData = () => axios.get('/reference')`
+
+4. **Frontend Forms: Update all forms**
+   - Files: ResourceForm.jsx, RequestForm.jsx, SolverPage.jsx
+   - Action: Replace hardcoded constants with API-fetched reference data
+   - Use: Call getReferenceData() on component mount
+
+5. **Integration Tests: New test directory**
+   - Directory: `/home/javiervel/clients/CFF/algo-test/Use_case_1/tests/integration/` (new)
+   - Action: Create tests validating frontend-backend data alignment
+
+**Affected Components:**
+- docs/database/reference-data.md (new file)
+- api/routes/reference.py (new file)
+- api/app.py (modification to register new blueprint)
+- frontend/src/services/api.js (modification)
+- frontend/src/components/ResourceForm.jsx (modification)
+- frontend/src/components/RequestForm.jsx (modification)
+- frontend/src/pages/SolverPage.jsx (modification)
+- tests/integration/ (new directory with test files)
+
+**Test Cases:** 6 test cases in docs/tests/NFR-001/
+- TC-NFR-001-01: Verify /api/reference returns qualifications
+- TC-NFR-001-02: Verify /api/reference returns locations
+- TC-NFR-001-03: Verify new qualification appears in API response
+- TC-NFR-001-04: Verify ResourceForm uses API-fetched qualifications
+- TC-NFR-001-05: Verify RequestForm uses API-fetched qualifications
+- TC-NFR-001-06: Verify integration test catches mismatches
+
+**Rationale:** This is the most complex requirement, creating a new centralized system. Must complete F-001 and F-002 first to have aligned data. This is architectural work that touches multiple layers and requires careful integration testing.
+
+---
+
+## Execution Strategy
+
+### Safety First Approach
+
+Each phase is designed to minimize risk:
+
+1. **Phase 1**: Simple frontend-only fixes with no cascading effects
+2. **Phase 2**: Backend validation that doesn't break existing functionality
+3. **Phase 3**: New infrastructure that supplements (not replaces) existing code
+
+### File Scope Discipline
+
+Each requirement specifies exactly which file types should be modified:
+
+- **F-001**: Frontend components only
+- **F-002**: Frontend components only
+- **D-001**: Backend solver + data models + database schema + tests
+- **NFR-001**: Documentation + backend API routes + frontend service + frontend forms + integration tests
+
+**Rule:** Once file types are specified, DO NOT deviate from that scope.
+
+### Testing Strategy
+
+Each requirement has comprehensive test cases:
+
+- **F-001**: 6 test cases
+- **F-002**: 7 test cases
+- **D-001**: 6 test cases
+- **NFR-001**: 6 test cases
+
+**Total:** 25 test cases covering all functionality
+
+---
+
+## Implementation Checklist
+
+### Phase 1: Data Alignment (Parallel)
+
+- [ ] **F-001**: Update ResourceForm.jsx QUALIFICATIONS constant
+  - [ ] Change line 5 to correct qualification list
+  - [ ] Run TC-F-001-01 through TC-F-001-06
+  - [ ] Verify frontend displays all 8 qualifications correctly
+
+- [ ] **F-002**: Update ResourceForm.jsx location dropdown
+  - [ ] Change line 209 to use loc.name instead of loc.id
+  - [ ] Run TC-F-002-01 through TC-F-002-07
+  - [ ] Verify resources save with correct location references
+
+### Phase 2: Data Validation Enhancement (Sequential after F-001)
+
+- [ ] **D-001**: Add comprehensive validation
+  - [ ] Add debug logging to solver.py (lines 64-76)
+  - [ ] Add validation to data_models.py Resource class
+  - [ ] Add CHECK constraints to database schema
+  - [ ] Create test_qualification_constraints.py
+  - [ ] Run TC-D-001-01 through TC-D-001-06
+  - [ ] Verify constraint validation catches mismatches
+
+### Phase 3: Infrastructure & Architecture (Sequential after F-001 + F-002)
+
+- [ ] **NFR-001**: Create centralized reference system
+  - [ ] Write reference-data.md documentation
+  - [ ] Create api/routes/reference.py
+  - [ ] Update api/app.py to register reference blueprint
+  - [ ] Add getReferenceData() to frontend/src/services/api.js
+  - [ ] Update ResourceForm.jsx to use API-fetched data
+  - [ ] Update RequestForm.jsx to use API-fetched data
+  - [ ] Update SolverPage.jsx to use API-fetched data
+  - [ ] Create tests/integration/ directory
+  - [ ] Write integration tests
+  - [ ] Run TC-NFR-001-01 through TC-NFR-001-06
+  - [ ] Verify all forms use centralized reference data
+
+---
+
+## Risk Assessment
+
+### Low Risk (Phase 1)
+- **F-001, F-002**: Frontend-only changes with no backend impact
+- **Mitigation**: Run existing frontend tests to verify no regressions
+
+### Moderate Risk (Phase 2)
+- **D-001**: Database schema changes require migration
+- **Mitigation**: Test migration on development database first, backup production data
+
+### Higher Risk (Phase 3)
+- **NFR-001**: Architectural changes touching multiple layers
+- **Mitigation**: Implement as supplement to existing code, run comprehensive integration tests
+
+---
+
+## Success Criteria
+
+### Phase 1 Complete
+- ✅ ResourceForm uses correct qualifications matching database
+- ✅ ResourceForm uses location names (not IDs) for foreign key references
+- ✅ All Phase 1 test cases pass (13 test cases)
+
+### Phase 2 Complete
+- ✅ Solver includes debug logging for qualification constraints
+- ✅ Data models validate qualifications on load
+- ✅ Database enforces CHECK constraints on qualification columns
+- ✅ All Phase 2 test cases pass (6 test cases)
+
+### Phase 3 Complete
+- ✅ GET /api/reference endpoint returns all domain values
+- ✅ All frontend forms fetch reference data from API
+- ✅ Reference data documentation complete
+- ✅ Integration tests validate frontend-backend alignment
+- ✅ All Phase 3 test cases pass (6 test cases)
+
+### Project Complete
+- ✅ All 25 test cases passing
+- ✅ No hardcoded domain values in frontend
+- ✅ Single source of truth established in database
+- ✅ Comprehensive validation at all layers
+
+---
+
+## Estimated Timeline
+
+| Phase | Requirements | Duration | Cumulative |
+|-------|--------------|----------|------------|
+| Phase 1 | F-001, F-002 | 2-3 hours | 2-3 hours |
+| Phase 2 | D-001 | 4-5 hours | 6-8 hours |
+| Phase 3 | NFR-001 | 6-8 hours | 12-16 hours |
+
+**Total Estimated Time:** 12-16 hours (1.5-2 working days)
+
+---
+
+## Notes
+
+- **Keep it simple**: Each requirement follows the simplest approach to solve the problem
+- **Safety first**: Changes are incremental and testable at each phase
+- **Clear scope**: File types to modify are explicitly specified for each requirement
+- **No deviation**: Once scope is defined, stick to specified file types only
+- **Test-driven**: Each requirement has comprehensive test cases to validate implementation
+
+---
+
+## References
+
+- Code Graph: `/home/javiervel/clients/CFF/algo-test/Use_case_1/docs/code-graph/code-graph.json`
+- Requirements: `/home/javiervel/clients/CFF/algo-test/Use_case_1/docs/requirements/requirements.md`
+- Test Cases: `/home/javiervel/clients/CFF/algo-test/Use_case_1/docs/tests/`
+
+---
+
+**End of Implementation Plan**
