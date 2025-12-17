@@ -1,0 +1,3510 @@
+# CFF Personnel Planning API - Complete Endpoints Reference
+
+**Version:** 1.0.0
+**Base URL:** `http://localhost:8000/api/v1`
+**API Documentation:** `http://localhost:8000/docs`
+
+---
+
+## Table of Contents
+
+1. [Root & Health Check](#1-root--health-check)
+2. [Regions](#2-regions)
+3. [Teams](#3-teams)
+4. [Groups](#4-groups)
+5. [Resources](#5-resources)
+6. [Absences](#6-absences)
+7. [Demands](#7-demands)
+8. [Assignments](#8-assignments)
+9. [Locations](#9-locations)
+10. [Qualifications](#10-qualifications)
+11. [Legal Constraints](#11-legal-constraints)
+12. [Company Policy Constraints](#12-company-policy-constraints)
+13. [Objective Weights](#13-objective-weights)
+14. [Utilization Targets](#14-utilization-targets)
+15. [Divisions](#15-divisions)
+16. [Demands List](#16-demands-list)
+17. [Error Responses](#17-error-responses)
+
+---
+
+## 1. Root & Health Check
+
+### 1.1 Root Endpoint
+
+**GET /** `/`
+
+Returns API welcome information.
+
+#### Response (200 OK)
+```json
+{
+  "message": "Welcome to CFF Personnel Planning API",
+  "version": "1.0.0",
+  "docs": "/docs",
+  "api": "/api/v1"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/"
+```
+
+#### Underlying SQL Query
+```sql
+-- No database query (static response)
+```
+
+---
+
+### 1.2 Health Check
+
+**GET** `/health`
+
+Checks API and database connectivity status.
+
+#### Response (200 OK)
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "version": "1.0.0",
+  "timestamp": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/health"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT 1;
+```
+
+---
+
+## 2. Regions
+
+Regions represent the top-level organizational hierarchy (Succursales).
+
+### 2.1 List All Regions
+
+**GET** `/api/v1/regions`
+
+Returns all regions in the system.
+
+#### Response (200 OK)
+```json
+[
+  {
+    "region_id": 1,
+    "region_name": "Lausanne",
+    "region_code": "LS",
+    "created_at": "2025-11-10T10:00:00.000000Z",
+    "updated_at": "2025-11-10T10:00:00.000000Z"
+  },
+  {
+    "region_id": 2,
+    "region_name": "Genève",
+    "region_code": "GE",
+    "created_at": "2025-11-10T10:00:00.000000Z",
+    "updated_at": "2025-11-10T10:00:00.000000Z"
+  }
+]
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/regions"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT region_id, region_name, region_code, created_at, updated_at
+FROM regions
+ORDER BY region_name;
+```
+
+---
+
+### 2.2 Get Single Region
+
+**GET** `/api/v1/regions/{region_id}`
+
+Returns a specific region by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| region_id | integer | Yes | Unique region identifier |
+
+#### Response (200 OK)
+```json
+{
+  "region_id": 1,
+  "region_name": "Lausanne",
+  "region_code": "LS",
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/regions/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT region_id, region_name, region_code, created_at, updated_at
+FROM regions
+WHERE region_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Region with specified ID not found
+
+---
+
+### 2.3 Create Region
+
+**POST** `/api/v1/regions`
+
+Creates a new region.
+
+#### Request Body
+```json
+{
+  "region_name": "Zurich",
+  "region_code": "ZH"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| region_name | string | Yes | 100 | Region name (must be unique) |
+| region_code | string | No | 10 | Region code (must be unique) |
+
+#### Response (201 Created)
+```json
+{
+  "region_id": 3,
+  "region_name": "Zurich",
+  "region_code": "ZH",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/regions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region_name": "Zurich",
+    "region_code": "ZH"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO regions (region_name, region_code)
+VALUES ('Zurich', 'ZH')
+RETURNING region_id, region_name, region_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Region name already exists
+
+---
+
+### 2.4 Update Region
+
+**PUT** `/api/v1/regions/{region_id}`
+
+Updates an existing region.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| region_id | integer | Yes | Unique region identifier |
+
+#### Request Body
+```json
+{
+  "region_name": "Zurich Updated",
+  "region_code": "ZH2"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| region_name | string | No | 100 | Region name |
+| region_code | string | No | 10 | Region code |
+
+#### Response (200 OK)
+```json
+{
+  "region_id": 3,
+  "region_name": "Zurich Updated",
+  "region_code": "ZH2",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/regions/3" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region_name": "Zurich Updated"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE regions
+SET region_name = 'Zurich Updated'
+WHERE region_id = 3
+RETURNING region_id, region_name, region_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Region with specified ID not found
+- **400 Bad Request**: No fields to update
+
+---
+
+### 2.5 Delete Region
+
+**DELETE** `/api/v1/regions/{region_id}`
+
+Deletes a region.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| region_id | integer | Yes | Unique region identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/regions/3"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM regions WHERE region_id = 3;
+```
+
+#### Error Responses
+- **404 Not Found**: Region with specified ID not found
+
+---
+
+## 3. Teams
+
+Teams are the middle level of the organizational hierarchy, belonging to regions.
+
+### 3.1 List All Teams
+
+**GET** `/api/v1/teams`
+
+Returns all teams, optionally filtered by region.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| region_id | integer | No | Filter teams by region ID |
+
+#### Response (200 OK)
+```json
+[
+  {
+    "team_id": 1,
+    "team_name": "Team-Infrastructure-A",
+    "region_id": 1,
+    "team_code": "TIA",
+    "created_at": "2025-11-10T10:00:00.000000Z",
+    "updated_at": "2025-11-10T10:00:00.000000Z"
+  }
+]
+```
+
+#### cURL Examples
+```bash
+# All teams
+curl -X GET "http://localhost:8000/api/v1/teams"
+
+# Teams in region 1
+curl -X GET "http://localhost:8000/api/v1/teams?region_id=1"
+```
+
+#### Underlying SQL Queries
+```sql
+-- All teams
+SELECT team_id, team_name, region_id, team_code, created_at, updated_at
+FROM teams
+ORDER BY team_name;
+
+-- Filtered by region
+SELECT team_id, team_name, region_id, team_code, created_at, updated_at
+FROM teams
+WHERE region_id = 1
+ORDER BY team_name;
+```
+
+---
+
+### 3.2 Get Single Team
+
+**GET** `/api/v1/teams/{team_id}`
+
+Returns a specific team by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| team_id | integer | Yes | Unique team identifier |
+
+#### Response (200 OK)
+```json
+{
+  "team_id": 1,
+  "team_name": "Team-Infrastructure-A",
+  "region_id": 1,
+  "team_code": "TIA",
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/teams/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT team_id, team_name, region_id, team_code, created_at, updated_at
+FROM teams
+WHERE team_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Team with specified ID not found
+
+---
+
+### 3.3 Create Team
+
+**POST** `/api/v1/teams`
+
+Creates a new team.
+
+#### Request Body
+```json
+{
+  "team_name": "Team-Voie-B",
+  "region_id": 1,
+  "team_code": "TVB"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| team_name | string | Yes | 100 | Team name (must be globally unique) |
+| region_id | integer | No | - | Foreign key to regions table |
+| team_code | string | No | 20 | Team code |
+
+#### Response (201 Created)
+```json
+{
+  "team_id": 2,
+  "team_name": "Team-Voie-B",
+  "region_id": 1,
+  "team_code": "TVB",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/teams" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_name": "Team-Voie-B",
+    "region_id": 1,
+    "team_code": "TVB"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO teams (team_name, region_id, team_code)
+VALUES ('Team-Voie-B', 1, 'TVB')
+RETURNING team_id, team_name, region_id, team_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Team name already exists or region not found
+
+---
+
+### 3.4 Update Team
+
+**PUT** `/api/v1/teams/{team_id}`
+
+Updates an existing team.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| team_id | integer | Yes | Unique team identifier |
+
+#### Request Body
+```json
+{
+  "team_name": "Team-Voie-B-Updated",
+  "region_id": 2,
+  "team_code": "TVB2"
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "team_id": 2,
+  "team_name": "Team-Voie-B-Updated",
+  "region_id": 2,
+  "team_code": "TVB2",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/teams/2" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_name": "Team-Voie-B-Updated"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE teams
+SET team_name = 'Team-Voie-B-Updated'
+WHERE team_id = 2
+RETURNING team_id, team_name, region_id, team_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Team with specified ID not found
+- **400 Bad Request**: Region not found or no fields to update
+
+---
+
+### 3.5 Delete Team
+
+**DELETE** `/api/v1/teams/{team_id}`
+
+Deletes a team.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| team_id | integer | Yes | Unique team identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/teams/2"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM teams WHERE team_id = 2;
+```
+
+#### Error Responses
+- **404 Not Found**: Team with specified ID not found
+
+---
+
+## 4. Groups
+
+Groups are the lowest level of the organizational hierarchy, belonging to teams.
+
+### 4.1 List All Groups
+
+**GET** `/api/v1/groups`
+
+Returns all sub-groups, optionally filtered by team.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| team_id | integer | No | Filter sub-groups by team ID |
+
+#### Response (200 OK)
+```json
+[
+  {
+    "group_id": 1,
+    "group_name": "Orange",
+    "team_id": 1,
+    "color_code": "Orange",
+    "created_at": "2025-11-10T10:00:00.000000Z",
+    "updated_at": "2025-11-10T10:00:00.000000Z"
+  }
+]
+```
+
+#### cURL Examples
+```bash
+# All sub-groups
+curl -X GET "http://localhost:8000/api/v1/groups"
+
+# Sub-groups in team 1
+curl -X GET "http://localhost:8000/api/v1/groups?team_id=1"
+```
+
+#### Underlying SQL Queries
+```sql
+-- All sub-groups
+SELECT group_id, group_name, team_id, color_code, created_at, updated_at
+FROM groups
+ORDER BY group_name;
+
+-- Filtered by team
+SELECT group_id, group_name, team_id, color_code, created_at, updated_at
+FROM groups
+WHERE team_id = 1
+ORDER BY group_name;
+```
+
+---
+
+### 4.2 Get Single Group
+
+**GET** `/api/v1/groups/{group_id}`
+
+Returns a specific sub-group by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| group_id | integer | Yes | Unique sub-group identifier |
+
+#### Response (200 OK)
+```json
+{
+  "group_id": 1,
+  "group_name": "Orange",
+  "team_id": 1,
+  "color_code": "Orange",
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/groups/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT group_id, group_name, team_id, color_code, created_at, updated_at
+FROM groups
+WHERE group_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Sub-group with specified ID not found
+
+---
+
+### 4.3 Create Group
+
+**POST** `/api/v1/groups`
+
+Creates a new sub-group.
+
+#### Request Body
+```json
+{
+  "group_name": "Jaune",
+  "team_id": 1,
+  "color_code": "Jaune"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| group_name | string | Yes | 50 | Sub-group name (unique per team) |
+| team_id | integer | Yes | - | Foreign key to teams table |
+| color_code | string | No | 20 | Color code identifier |
+
+#### Response (201 Created)
+```json
+{
+  "group_id": 2,
+  "group_name": "Jaune",
+  "team_id": 1,
+  "color_code": "Jaune",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/groups" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_name": "Jaune",
+    "team_id": 1,
+    "color_code": "Jaune"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO groups (group_name, team_id, color_code)
+VALUES ('Jaune', 1, 'Jaune')
+RETURNING group_id, group_name, team_id, color_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Sub-group name already exists for this team or team not found
+
+---
+
+### 4.4 Update Group
+
+**PUT** `/api/v1/groups/{group_id}`
+
+Updates an existing sub-group.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| group_id | integer | Yes | Unique sub-group identifier |
+
+#### Request Body
+```json
+{
+  "group_name": "Jaune-Updated",
+  "team_id": 1,
+  "color_code": "Yellow"
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "group_id": 2,
+  "group_name": "Jaune-Updated",
+  "team_id": 1,
+  "color_code": "Yellow",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/groups/2" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "color_code": "Yellow"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE groups
+SET color_code = 'Yellow'
+WHERE group_id = 2
+RETURNING group_id, group_name, team_id, color_code, created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Sub-group with specified ID not found
+- **400 Bad Request**: Team not found or no fields to update
+
+---
+
+### 4.5 Delete Group
+
+**DELETE** `/api/v1/groups/{group_id}`
+
+Deletes a sub-group.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| group_id | integer | Yes | Unique sub-group identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/groups/2"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM groups WHERE group_id = 2;
+```
+
+#### Error Responses
+- **404 Not Found**: Sub-group with specified ID not found
+
+---
+
+## 5. Resources
+
+Resources represent personnel (both internal and external).
+
+### 5.1 List Resources (Paginated)
+
+**GET** `/api/v1/resources`
+
+Returns a paginated list of resources with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| type | string | No | Filter by type (Internal/External) | - |
+| status | string | No | Filter by status (Actif/Inactif/En_congé/Suspendu) | - |
+| region_id | integer | No | Filter by region ID | - |
+| team_id | integer | No | Filter by team ID | - |
+
+#### Response (200 OK)
+```json
+{
+  "total": 150,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 3,
+  "data": [
+    {
+      "resource_id": "RES-INT-0001",
+      "type": "Internal",
+      "first_name": "Jean",
+      "last_name": "Dupont",
+      "email": "jean.dupont@cff.ch",
+      "phone": "+41 21 123 4567",
+      "region_id": 1,
+      "team_id": 1,
+      "group_id": 1,
+      "home_location": "Lausanne",
+      "contract": "full_time",
+      "shift_pref": "day",
+      "weekly_hours": 42,
+      "cost_per_hour": 45.00,
+      "qualifications": ["Monteur VF", "Chef de la sécurité CR"],
+      "availability_pattern": {
+        "monday": {"available": true, "hours": [6, 22]},
+        "tuesday": {"available": true, "hours": [6, 22]},
+        "wednesday": {"available": true, "hours": [6, 22]},
+        "thursday": {"available": true, "hours": [6, 22]},
+        "friday": {"available": true, "hours": [6, 22]},
+        "saturday": {"available": false, "hours": [6, 18]},
+        "sunday": {"available": false, "hours": [6, 18]}
+      },
+      "hire_date": "2020-01-15",
+      "status": "Actif",
+      "created_at": "2025-11-10T10:00:00.000000Z",
+      "updated_at": "2025-11-10T10:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# First page, default page size
+curl -X GET "http://localhost:8000/api/v1/resources"
+
+# Page 2, 100 items per page
+curl -X GET "http://localhost:8000/api/v1/resources?page=2&per_page=100"
+
+# Filter by type
+curl -X GET "http://localhost:8000/api/v1/resources?type=Internal"
+
+# Filter by status and region
+curl -X GET "http://localhost:8000/api/v1/resources?status=Actif&region_id=1"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM resources;
+
+-- Fetch resources (without filters)
+SELECT
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status,
+    created_at, updated_at
+FROM resources
+ORDER BY created_at DESC
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM resources
+WHERE type = 'Internal' AND status = 'Actif' AND region_id = 1;
+
+-- Fetch resources (with filters)
+SELECT
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status,
+    created_at, updated_at
+FROM resources
+WHERE type = 'Internal' AND status = 'Actif' AND region_id = 1
+ORDER BY created_at DESC
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 5.2 Get Single Resource
+
+**GET** `/api/v1/resources/{resource_id}`
+
+Returns a specific resource by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| resource_id | string | Yes | Unique resource identifier (e.g., RES-INT-0001) |
+
+#### Response (200 OK)
+```json
+{
+  "resource_id": "RES-INT-0001",
+  "type": "Internal",
+  "first_name": "Jean",
+  "last_name": "Dupont",
+  "email": "jean.dupont@cff.ch",
+  "phone": "+41 21 123 4567",
+  "region_id": 1,
+  "team_id": 1,
+  "group_id": 1,
+  "home_location": "Lausanne",
+  "contract": "full_time",
+  "shift_pref": "day",
+  "weekly_hours": 42,
+  "cost_per_hour": 45.00,
+  "qualifications": ["Monteur VF", "Chef de la sécurité CR"],
+  "availability_pattern": {
+    "monday": {"available": true, "hours": [6, 22]},
+    "tuesday": {"available": true, "hours": [6, 22]},
+    "wednesday": {"available": true, "hours": [6, 22]},
+    "thursday": {"available": true, "hours": [6, 22]},
+    "friday": {"available": true, "hours": [6, 22]},
+    "saturday": {"available": false, "hours": [6, 18]},
+    "sunday": {"available": false, "hours": [6, 18]}
+  },
+  "hire_date": "2020-01-15",
+  "status": "Actif",
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/resources/RES-INT-0001"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status,
+    created_at, updated_at
+FROM resources
+WHERE resource_id = 'RES-INT-0001';
+```
+
+#### Error Responses
+- **404 Not Found**: Resource with specified ID not found
+
+---
+
+### 5.3 Create Resource
+
+**POST** `/api/v1/resources`
+
+Creates a new resource.
+
+#### Request Body
+```json
+{
+  "resource_id": "RES-INT-0002",
+  "type": "Internal",
+  "first_name": "Marie",
+  "last_name": "Martin",
+  "email": "marie.martin@cff.ch",
+  "phone": "+41 22 987 6543",
+  "region_id": 1,
+  "team_id": 1,
+  "group_id": 1,
+  "home_location": "Genève",
+  "contract": "full_time",
+  "shift_pref": "any",
+  "weekly_hours": 42,
+  "cost_per_hour": 50.00,
+  "qualifications": ["Monteur VF", "Habilitation électrique"],
+  "availability_pattern": {
+    "monday": {"available": true, "hours": [6, 22]},
+    "tuesday": {"available": true, "hours": [6, 22]},
+    "wednesday": {"available": true, "hours": [6, 22]},
+    "thursday": {"available": true, "hours": [6, 22]},
+    "friday": {"available": true, "hours": [6, 22]},
+    "saturday": {"available": false, "hours": [6, 18]},
+    "sunday": {"available": false, "hours": [6, 18]}
+  },
+  "hire_date": "2021-03-20",
+  "status": "Actif"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Description | Enum Values |
+|-------|------|----------|-------------|-------------|
+| resource_id | string | Yes | Unique resource identifier (max 20 chars) | - |
+| type | string | Yes | Resource type | Internal, External |
+| first_name | string | Yes | First name (max 100 chars) | - |
+| last_name | string | Yes | Last name (max 100 chars) | - |
+| email | string | No | Email address | - |
+| phone | string | No | Phone number (max 30 chars) | - |
+| region_id | integer | No | Foreign key to regions | - |
+| team_id | integer | No | Foreign key to teams | - |
+| group_id | integer | No | Foreign key to groups | - |
+| home_location | string | No | Home location (max 100 chars) | - |
+| contract | string | No | Contract type | full_time, part_time, temporary_full_time, external |
+| shift_pref | string | No | Shift preference | day, night, any, weekend |
+| weekly_hours | integer | No | Weekly working hours (0-60) | - |
+| cost_per_hour | number | No | Hourly cost (min 0) | - |
+| qualifications | array | No | Array of qualification names | - |
+| availability_pattern | object | No | Weekly availability pattern | - |
+| hire_date | date | No | Hire date (YYYY-MM-DD) | - |
+| status | string | No | Resource status (default: Actif) | Actif, Inactif, En_congé, Suspendu |
+
+#### Response (201 Created)
+```json
+{
+  "resource_id": "RES-INT-0002",
+  "type": "Internal",
+  "first_name": "Marie",
+  "last_name": "Martin",
+  "email": "marie.martin@cff.ch",
+  "phone": "+41 22 987 6543",
+  "region_id": 1,
+  "team_id": 1,
+  "group_id": 1,
+  "home_location": "Genève",
+  "contract": "full_time",
+  "shift_pref": "any",
+  "weekly_hours": 42,
+  "cost_per_hour": 50.00,
+  "qualifications": ["Monteur VF", "Habilitation électrique"],
+  "availability_pattern": {
+    "monday": {"available": true, "hours": [6, 22]},
+    "tuesday": {"available": true, "hours": [6, 22]},
+    "wednesday": {"available": true, "hours": [6, 22]},
+    "thursday": {"available": true, "hours": [6, 22]},
+    "friday": {"available": true, "hours": [6, 22]},
+    "saturday": {"available": false, "hours": [6, 18]},
+    "sunday": {"available": false, "hours": [6, 18]}
+  },
+  "hire_date": "2021-03-20",
+  "status": "Actif",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/resources" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_id": "RES-INT-0002",
+    "type": "Internal",
+    "first_name": "Marie",
+    "last_name": "Martin",
+    "email": "marie.martin@cff.ch",
+    "phone": "+41 22 987 6543",
+    "region_id": 1,
+    "team_id": 1,
+    "group_id": 1,
+    "home_location": "Genève",
+    "contract": "full_time",
+    "shift_pref": "any",
+    "weekly_hours": 42,
+    "cost_per_hour": 50.00,
+    "qualifications": ["Monteur VF", "Habilitation électrique"],
+    "hire_date": "2021-03-20",
+    "status": "Actif"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO resources (
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status
+) VALUES (
+    'RES-INT-0002', 'Internal', 'Marie', 'Martin', 'marie.martin@cff.ch', '+41 22 987 6543',
+    1, 1, 1, 'Genève',
+    'full_time', 'any', 42, 50.00,
+    '["Monteur VF", "Habilitation électrique"]'::jsonb,
+    '{"monday": {"available": true, "hours": [6, 22]}, ...}'::jsonb,
+    '2021-03-20', 'Actif'
+)
+RETURNING
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status,
+    created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Resource ID already exists
+
+---
+
+### 5.4 Update Resource
+
+**PUT** `/api/v1/resources/{resource_id}`
+
+Updates an existing resource (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| resource_id | string | Yes | Unique resource identifier |
+
+#### Request Body
+```json
+{
+  "status": "En_congé",
+  "phone": "+41 22 111 2222"
+}
+```
+
+All fields from the create schema are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "resource_id": "RES-INT-0002",
+  "type": "Internal",
+  "first_name": "Marie",
+  "last_name": "Martin",
+  "email": "marie.martin@cff.ch",
+  "phone": "+41 22 111 2222",
+  "region_id": 1,
+  "team_id": 1,
+  "group_id": 1,
+  "home_location": "Genève",
+  "contract": "full_time",
+  "shift_pref": "any",
+  "weekly_hours": 42,
+  "cost_per_hour": 50.00,
+  "qualifications": ["Monteur VF", "Habilitation électrique"],
+  "availability_pattern": {...},
+  "hire_date": "2021-03-20",
+  "status": "En_congé",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/resources/RES-INT-0002" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "En_congé",
+    "phone": "+41 22 111 2222"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE resources
+SET status = 'En_congé', phone = '+41 22 111 2222'
+WHERE resource_id = 'RES-INT-0002'
+RETURNING
+    resource_id, type, first_name, last_name, email, phone,
+    region_id, team_id, group_id, home_location,
+    contract, shift_pref, weekly_hours, cost_per_hour,
+    qualifications, availability_pattern, hire_date, status,
+    created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Resource with specified ID not found
+- **400 Bad Request**: No fields to update
+
+---
+
+### 5.5 Delete Resource
+
+**DELETE** `/api/v1/resources/{resource_id}`
+
+Deletes a resource.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| resource_id | string | Yes | Unique resource identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/resources/RES-INT-0002"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM resources WHERE resource_id = 'RES-INT-0002';
+```
+
+#### Error Responses
+- **404 Not Found**: Resource with specified ID not found
+
+---
+
+## 6. Absences
+
+Absences track resource unavailability periods.
+
+### 6.1 List Absences (Paginated)
+
+**GET** `/api/v1/absences`
+
+Returns a paginated list of absences with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| resource_id | string | No | Filter by resource ID | - |
+| type | string | No | Filter by absence type | - |
+| status | string | No | Filter by status | - |
+| start_date | date | No | Filter absences starting from this date | - |
+| end_date | date | No | Filter absences ending by this date | - |
+
+#### Absence Type Values
+`Holiday`, `Training`, `Sick_Leave`, `Personal`, `Conference`, `Assignment_Blocked`, `Other`
+
+#### Absence Status Values
+`En_attente`, `Approuvé`, `Rejeté`, `Annulé`
+
+#### Response (200 OK)
+```json
+{
+  "total": 75,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 2,
+  "data": [
+    {
+      "absence_id": "ABS-0001",
+      "resource_id": "RES-INT-0001",
+      "type": "Holiday",
+      "start_date": "2025-12-20",
+      "end_date": "2025-12-31",
+      "number_of_days": 12,
+      "status": "Approuvé",
+      "notes": "Christmas vacation",
+      "approved_by": "Manager Name",
+      "created_date": "2025-11-05",
+      "created_at": "2025-11-05T10:00:00.000000Z",
+      "updated_at": "2025-11-05T10:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# All absences
+curl -X GET "http://localhost:8000/api/v1/absences"
+
+# Absences for specific resource
+curl -X GET "http://localhost:8000/api/v1/absences?resource_id=RES-INT-0001"
+
+# Filter by type and status
+curl -X GET "http://localhost:8000/api/v1/absences?type=Holiday&status=Approuvé"
+
+# Filter by date range
+curl -X GET "http://localhost:8000/api/v1/absences?start_date=2025-12-01&end_date=2025-12-31"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM absences;
+
+-- Fetch absences (without filters)
+SELECT
+    absence_id, resource_id, type, start_date, end_date,
+    number_of_days, status, notes, approved_by, created_date,
+    created_at, updated_at
+FROM absences
+ORDER BY start_date DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM absences
+WHERE resource_id = 'RES-INT-0001' AND type = 'Holiday' AND status = 'Approuvé';
+
+-- Fetch absences (with filters)
+SELECT
+    absence_id, resource_id, type, start_date, end_date,
+    number_of_days, status, notes, approved_by, created_date,
+    created_at, updated_at
+FROM absences
+WHERE resource_id = 'RES-INT-0001' AND type = 'Holiday' AND status = 'Approuvé'
+ORDER BY start_date DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 6.2 Get Single Absence
+
+**GET** `/api/v1/absences/{absence_id}`
+
+Returns a specific absence by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| absence_id | string | Yes | Unique absence identifier |
+
+#### Response (200 OK)
+```json
+{
+  "absence_id": "ABS-0001",
+  "resource_id": "RES-INT-0001",
+  "type": "Holiday",
+  "start_date": "2025-12-20",
+  "end_date": "2025-12-31",
+  "number_of_days": 12,
+  "status": "Approuvé",
+  "notes": "Christmas vacation",
+  "approved_by": "Manager Name",
+  "created_date": "2025-11-05",
+  "created_at": "2025-11-05T10:00:00.000000Z",
+  "updated_at": "2025-11-05T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/absences/ABS-0001"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    absence_id, resource_id, type, start_date, end_date,
+    number_of_days, status, notes, approved_by, created_date,
+    created_at, updated_at
+FROM absences
+WHERE absence_id = 'ABS-0001';
+```
+
+#### Error Responses
+- **404 Not Found**: Absence with specified ID not found
+
+---
+
+### 6.3 Create Absence
+
+**POST** `/api/v1/absences`
+
+Creates a new absence.
+
+#### Request Body
+```json
+{
+  "absence_id": "ABS-0002",
+  "resource_id": "RES-INT-0001",
+  "type": "Training",
+  "start_date": "2025-11-20",
+  "end_date": "2025-11-22",
+  "status": "En_attente",
+  "notes": "Safety training course",
+  "approved_by": null,
+  "created_date": "2025-11-10"
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| absence_id | string | Yes | Unique absence identifier (max 20 chars) |
+| resource_id | string | Yes | Foreign key to resources |
+| type | string | Yes | Absence type (see enum values above) |
+| start_date | date | Yes | Start date (YYYY-MM-DD) |
+| end_date | date | Yes | End date (YYYY-MM-DD, must be >= start_date) |
+| status | string | No | Absence status (default: En_attente) |
+| notes | string | No | Additional notes |
+| approved_by | string | No | Approver name (max 100 chars) |
+| created_date | date | No | Creation date |
+
+#### Response (201 Created)
+```json
+{
+  "absence_id": "ABS-0002",
+  "resource_id": "RES-INT-0001",
+  "type": "Training",
+  "start_date": "2025-11-20",
+  "end_date": "2025-11-22",
+  "number_of_days": 3,
+  "status": "En_attente",
+  "notes": "Safety training course",
+  "approved_by": null,
+  "created_date": "2025-11-10",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/absences" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "absence_id": "ABS-0002",
+    "resource_id": "RES-INT-0001",
+    "type": "Training",
+    "start_date": "2025-11-20",
+    "end_date": "2025-11-22",
+    "status": "En_attente",
+    "notes": "Safety training course",
+    "created_date": "2025-11-10"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO absences (
+    absence_id, resource_id, type, start_date, end_date,
+    status, notes, approved_by, created_date
+) VALUES (
+    'ABS-0002', 'RES-INT-0001', 'Training', '2025-11-20', '2025-11-22',
+    'En_attente', 'Safety training course', NULL, '2025-11-10'
+)
+RETURNING
+    absence_id, resource_id, type, start_date, end_date,
+    number_of_days, status, notes, approved_by, created_date,
+    created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Absence ID already exists, resource not found, or invalid dates
+
+---
+
+### 6.4 Update Absence
+
+**PUT** `/api/v1/absences/{absence_id}`
+
+Updates an existing absence (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| absence_id | string | Yes | Unique absence identifier |
+
+#### Request Body
+```json
+{
+  "status": "Approuvé",
+  "approved_by": "Manager Name"
+}
+```
+
+All fields from the create schema (except absence_id) are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "absence_id": "ABS-0002",
+  "resource_id": "RES-INT-0001",
+  "type": "Training",
+  "start_date": "2025-11-20",
+  "end_date": "2025-11-22",
+  "number_of_days": 3,
+  "status": "Approuvé",
+  "notes": "Safety training course",
+  "approved_by": "Manager Name",
+  "created_date": "2025-11-10",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/absences/ABS-0002" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "Approuvé",
+    "approved_by": "Manager Name"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE absences
+SET status = 'Approuvé', approved_by = 'Manager Name'
+WHERE absence_id = 'ABS-0002'
+RETURNING
+    absence_id, resource_id, type, start_date, end_date,
+    number_of_days, status, notes, approved_by, created_date,
+    created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Absence with specified ID not found
+- **400 Bad Request**: Resource not found or no fields to update
+
+---
+
+### 6.5 Delete Absence
+
+**DELETE** `/api/v1/absences/{absence_id}`
+
+Deletes an absence.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| absence_id | string | Yes | Unique absence identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/absences/ABS-0002"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM absences WHERE absence_id = 'ABS-0002';
+```
+
+#### Error Responses
+- **404 Not Found**: Absence with specified ID not found
+
+---
+
+## 7. Demands
+
+Demands represent resource demands (tours à couvrir).
+
+### 7.1 List Demands (Paginated)
+
+**GET** `/api/v1/demands`
+
+Returns a paginated list of requests with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| bsa_id | string | No | Filter by BSA ID | - |
+| status | string | No | Filter by status | - |
+| priority | string | No | Filter by priority level | - |
+| branch | string | No | Filter by branch | - |
+| locked | boolean | No | Filter by locked status | - |
+
+#### Request Status Values
+`pending`, `pre-reserved`, `reserved`, `confirmed`, `external_confirmed`, `completed`, `cancelled`
+
+#### Priority Level Values
+`low`, `medium`, `high`, `critical`
+
+#### Response (200 OK)
+```json
+{
+  "total": 200,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 4,
+  "data": [
+    {
+      "request_id": 1,
+      "bsa_id": "BSA-828796",
+      "task_name": "Infrastructure maintenance",
+      "status": "pending",
+      "resource_category": "Monteur VF",
+      "technical_service": "Infrastructure",
+      "branch": "Lausanne",
+      "start_datetime": "2025-11-15T08:00:00Z",
+      "end_datetime": "2025-11-15T17:00:00Z",
+      "shift": "day",
+      "shift_service_type": "Maintenance",
+      "start_location": "Lausanne",
+      "end_location": "Lausanne",
+      "start_location_code": "LS",
+      "end_location_code": "LS",
+      "people_needed": 2,
+      "required_qualifications": ["Monteur VF", "Chef de la sécurité CR"],
+      "work_type": "Maintenance",
+      "responsible_person": "John Doe",
+      "isp_amgt": "ISP-123",
+      "psp": "PSP-456",
+      "priority": "high",
+      "locked": false,
+      "assignment_status": "pending",
+      "assigned_resources": [],
+      "created_at": "2025-11-10T10:00:00.000000Z",
+      "updated_at": "2025-11-10T10:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# All requests
+curl -X GET "http://localhost:8000/api/v1/demands"
+
+# Filter by BSA ID
+curl -X GET "http://localhost:8000/api/v1/demands?bsa_id=BSA-828796"
+
+# Filter by status and priority
+curl -X GET "http://localhost:8000/api/v1/demands?status=pending&priority=high"
+
+# Filter by branch
+curl -X GET "http://localhost:8000/api/v1/demands?branch=Lausanne"
+
+# Filter locked requests
+curl -X GET "http://localhost:8000/api/v1/demands?locked=true"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM demands;
+
+-- Fetch requests (without filters)
+SELECT
+    request_id, bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources, created_at, updated_at
+FROM demands
+ORDER BY start_datetime DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM demands
+WHERE status = 'pending' AND priority = 'high' AND locked = false;
+
+-- Fetch requests (with filters)
+SELECT
+    request_id, bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources, created_at, updated_at
+FROM demands
+WHERE status = 'pending' AND priority = 'high' AND locked = false
+ORDER BY start_datetime DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 7.2 Get Single Demand
+
+**GET** `/api/v1/demands/{demand_id}`
+
+Returns a specific request by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| demand_id | integer | Yes | Unique demand identifier |
+
+#### Response (200 OK)
+```json
+{
+  "request_id": 1,
+  "bsa_id": "BSA-828796",
+  "task_name": "Infrastructure maintenance",
+  "status": "pending",
+  "resource_category": "Monteur VF",
+  "technical_service": "Infrastructure",
+  "branch": "Lausanne",
+  "start_datetime": "2025-11-15T08:00:00Z",
+  "end_datetime": "2025-11-15T17:00:00Z",
+  "shift": "day",
+  "shift_service_type": "Maintenance",
+  "start_location": "Lausanne",
+  "end_location": "Lausanne",
+  "start_location_code": "LS",
+  "end_location_code": "LS",
+  "people_needed": 2,
+  "required_qualifications": ["Monteur VF", "Chef de la sécurité CR"],
+  "work_type": "Maintenance",
+  "responsible_person": "John Doe",
+  "isp_amgt": "ISP-123",
+  "psp": "PSP-456",
+  "priority": "high",
+  "locked": false,
+  "assignment_status": "pending",
+  "assigned_resources": [],
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/demands/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    request_id, bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources, created_at, updated_at
+FROM demands
+WHERE request_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Demand with specified ID not found
+
+---
+
+### 7.3 Create Request
+
+**POST** `/api/v1/demands`
+
+Creates a new request.
+
+#### Request Body
+```json
+{
+  "bsa_id": "BSA-828797",
+  "task_name": "Signal maintenance",
+  "status": "pending",
+  "resource_category": "Monteur VF",
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "start_datetime": "2025-11-16T09:00:00Z",
+  "end_datetime": "2025-11-16T18:00:00Z",
+  "shift": "day",
+  "shift_service_type": "Maintenance",
+  "start_location": "Genève",
+  "end_location": "Nyon",
+  "start_location_code": "GE",
+  "end_location_code": "NY",
+  "people_needed": 1,
+  "required_qualifications": ["Monteur VF", "Signalisation"],
+  "work_type": "Maintenance",
+  "responsible_person": "Jane Smith",
+  "isp_amgt": "ISP-124",
+  "psp": "PSP-457",
+  "priority": "medium",
+  "locked": false,
+  "assignment_status": "pending",
+  "assigned_resources": []
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| bsa_id | string | Yes | BSA identifier (max 20 chars) |
+| task_name | string | No | Task description (max 255 chars) |
+| status | string | No | Request status (default: pending) |
+| resource_category | string | No | Required resource category (max 100 chars) |
+| technical_service | string | No | Technical service name (max 100 chars) |
+| branch | string | No | Branch/Region (max 100 chars) |
+| start_datetime | datetime | No | Start datetime (ISO 8601) |
+| end_datetime | datetime | No | End datetime (ISO 8601, must be >= start_datetime) |
+| shift | string | No | Shift type (morning/afternoon/night/day/full_day) |
+| shift_service_type | string | No | Shift service type (max 100 chars) |
+| start_location | string | No | Start location name (max 100 chars) |
+| end_location | string | No | End location name (max 100 chars) |
+| start_location_code | string | No | Start location code (max 50 chars) |
+| end_location_code | string | No | End location code (max 50 chars) |
+| people_needed | integer | No | Number of people required (min: 1, default: 1) |
+| required_qualifications | array | No | Array of required qualification names |
+| work_type | string | No | Work type description (max 100 chars) |
+| responsible_person | string | No | Responsible person name (max 100 chars) |
+| isp_amgt | string | No | ISP AMGT code (max 50 chars) |
+| psp | string | No | PSP code (max 50 chars) |
+| priority | string | No | Priority level (default: medium) |
+| locked | boolean | No | Lock status (default: false) |
+| assignment_status | string | No | Assignment status (max 50 chars) |
+| assigned_resources | array | No | Array of assigned resource IDs |
+
+#### Response (201 Created)
+```json
+{
+  "request_id": 2,
+  "bsa_id": "BSA-828797",
+  "task_name": "Signal maintenance",
+  "status": "pending",
+  "resource_category": "Monteur VF",
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "start_datetime": "2025-11-16T09:00:00Z",
+  "end_datetime": "2025-11-16T18:00:00Z",
+  "shift": "day",
+  "shift_service_type": "Maintenance",
+  "start_location": "Genève",
+  "end_location": "Nyon",
+  "start_location_code": "GE",
+  "end_location_code": "NY",
+  "people_needed": 1,
+  "required_qualifications": ["Monteur VF", "Signalisation"],
+  "work_type": "Maintenance",
+  "responsible_person": "Jane Smith",
+  "isp_amgt": "ISP-124",
+  "psp": "PSP-457",
+  "priority": "medium",
+  "locked": false,
+  "assignment_status": "pending",
+  "assigned_resources": [],
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/demands" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bsa_id": "BSA-828797",
+    "task_name": "Signal maintenance",
+    "status": "pending",
+    "resource_category": "Monteur VF",
+    "technical_service": "Signalisation",
+    "branch": "Genève",
+    "start_datetime": "2025-11-16T09:00:00Z",
+    "end_datetime": "2025-11-16T18:00:00Z",
+    "shift": "day",
+    "people_needed": 1,
+    "required_qualifications": ["Monteur VF", "Signalisation"],
+    "priority": "medium"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO requests (
+    bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources
+) VALUES (
+    'BSA-828797', 'Signal maintenance', 'pending', 'Monteur VF',
+    'Signalisation', 'Genève', '2025-11-16 09:00:00+00', '2025-11-16 18:00:00+00',
+    'day', 'Maintenance', 'Genève', 'Nyon',
+    'GE', 'NY', 1,
+    '["Monteur VF", "Signalisation"]'::jsonb, 'Maintenance', 'Jane Smith',
+    'ISP-124', 'PSP-457', 'medium', false, 'pending',
+    '[]'::jsonb
+)
+RETURNING
+    request_id, bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources, created_at, updated_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Invalid dates (end < start)
+
+---
+
+### 7.4 Update Request
+
+**PUT** `/api/v1/demands/{demand_id}`
+
+Updates an existing request (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| demand_id | integer | Yes | Unique demand identifier |
+
+#### Request Body
+```json
+{
+  "status": "confirmed",
+  "locked": true,
+  "assigned_resources": ["RES-INT-0001"]
+}
+```
+
+All fields from the create schema are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "request_id": 2,
+  "bsa_id": "BSA-828797",
+  "task_name": "Signal maintenance",
+  "status": "confirmed",
+  "resource_category": "Monteur VF",
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "start_datetime": "2025-11-16T09:00:00Z",
+  "end_datetime": "2025-11-16T18:00:00Z",
+  "shift": "day",
+  "shift_service_type": "Maintenance",
+  "start_location": "Genève",
+  "end_location": "Nyon",
+  "start_location_code": "GE",
+  "end_location_code": "NY",
+  "people_needed": 1,
+  "required_qualifications": ["Monteur VF", "Signalisation"],
+  "work_type": "Maintenance",
+  "responsible_person": "Jane Smith",
+  "isp_amgt": "ISP-124",
+  "psp": "PSP-457",
+  "priority": "medium",
+  "locked": true,
+  "assignment_status": "pending",
+  "assigned_resources": ["RES-INT-0001"],
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/demands/2" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "confirmed",
+    "locked": true,
+    "assigned_resources": ["RES-INT-0001"]
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE requests
+SET status = 'confirmed', locked = true, assigned_resources = '["RES-INT-0001"]'::jsonb
+WHERE request_id = 2
+RETURNING
+    request_id, bsa_id, task_name, status, resource_category,
+    technical_service, branch, start_datetime, end_datetime,
+    shift, shift_service_type, start_location, end_location,
+    start_location_code, end_location_code, people_needed,
+    required_qualifications, work_type, responsible_person,
+    isp_amgt, psp, priority, locked, assignment_status,
+    assigned_resources, created_at, updated_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Demand with specified ID not found
+- **400 Bad Request**: No fields to update
+
+---
+
+### 7.5 Delete Request
+
+**DELETE** `/api/v1/demands/{demand_id}`
+
+Deletes a request.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| demand_id | integer | Yes | Unique demand identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/demands/2"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM demands WHERE request_id = 2;
+```
+
+#### Error Responses
+- **404 Not Found**: Demand with specified ID not found
+
+---
+
+## 8. Assignments
+
+Assignments link resources to requests (coverage/couverts).
+
+### 8.1 List Assignments (Paginated)
+
+**GET** `/api/v1/assignments`
+
+Returns a paginated list of assignments with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| resource_id | string | No | Filter by resource ID | - |
+| request_id | string | No | Filter by request ID (BSA-ID) | - |
+| status | string | No | Filter by status | - |
+| type | string | No | Filter by type (Internal/External) | - |
+| start_date | date | No | Filter assignments starting from this date | - |
+| end_date | date | No | Filter assignments ending by this date | - |
+
+#### Assignment Status Values
+`Confirmé`, `Provisoire`, `Pré-réservé`, `Externe confirmé`, `Cancelled`
+
+#### Response (200 OK)
+```json
+{
+  "total": 300,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 6,
+  "data": [
+    {
+      "assignment_id": "ASSIGN-INT-828796-0001",
+      "resource_id": "RES-INT-0001",
+      "request_id": "BSA-828796",
+      "type": "Internal",
+      "status": "Confirmé",
+      "start_date": "2025-11-15",
+      "end_date": "2025-11-15",
+      "enterprise": "SBB/CFF/FFS",
+      "calendar_type": "Standard",
+      "qualifications": "Monteur VF, Chef de la sécurité CR",
+      "region": "Lausanne",
+      "team": "Team-Infrastructure-A",
+      "sub_group": "Orange",
+      "meeting_location": "Lausanne Gare",
+      "meeting_time": "08:00:00",
+      "mandate_name": null,
+      "technical_service": "Infrastructure",
+      "branch": "Lausanne",
+      "resource_category": "Monteur VF",
+      "required_skills": null,
+      "personnel_count": 1,
+      "work_type": "Maintenance",
+      "pe_from": "Lausanne",
+      "pe_to": "Lausanne",
+      "external_company": null,
+      "estimated_cost_chf": null,
+      "responsible": "John Doe",
+      "notes": null,
+      "created_at": "2025-11-10T10:00:00.000000Z",
+      "updated_at": "2025-11-10T10:00:00.000000Z",
+      "created_by": null
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# All assignments
+curl -X GET "http://localhost:8000/api/v1/assignments"
+
+# Assignments for specific resource
+curl -X GET "http://localhost:8000/api/v1/assignments?resource_id=RES-INT-0001"
+
+# Assignments for specific request (BSA-ID)
+curl -X GET "http://localhost:8000/api/v1/assignments?request_id=BSA-828796"
+
+# Filter by type and status
+curl -X GET "http://localhost:8000/api/v1/assignments?type=Internal&status=Confirmé"
+
+# Filter by date range
+curl -X GET "http://localhost:8000/api/v1/assignments?start_date=2025-11-01&end_date=2025-11-30"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM assignments;
+
+-- Fetch assignments (without filters)
+SELECT
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes,
+    created_at, updated_at, created_by
+FROM assignments
+ORDER BY start_date DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM assignments
+WHERE resource_id = 'RES-INT-0001' AND type = 'Internal' AND status = 'Confirmé';
+
+-- Fetch assignments (with filters)
+SELECT
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes,
+    created_at, updated_at, created_by
+FROM assignments
+WHERE resource_id = 'RES-INT-0001' AND type = 'Internal' AND status = 'Confirmé'
+ORDER BY start_date DESC, created_at DESC
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 8.2 Get Single Assignment
+
+**GET** `/api/v1/assignments/{assignment_id}`
+
+Returns a specific assignment by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| assignment_id | string | Yes | Unique assignment identifier |
+
+#### Response (200 OK)
+```json
+{
+  "assignment_id": "ASSIGN-INT-828796-0001",
+  "resource_id": "RES-INT-0001",
+  "request_id": "BSA-828796",
+  "type": "Internal",
+  "status": "Confirmé",
+  "start_date": "2025-11-15",
+  "end_date": "2025-11-15",
+  "enterprise": "SBB/CFF/FFS",
+  "calendar_type": "Standard",
+  "qualifications": "Monteur VF, Chef de la sécurité CR",
+  "region": "Lausanne",
+  "team": "Team-Infrastructure-A",
+  "sub_group": "Orange",
+  "meeting_location": "Lausanne Gare",
+  "meeting_time": "08:00:00",
+  "mandate_name": null,
+  "technical_service": "Infrastructure",
+  "branch": "Lausanne",
+  "resource_category": "Monteur VF",
+  "required_skills": null,
+  "personnel_count": 1,
+  "work_type": "Maintenance",
+  "pe_from": "Lausanne",
+  "pe_to": "Lausanne",
+  "external_company": null,
+  "estimated_cost_chf": null,
+  "responsible": "John Doe",
+  "notes": null,
+  "created_at": "2025-11-10T10:00:00.000000Z",
+  "updated_at": "2025-11-10T10:00:00.000000Z",
+  "created_by": null
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/assignments/ASSIGN-INT-828796-0001"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes,
+    created_at, updated_at, created_by
+FROM assignments
+WHERE assignment_id = 'ASSIGN-INT-828796-0001';
+```
+
+#### Error Responses
+- **404 Not Found**: Assignment with specified ID not found
+
+---
+
+### 8.3 Create Assignment
+
+**POST** `/api/v1/assignments`
+
+Creates a new assignment.
+
+#### Request Body
+```json
+{
+  "assignment_id": "ASSIGN-INT-828797-0001",
+  "resource_id": "RES-INT-0001",
+  "request_id": "BSA-828797",
+  "type": "Internal",
+  "status": "Provisoire",
+  "start_date": "2025-11-16",
+  "end_date": "2025-11-16",
+  "enterprise": "SBB/CFF/FFS",
+  "calendar_type": "Standard",
+  "qualifications": "Monteur VF, Signalisation",
+  "region": "Genève",
+  "team": "Team-Signal-C",
+  "sub_group": "Blanc",
+  "meeting_location": "Genève Gare",
+  "meeting_time": "09:00:00",
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "resource_category": "Monteur VF",
+  "personnel_count": 1,
+  "work_type": "Maintenance",
+  "pe_from": "Genève",
+  "pe_to": "Nyon",
+  "responsible": "Jane Smith",
+  "notes": "First assignment for this resource"
+}
+```
+
+#### Request Body Schema (Internal Assignments)
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| assignment_id | string | Yes | Unique assignment identifier (max 30 chars) |
+| resource_id | string | Yes | Foreign key to resources |
+| request_id | string | Yes | References BSA-ID (not request_id) |
+| type | string | Yes | Assignment type (Internal/External) |
+| status | string | No | Assignment status (default: Provisoire) |
+| start_date | date | No | Start date (YYYY-MM-DD) |
+| end_date | date | No | End date (YYYY-MM-DD, must be >= start_date) |
+| enterprise | string | No | Enterprise name (default: SBB/CFF/FFS, max 100 chars) |
+| calendar_type | string | No | Calendar type (max 50 chars) |
+| qualifications | string | No | Qualifications text |
+| region | string | No | Region name (max 100 chars) |
+| team | string | No | Team name (max 100 chars) |
+| sub_group | string | No | Sub-group name (max 50 chars) |
+| meeting_location | string | No | Meeting location (max 100 chars) |
+| meeting_time | time | No | Meeting time (HH:MM:SS) |
+| mandate_name | string | No | Mandate name (max 255 chars) |
+| technical_service | string | No | Technical service (max 100 chars) |
+| branch | string | No | Branch name (max 100 chars) |
+| resource_category | string | No | Resource category (max 100 chars) |
+| required_skills | string | No | Required skills text |
+| personnel_count | integer | No | Personnel count (default: 1) |
+| work_type | string | No | Work type (max 100 chars) |
+| pe_from | string | No | PE from location (max 100 chars) |
+| pe_to | string | No | PE to location (max 100 chars) |
+| external_company | string | No | External company name (max 100 chars) |
+| estimated_cost_chf | number | No | Estimated cost in CHF |
+| responsible | string | No | Responsible person (max 100 chars) |
+| notes | string | No | Additional notes |
+
+#### Response (201 Created)
+```json
+{
+  "assignment_id": "ASSIGN-INT-828797-0001",
+  "resource_id": "RES-INT-0001",
+  "request_id": "BSA-828797",
+  "type": "Internal",
+  "status": "Provisoire",
+  "start_date": "2025-11-16",
+  "end_date": "2025-11-16",
+  "enterprise": "SBB/CFF/FFS",
+  "calendar_type": "Standard",
+  "qualifications": "Monteur VF, Signalisation",
+  "region": "Genève",
+  "team": "Team-Signal-C",
+  "sub_group": "Blanc",
+  "meeting_location": "Genève Gare",
+  "meeting_time": "09:00:00",
+  "mandate_name": null,
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "resource_category": "Monteur VF",
+  "required_skills": null,
+  "personnel_count": 1,
+  "work_type": "Maintenance",
+  "pe_from": "Genève",
+  "pe_to": "Nyon",
+  "external_company": null,
+  "estimated_cost_chf": null,
+  "responsible": "Jane Smith",
+  "notes": "First assignment for this resource",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:30:00.000000Z",
+  "created_by": null
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/assignments" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assignment_id": "ASSIGN-INT-828797-0001",
+    "resource_id": "RES-INT-0001",
+    "request_id": "BSA-828797",
+    "type": "Internal",
+    "status": "Provisoire",
+    "start_date": "2025-11-16",
+    "end_date": "2025-11-16",
+    "region": "Genève",
+    "team": "Team-Signal-C",
+    "meeting_location": "Genève Gare",
+    "meeting_time": "09:00:00",
+    "responsible": "Jane Smith"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO assignments (
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes
+) VALUES (
+    'ASSIGN-INT-828797-0001', 'RES-INT-0001', 'BSA-828797', 'Internal', 'Provisoire',
+    '2025-11-16', '2025-11-16', 'SBB/CFF/FFS', 'Standard', 'Monteur VF, Signalisation',
+    'Genève', 'Team-Signal-C', 'Blanc', 'Genève Gare', '09:00:00',
+    NULL, 'Signalisation', 'Genève', 'Monteur VF',
+    NULL, 1, 'Maintenance', 'Genève', 'Nyon',
+    NULL, NULL, 'Jane Smith', 'First assignment for this resource'
+)
+RETURNING
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes,
+    created_at, updated_at, created_by;
+```
+
+#### Error Responses
+- **400 Bad Request**: Assignment ID already exists, resource not found, or invalid dates
+
+---
+
+### 8.4 Update Assignment
+
+**PUT** `/api/v1/assignments/{assignment_id}`
+
+Updates an existing assignment (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| assignment_id | string | Yes | Unique assignment identifier |
+
+#### Request Body
+```json
+{
+  "status": "Confirmé",
+  "notes": "Confirmed by manager"
+}
+```
+
+All fields from the create schema (except assignment_id) are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "assignment_id": "ASSIGN-INT-828797-0001",
+  "resource_id": "RES-INT-0001",
+  "request_id": "BSA-828797",
+  "type": "Internal",
+  "status": "Confirmé",
+  "start_date": "2025-11-16",
+  "end_date": "2025-11-16",
+  "enterprise": "SBB/CFF/FFS",
+  "calendar_type": "Standard",
+  "qualifications": "Monteur VF, Signalisation",
+  "region": "Genève",
+  "team": "Team-Signal-C",
+  "sub_group": "Blanc",
+  "meeting_location": "Genève Gare",
+  "meeting_time": "09:00:00",
+  "mandate_name": null,
+  "technical_service": "Signalisation",
+  "branch": "Genève",
+  "resource_category": "Monteur VF",
+  "required_skills": null,
+  "personnel_count": 1,
+  "work_type": "Maintenance",
+  "pe_from": "Genève",
+  "pe_to": "Nyon",
+  "external_company": null,
+  "estimated_cost_chf": null,
+  "responsible": "Jane Smith",
+  "notes": "Confirmed by manager",
+  "created_at": "2025-11-10T15:30:00.000000Z",
+  "updated_at": "2025-11-10T15:35:00.000000Z",
+  "created_by": null
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/assignments/ASSIGN-INT-828797-0001" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "Confirmé",
+    "notes": "Confirmed by manager"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE assignments
+SET status = 'Confirmé', notes = 'Confirmed by manager'
+WHERE assignment_id = 'ASSIGN-INT-828797-0001'
+RETURNING
+    assignment_id, resource_id, request_id, type, status,
+    start_date, end_date, enterprise, calendar_type, qualifications,
+    region, team, sub_group, meeting_location, meeting_time,
+    mandate_name, technical_service, branch, resource_category,
+    required_skills, personnel_count, work_type, pe_from, pe_to,
+    external_company, estimated_cost_chf, responsible, notes,
+    created_at, updated_at, created_by;
+```
+
+#### Error Responses
+- **404 Not Found**: Assignment with specified ID not found
+- **400 Bad Request**: Resource not found or no fields to update
+
+---
+
+### 8.5 Delete Assignment
+
+**DELETE** `/api/v1/assignments/{assignment_id}`
+
+Deletes an assignment.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| assignment_id | string | Yes | Unique assignment identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/assignments/ASSIGN-INT-828797-0001"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM assignments WHERE assignment_id = 'ASSIGN-INT-828797-0001';
+```
+
+#### Error Responses
+- **404 Not Found**: Assignment with specified ID not found
+
+---
+
+## 9. Locations
+
+Locations represent geographical points with coordinates for distance calculations.
+
+### 9.1 List Locations (Paginated)
+
+**GET** `/api/v1/locations`
+
+Returns a paginated list of locations with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| canton | string | No | Filter by canton | - |
+| location_name | string | No | Search by location name (partial match, case-insensitive) | - |
+
+#### Response (200 OK)
+```json
+{
+  "total": 80,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 2,
+  "data": [
+    {
+      "location_id": 1,
+      "location_name": "Lausanne",
+      "location_code": "LS",
+      "canton": "Vaud",
+      "latitude": 46.516667,
+      "longitude": 6.633333,
+      "created_at": "2025-11-10T10:00:00.000000Z"
+    },
+    {
+      "location_id": 2,
+      "location_name": "Genève",
+      "location_code": "GE",
+      "canton": "Genève",
+      "latitude": 46.204391,
+      "longitude": 6.143158,
+      "created_at": "2025-11-10T10:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# All locations
+curl -X GET "http://localhost:8000/api/v1/locations"
+
+# Filter by canton
+curl -X GET "http://localhost:8000/api/v1/locations?canton=Vaud"
+
+# Search by name (partial match)
+curl -X GET "http://localhost:8000/api/v1/locations?location_name=Genève"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM locations;
+
+-- Fetch locations (without filters)
+SELECT
+    location_id, location_name, location_code, canton,
+    latitude, longitude, created_at
+FROM locations
+ORDER BY location_name
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM locations
+WHERE canton = 'Vaud' AND location_name ILIKE '%Genève%';
+
+-- Fetch locations (with filters)
+SELECT
+    location_id, location_name, location_code, canton,
+    latitude, longitude, created_at
+FROM locations
+WHERE canton = 'Vaud' AND location_name ILIKE '%Genève%'
+ORDER BY location_name
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 9.2 Get Single Location
+
+**GET** `/api/v1/locations/{location_id}`
+
+Returns a specific location by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| location_id | integer | Yes | Unique location identifier |
+
+#### Response (200 OK)
+```json
+{
+  "location_id": 1,
+  "location_name": "Lausanne",
+  "location_code": "LS",
+  "canton": "Vaud",
+  "latitude": 46.516667,
+  "longitude": 6.633333,
+  "created_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/locations/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    location_id, location_name, location_code, canton,
+    latitude, longitude, created_at
+FROM locations
+WHERE location_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Location with specified ID not found
+
+---
+
+### 9.3 Create Location
+
+**POST** `/api/v1/locations`
+
+Creates a new location.
+
+#### Request Body
+```json
+{
+  "location_name": "Nyon",
+  "location_code": "NY",
+  "canton": "Vaud",
+  "latitude": 46.383333,
+  "longitude": 6.233333
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| location_name | string | Yes | Location name (max 100 chars, must be unique) |
+| location_code | string | No | Location code (max 10 chars, must be unique) |
+| canton | string | No | Canton name (max 50 chars) |
+| latitude | number | No | Latitude coordinate (decimal degrees) |
+| longitude | number | No | Longitude coordinate (decimal degrees) |
+
+#### Response (201 Created)
+```json
+{
+  "location_id": 3,
+  "location_name": "Nyon",
+  "location_code": "NY",
+  "canton": "Vaud",
+  "latitude": 46.383333,
+  "longitude": 6.233333,
+  "created_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/locations" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location_name": "Nyon",
+    "location_code": "NY",
+    "canton": "Vaud",
+    "latitude": 46.383333,
+    "longitude": 6.233333
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO locations (location_name, location_code, canton, latitude, longitude)
+VALUES ('Nyon', 'NY', 'Vaud', 46.383333, 6.233333)
+RETURNING location_id, location_name, location_code, canton, latitude, longitude, created_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Location name already exists
+
+---
+
+### 9.4 Update Location
+
+**PUT** `/api/v1/locations/{location_id}`
+
+Updates an existing location (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| location_id | integer | Yes | Unique location identifier |
+
+#### Request Body
+```json
+{
+  "latitude": 46.383500,
+  "longitude": 6.233500
+}
+```
+
+All fields from the create schema are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "location_id": 3,
+  "location_name": "Nyon",
+  "location_code": "NY",
+  "canton": "Vaud",
+  "latitude": 46.383500,
+  "longitude": 6.233500,
+  "created_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/locations/3" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "latitude": 46.383500,
+    "longitude": 6.233500
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE locations
+SET latitude = 46.383500, longitude = 6.233500
+WHERE location_id = 3
+RETURNING location_id, location_name, location_code, canton, latitude, longitude, created_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Location with specified ID not found
+- **400 Bad Request**: No fields to update
+
+---
+
+### 9.5 Delete Location
+
+**DELETE** `/api/v1/locations/{location_id}`
+
+Deletes a location.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| location_id | integer | Yes | Unique location identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/locations/3"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM locations WHERE location_id = 3;
+```
+
+#### Error Responses
+- **404 Not Found**: Location with specified ID not found
+
+---
+
+## 10. Qualifications
+
+Qualifications represent skills and certifications.
+
+### 10.1 List Qualifications (Paginated)
+
+**GET** `/api/v1/qualifications`
+
+Returns a paginated list of qualifications with optional filters.
+
+#### Query Parameters
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| page | integer | No | Page number (min: 1) | 1 |
+| per_page | integer | No | Items per page (1-200) | 50 |
+| category | string | No | Filter by qualification category | - |
+| certification_required | boolean | No | Filter by certification requirement | - |
+| qualification_name | string | No | Search by qualification name (partial match, case-insensitive) | - |
+
+#### Response (200 OK)
+```json
+{
+  "total": 45,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 1,
+  "data": [
+    {
+      "qualification_id": 1,
+      "qualification_name": "Monteur VF",
+      "qualification_category": "Technical",
+      "description": "Track installation and maintenance specialist",
+      "certification_required": true,
+      "validity_months": 36,
+      "created_at": "2025-11-10T10:00:00.000000Z"
+    },
+    {
+      "qualification_id": 2,
+      "qualification_name": "Chef de la sécurité CR",
+      "qualification_category": "Safety",
+      "description": "Safety coordinator for construction sites",
+      "certification_required": true,
+      "validity_months": 24,
+      "created_at": "2025-11-10T10:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### cURL Examples
+```bash
+# All qualifications
+curl -X GET "http://localhost:8000/api/v1/qualifications"
+
+# Filter by category
+curl -X GET "http://localhost:8000/api/v1/qualifications?category=Technical"
+
+# Filter by certification requirement
+curl -X GET "http://localhost:8000/api/v1/qualifications?certification_required=true"
+
+# Search by name (partial match)
+curl -X GET "http://localhost:8000/api/v1/qualifications?qualification_name=Monteur"
+```
+
+#### Underlying SQL Queries
+```sql
+-- Count total (without filters)
+SELECT COUNT(*) as total FROM qualifications;
+
+-- Fetch qualifications (without filters)
+SELECT
+    qualification_id, qualification_name, qualification_category,
+    description, certification_required, validity_months, created_at
+FROM qualifications
+ORDER BY qualification_name
+LIMIT 50 OFFSET 0;
+
+-- Count total (with filters)
+SELECT COUNT(*) as total
+FROM qualifications
+WHERE qualification_category = 'Technical' AND certification_required = true;
+
+-- Fetch qualifications (with filters)
+SELECT
+    qualification_id, qualification_name, qualification_category,
+    description, certification_required, validity_months, created_at
+FROM qualifications
+WHERE qualification_category = 'Technical' AND certification_required = true
+ORDER BY qualification_name
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+### 10.2 Get Single Qualification
+
+**GET** `/api/v1/qualifications/{qualification_id}`
+
+Returns a specific qualification by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| qualification_id | integer | Yes | Unique qualification identifier |
+
+#### Response (200 OK)
+```json
+{
+  "qualification_id": 1,
+  "qualification_name": "Monteur VF",
+  "qualification_category": "Technical",
+  "description": "Track installation and maintenance specialist",
+  "certification_required": true,
+  "validity_months": 36,
+  "created_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/qualifications/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    qualification_id, qualification_name, qualification_category,
+    description, certification_required, validity_months, created_at
+FROM qualifications
+WHERE qualification_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Qualification with specified ID not found
+
+---
+
+### 10.3 Create Qualification
+
+**POST** `/api/v1/qualifications`
+
+Creates a new qualification.
+
+#### Request Body
+```json
+{
+  "qualification_name": "Habilitation électrique",
+  "qualification_category": "Electrical",
+  "description": "Electrical work authorization",
+  "certification_required": true,
+  "validity_months": 12
+}
+```
+
+#### Request Body Schema
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| qualification_name | string | Yes | Qualification name (max 100 chars, must be unique) |
+| qualification_category | string | No | Category (max 50 chars) |
+| description | string | No | Detailed description |
+| certification_required | boolean | No | Whether certification is required (default: false) |
+| validity_months | integer | No | Validity period in months |
+
+#### Response (201 Created)
+```json
+{
+  "qualification_id": 3,
+  "qualification_name": "Habilitation électrique",
+  "qualification_category": "Electrical",
+  "description": "Electrical work authorization",
+  "certification_required": true,
+  "validity_months": 12,
+  "created_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X POST "http://localhost:8000/api/v1/qualifications" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "qualification_name": "Habilitation électrique",
+    "qualification_category": "Electrical",
+    "description": "Electrical work authorization",
+    "certification_required": true,
+    "validity_months": 12
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+INSERT INTO qualifications (
+    qualification_name, qualification_category, description,
+    certification_required, validity_months
+) VALUES (
+    'Habilitation électrique', 'Electrical', 'Electrical work authorization',
+    true, 12
+)
+RETURNING
+    qualification_id, qualification_name, qualification_category,
+    description, certification_required, validity_months, created_at;
+```
+
+#### Error Responses
+- **400 Bad Request**: Qualification name already exists
+
+---
+
+### 10.4 Update Qualification
+
+**PUT** `/api/v1/qualifications/{qualification_id}`
+
+Updates an existing qualification (partial update supported).
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| qualification_id | integer | Yes | Unique qualification identifier |
+
+#### Request Body
+```json
+{
+  "validity_months": 24,
+  "description": "Updated: Electrical work authorization (new standards)"
+}
+```
+
+All fields from the create schema are optional in updates.
+
+#### Response (200 OK)
+```json
+{
+  "qualification_id": 3,
+  "qualification_name": "Habilitation électrique",
+  "qualification_category": "Electrical",
+  "description": "Updated: Electrical work authorization (new standards)",
+  "certification_required": true,
+  "validity_months": 24,
+  "created_at": "2025-11-10T15:30:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X PUT "http://localhost:8000/api/v1/qualifications/3" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "validity_months": 24,
+    "description": "Updated: Electrical work authorization (new standards)"
+  }'
+```
+
+#### Underlying SQL Query
+```sql
+UPDATE qualifications
+SET validity_months = 24,
+    description = 'Updated: Electrical work authorization (new standards)'
+WHERE qualification_id = 3
+RETURNING
+    qualification_id, qualification_name, qualification_category,
+    description, certification_required, validity_months, created_at;
+```
+
+#### Error Responses
+- **404 Not Found**: Qualification with specified ID not found
+- **400 Bad Request**: No fields to update
+
+---
+
+### 10.5 Delete Qualification
+
+**DELETE** `/api/v1/qualifications/{qualification_id}`
+
+Deletes a qualification.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| qualification_id | integer | Yes | Unique qualification identifier |
+
+#### Response (204 No Content)
+No content returned on success.
+
+#### cURL Example
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/qualifications/3"
+```
+
+#### Underlying SQL Query
+```sql
+DELETE FROM qualifications WHERE qualification_id = 3;
+```
+
+#### Error Responses
+- **404 Not Found**: Qualification with specified ID not found
+
+---
+
+## 11. Legal Constraints
+
+Legal constraints are READ-ONLY and represent immutable Swiss LDT regulations.
+
+### 11.1 List Legal Constraints
+
+**GET** `/api/v1/legal-constraints`
+
+Returns all legal constraints, optionally filtered by category.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| category | string | No | Filter by category |
+
+#### Constraint Categories
+- `work_time` - Working time regulations
+- `rest_periods` - Rest period requirements
+- `work_schedule` - Work schedule constraints
+- `night_work` - Night work regulations
+- `sunday_work` - Sunday work regulations
+
+#### Response (200 OK)
+```json
+[
+  {
+    "constraint_id": 1,
+    "constraint_name": "Maximum weekly working hours",
+    "category": "work_time",
+    "parameter_name": "max_weekly_hours",
+    "parameter_value": {
+      "value": 50,
+      "unit": "hours"
+    },
+    "unit": "hours",
+    "description": "Maximum 50 hours per week including overtime",
+    "legal_reference": "Swiss LDT Art. 9",
+    "immutable": true,
+    "created_at": "2025-11-10T10:00:00.000000Z"
+  },
+  {
+    "constraint_id": 2,
+    "constraint_name": "Minimum daily rest period",
+    "category": "rest_periods",
+    "parameter_name": "min_daily_rest",
+    "parameter_value": {
+      "value": 11,
+      "unit": "hours"
+    },
+    "unit": "hours",
+    "description": "Minimum 11 consecutive hours of rest per day",
+    "legal_reference": "Swiss LDT Art. 15a",
+    "immutable": true,
+    "created_at": "2025-11-10T10:00:00.000000Z"
+  }
+]
+```
+
+#### cURL Examples
+```bash
+# All legal constraints
+curl -X GET "http://localhost:8000/api/v1/legal-constraints"
+
+# Filter by category
+curl -X GET "http://localhost:8000/api/v1/legal-constraints?category=work_time"
+```
+
+#### Underlying SQL Queries
+```sql
+-- All constraints
+SELECT
+    constraint_id, constraint_name, category, parameter_name,
+    parameter_value, unit, description, legal_reference,
+    immutable, created_at
+FROM legal_constraints
+ORDER BY category, constraint_name;
+
+-- Filtered by category
+SELECT
+    constraint_id, constraint_name, category, parameter_name,
+    parameter_value, unit, description, legal_reference,
+    immutable, created_at
+FROM legal_constraints
+WHERE category = 'work_time'
+ORDER BY category, constraint_name;
+```
+
+---
+
+### 11.2 Get Single Legal Constraint
+
+**GET** `/api/v1/legal-constraints/{constraint_id}`
+
+Returns a specific legal constraint by ID.
+
+#### Path Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| constraint_id | integer | Yes | Unique constraint identifier |
+
+#### Response (200 OK)
+```json
+{
+  "constraint_id": 1,
+  "constraint_name": "Maximum weekly working hours",
+  "category": "work_time",
+  "parameter_name": "max_weekly_hours",
+  "parameter_value": {
+    "value": 50,
+    "unit": "hours"
+  },
+  "unit": "hours",
+  "description": "Maximum 50 hours per week including overtime",
+  "legal_reference": "Swiss LDT Art. 9",
+  "immutable": true,
+  "created_at": "2025-11-10T10:00:00.000000Z"
+}
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/legal-constraints/1"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT
+    constraint_id, constraint_name, category, parameter_name,
+    parameter_value, unit, description, legal_reference,
+    immutable, created_at
+FROM legal_constraints
+WHERE constraint_id = 1;
+```
+
+#### Error Responses
+- **404 Not Found**: Legal constraint with specified ID not found
+
+---
+
+### 11.3 List Constraint Categories
+
+**GET** `/api/v1/legal-constraints/categories/list`
+
+Returns all distinct constraint categories.
+
+#### Response (200 OK)
+```json
+[
+  "work_time",
+  "rest_periods",
+  "work_schedule",
+  "night_work",
+  "sunday_work"
+]
+```
+
+#### cURL Example
+```bash
+curl -X GET "http://localhost:8000/api/v1/legal-constraints/categories/list"
+```
+
+#### Underlying SQL Query
+```sql
+SELECT DISTINCT category
+FROM legal_constraints
+ORDER BY category;
+```
+
+---
+
+### 11.4 Create Legal Constraint (NOT ALLOWED)
+
+**POST** `/api/v1/legal-constraints`
+
+Returns 405 Method Not Allowed - legal constraints are immutable.
+
+#### Response (405 Method Not Allowed)
+```json
+{
+  "detail": "Legal constraints cannot be created via API. They are immutable and defined by Swiss LDT law."
+}
+```
+
+---
+
+### 11.5 Update Legal Constraint (NOT ALLOWED)
+
+**PUT** `/api/v1/legal-constraints/{constraint_id}`
+
+Returns 405 Method Not Allowed - legal constraints are immutable.
+
+#### Response (405 Method Not Allowed)
+```json
+{
+  "detail": "Legal constraints cannot be modified via API. They are immutable and defined by Swiss LDT law."
+}
+```
+
+---
+
+### 11.6 Delete Legal Constraint (NOT ALLOWED)
+
+**DELETE** `/api/v1/legal-constraints/{constraint_id}`
+
+Returns 405 Method Not Allowed - legal constraints are immutable.
+
+#### Response (405 Method Not Allowed)
+```json
+{
+  "detail": "Legal constraints cannot be deleted via API. They are immutable and defined by Swiss LDT law."
+}
+```
+
+---
+
+## 12. Error Responses
+
+All endpoints may return the following standard error responses:
+
+### 12.1 Bad Request (400)
+Returned when the request is invalid or malformed.
+
+```json
+{
+  "detail": "End date must be greater than or equal to start date"
+}
+```
+
+### 12.2 Not Found (404)
+Returned when the requested resource doesn't exist.
+
+```json
+{
+  "detail": "Resource with ID RES-INT-9999 not found"
+}
+```
+
+### 12.3 Method Not Allowed (405)
+Returned when trying to use an unsupported HTTP method.
+
+```json
+{
+  "detail": "Legal constraints cannot be modified via API. They are immutable and defined by Swiss LDT law."
+}
+```
+
+### 12.4 Internal Server Error (500)
+Returned when an unexpected server error occurs.
+
+```json
+{
+  "detail": "Internal server error",
+  "error": "Database connection failed"
+}
+```
+
+---
+
+## 12. Company Policy Constraints
+
+Company policy constraints represent CFF's internal policies that must stay within legal bounds. These constraints are configurable and used for optimization planning.
+
+### 12.1 List Company Policy Constraints
+
+**GET** `/api/v1/company-policy-constraints`
+
+Query Parameters:
+- `constraint_category` (optional): Filter by category
+- `active` (optional): Filter by active status
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 50, max: 200)
+
+Returns all company policy constraints with pagination.
+
+### 12.2 Get Single Company Policy Constraint
+
+**GET** `/api/v1/company-policy-constraints/{constraint_id}`
+
+Returns a single company policy constraint by ID.
+
+### 12.3 Update Company Policy Constraint
+
+**PUT** `/api/v1/company-policy-constraints/{constraint_id}`
+
+Updates an existing company policy constraint (partial update supported).
+
+---
+
+## 13. Objective Weights
+
+Objective weights configure multi-objective optimization priorities for the planning algorithm.
+
+### 13.1 List Objective Weights
+
+**GET** `/api/v1/objective-weights`
+
+Query Parameters:
+- `objective_category` (optional): Filter by category
+- `active` (optional): Filter by active status
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 50, max: 200)
+
+Returns all objective weights with pagination.
+
+### 13.2 Get Single Objective Weight
+
+**GET** `/api/v1/objective-weights/{weight_id}`
+
+Returns a single objective weight by ID.
+
+### 13.3 Update Objective Weight
+
+**PUT** `/api/v1/objective-weights/{weight_id}`
+
+Updates an existing objective weight (partial update supported). Useful for tuning optimization priorities.
+
+---
+
+## 14. Utilization Targets
+
+Utilization targets set resource efficiency goals for internal and external resources.
+
+### 14.1 List Utilization Targets
+
+**GET** `/api/v1/utilization-targets`
+
+Query Parameters:
+- `resource_type` (optional): Filter by resource type (Internal/External)
+- `target_type` (optional): Filter by target type
+- `scope` (optional): Filter by scope (global/region/team)
+- `active` (optional): Filter by active status
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 50, max: 200)
+
+Returns all utilization targets with pagination.
+
+### 14.2 Get Single Utilization Target
+
+**GET** `/api/v1/utilization-targets/{target_id}`
+
+Returns a single utilization target by ID.
+
+### 14.3 Update Utilization Target
+
+**PUT** `/api/v1/utilization-targets/{target_id}`
+
+Updates an existing utilization target (partial update supported). Useful for adjusting efficiency goals.
+
+---
+
+## 15. Divisions
+
+Divisions represent organizational divisions.
+
+### 15.1 List All Divisions
+
+**GET** `/api/v1/divisions`
+
+Returns all divisions in the system with pagination.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| page | integer | No | Page number (default: 1) |
+| per_page | integer | No | Items per page (default: 50) |
+
+### 15.2 Get Single Division
+
+**GET** `/api/v1/divisions/{division_id}`
+
+Returns a specific division by ID.
+
+### 15.3 Create Division
+
+**POST** `/api/v1/divisions`
+
+Creates a new division.
+
+### 15.4 Update Division
+
+**PUT** `/api/v1/divisions/{division_id}`
+
+Updates an existing division (partial update supported).
+
+### 15.5 Delete Division
+
+**DELETE** `/api/v1/divisions/{division_id}`
+
+Deletes a division.
+
+---
+
+## 16. Demands List
+
+Historical BSA records for demand tracking.
+
+### 16.1 List Demands (Read-Only)
+
+**GET** `/api/v1/demands-list`
+
+Returns historical demand records with pagination. This is a read-only endpoint.
+
+#### Query Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| page | integer | No | Page number (default: 1) |
+| per_page | integer | No | Items per page (default: 50) |
+
+### 16.2 Get Single Demand Record
+
+**GET** `/api/v1/demands-list/{id}`
+
+Returns a specific historical demand record by ID.
+
+---
+
+## Summary
+
+**Total Endpoints:** 85
+
+| Resource | GET List | GET Single | POST | PUT | DELETE | Total |
+|----------|----------|------------|------|-----|--------|-------|
+| Root & Health | 2 | - | - | - | - | 2 |
+| Regions | 1 | 1 | 1 | 1 | 1 | 5 |
+| Teams | 1 | 1 | 1 | 1 | 1 | 5 |
+| Groups | 1 | 1 | 1 | 1 | 1 | 5 |
+| Resources | 1 | 1 | 1 | 1 | 1 | 5 |
+| Absences | 1 | 1 | 1 | 1 | 1 | 5 |
+| Demands | 1 | 1 | 1 | 1 | 1 | 5 |
+| Assignments | 1 | 1 | 1 | 1 | 1 | 5 |
+| Locations | 1 | 1 | 1 | 1 | 1 | 5 |
+| Qualifications | 1 | 1 | 1 | 1 | 1 | 5 |
+| Divisions | 1 | 1 | 1 | 1 | 1 | 5 |
+| Demands List | 1 | 1 | - | - | - | 2 |
+| Legal Constraints | 2 | 1 | 1* | 1* | 1* | 6 |
+| Company Policy Constraints | 2 | 1 | - | 1 | - | 4 |
+| Objective Weights | 2 | 1 | - | 1 | - | 4 |
+| Utilization Targets | 2 | 1 | - | 1 | - | 4 |
+
+\* Returns 405 Method Not Allowed
+
+---
+
+**API Base URL:** `http://localhost:8000/api/v1`
+**Interactive Documentation:** `http://localhost:8000/docs` (Swagger UI)
+**Alternative Documentation:** `http://localhost:8000/redoc` (ReDoc)

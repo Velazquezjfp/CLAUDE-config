@@ -1,0 +1,349 @@
+# CFF Workforce Planning Solver - MVP
+
+## Overview
+
+This is a modular MVP implementation of the CFF workforce planning solver using Google OR-tools CP-SAT. It fetches data from the live database at runtime and finds feasible assignments that comply with legal and company policy constraints.
+
+## Architecture
+
+```
+solver_v2/
+├── api/                      # API client for database access
+│   ├── client.py            # Fetch requests, resources, constraints, etc.
+│   └── __init__.py
+├── preprocessing/           # Data preprocessing pipeline
+│   ├── constraints.py      # Fetch constraint values (dynamic)
+│   ├── data_processor.py   # Process requests & resources
+│   ├── time_windows.py     # Generate weeks, days, 14h windows
+│   └── __init__.py
+├── constraints/             # Constraint modules (spec-driven)
+│   ├── lc_01_weekly_hours.py      # Max 50h/week (legal), 45h (company)
+│   ├── lc_02_daily_14h_span.py    # Max 9h in 14h span (legal), 8.5h (company)
+│   ├── lc_03_absolute_daily.py    # Max 12.5h/day (legal), 10h (company)
+│   ├── lc_04_continuous_work.py   # Max 5.5h continuous (legal), 5h (company)
+│   └── __init__.py
+├── solver/                  # CP-SAT model builder
+│   ├── model.py            # Main model class
+│   └── __init__.py
+├── utils/                   # Utility functions
+├── tests/                   # Unit tests (TODO)
+├── output/                  # Solution output (JSON)
+├── logs/                    # Solver logs
+├── config.py               # Configuration
+├── main.py                 # Entry point
+├── requirements.txt        # Python dependencies
+└── README.md              # This file
+```
+
+## Key Features
+
+### 1. **Database-First Approach**
+- All data fetched from live API at runtime (`http://150.241.245.65:8002/api/v1`)
+- No hardcoded values except legal constraints (which are immutable by law)
+- Dynamic company policies adjust based on planning mode (Conservative/Balanced/Aggressive)
+
+### 2. **Two-Tier Constraint System**
+- **Legal Constraints (Hard)**: NEVER violated, solver ensures compliance
+- **Company Policies (Soft)**: Can be violated with penalties in objective function
+
+### 3. **Modular Design**
+- Each constraint is a separate module
+- Easy to add new constraints without modifying existing code
+- Follows specifications from `constraints_v2/` YAML files
+
+### 4. **Scalable Testing**
+- **TEST_MODE = True**: Fetch small dataset (2 requests, 3 resources)
+- **TEST_MODE = False**: Fetch full database
+- Start small, scale up when working
+
+## Implemented Constraints
+
+Currently implemented (4 of 15 legal constraints):
+
+1. **LC_01: Maximum Weekly Hours** (Swiss LDT Art. 9)
+   - Legal: 50 hours/week (hard)
+   - Company: 45 hours/week (soft, dynamic)
+
+2. **LC_02: Maximum Hours in 14h Span** (Swiss LDT Art. 10)
+   - Legal: 9 hours in any 14-hour rolling window (hard)
+   - Company: 8.5 hours (soft, dynamic)
+
+3. **LC_03: Maximum Absolute Daily Hours** (Swiss LDT Art. 10)
+   - Legal: 12.5 hours per calendar day (hard)
+   - Company: 10 hours (soft, dynamic)
+
+4. **LC_04: Maximum Continuous Work** (Swiss LDT Art. 15)
+   - Legal: 5.5 hours continuous work (hard)
+   - Company: 5 hours (soft, dynamic)
+   - NOTE: MVP simplified version - full segment tracking pending
+
+## Installation
+
+### Prerequisites
+- Python 3.8+
+- Virtual environment (recommended)
+
+### Setup
+
+1. Activate your virtual environment:
+   ```bash
+   source venv/bin/activate  # or your venv path
+   ```
+
+2. Install dependencies:
+   ```bash
+   cd solver_v2
+   pip install -r requirements.txt
+   ```
+
+## Usage
+
+### Quick Start (Test Mode)
+
+Run with small dataset (default: 2 requests, 3 resources):
+```bash
+cd solver_v2
+python main.py
+```
+
+### Configuration
+
+Edit `config.py` to adjust settings:
+
+```python
+# Planning Mode
+PLANNING_MODE = "Balanced"  # Conservative, Balanced, Aggressive
+
+# Test Mode
+TEST_MODE = True            # False for full database
+TEST_NUM_REQUESTS = 2
+TEST_NUM_RESOURCES = 3
+
+# Solver Settings
+SOLVER_TIME_LIMIT_SECONDS = 60
+USE_SOFT_CONSTRAINTS = True
+
+# Enable/Disable Constraints
+ENABLED_CONSTRAINTS = [
+    "LC_01_max_weekly_hours",
+    "LC_02_max_daily_hours_14h_span",
+    "LC_03_max_absolute_daily_hours",
+    "LC_04_max_continuous_work",
+]
+```
+
+### Full Database Mode
+
+To run with full database:
+```python
+# In config.py
+TEST_MODE = False
+```
+
+Then run:
+```bash
+python main.py
+```
+
+## Output
+
+### Console Output
+- Detailed execution log showing:
+  - Data fetching status
+  - Constraint values (legal + company)
+  - Preprocessing summary
+  - Model building progress
+  - Solver status and solution
+
+### Solution File
+- Saved to `output/solution.json` (if `SAVE_SOLUTION = True`)
+- Contains:
+  - Assignments (resource → request mappings)
+  - Metadata (status, solve time, objective value)
+  - Statistics (violations, workload per resource)
+
+### Example Output Structure
+
+```json
+{
+  "metadata": {
+    "status": "OPTIMAL",
+    "objective_value": 0,
+    "solve_time_seconds": 1.23,
+    "timestamp": "2025-11-17T17:30:00"
+  },
+  "assignments": [
+    {
+      "request_id": "REQ-828796-41",
+      "resource_id": "RES-INT-0001",
+      "start": "2025-12-18T21:00:00Z",
+      "end": "2025-12-19T06:00:00Z",
+      "duration_hours": 9.0
+    }
+  ],
+  "statistics": {
+    "num_requests": 2,
+    "num_resources": 3,
+    "num_violations": 0
+  }
+}
+```
+
+## How It Works
+
+### Execution Flow
+
+1. **Data Fetching** (api/client.py)
+   - Fetch requests from `/api/v1/requests/`
+   - Fetch resources from `/api/v1/resources/`
+   - Fetch constraint values from `/api/v1/legal-constraints/` and `/api/v1/company-policy-constraints/`
+
+2. **Preprocessing** (preprocessing/)
+   - Determine planning period from request dates
+   - Generate time windows (weeks, days, 14h sliding windows)
+   - Allocate task hours to time periods (handles cross-midnight, cross-week)
+   - Identify night shifts
+   - Calculate task durations
+
+3. **Model Building** (solver/model.py)
+   - Create binary decision variables: x[resource, request]
+   - Add coverage constraints: each request → exactly one resource
+   - Add constraint modules (LC_01 through LC_04)
+   - Create objective: minimize violations
+
+4. **Solving**
+   - CP-SAT solver finds optimal or feasible solution
+   - Respects all hard constraints (legal limits)
+   - Minimizes soft constraint violations (company policies)
+
+5. **Solution Extraction**
+   - Extract assignments
+   - Calculate statistics
+   - Save to JSON file
+
+## Extending the Solver
+
+### Adding New Constraints
+
+To add a new constraint (e.g., LC_05 minimum daily rest):
+
+1. Create constraint module:
+   ```bash
+   touch constraints/lc_05_daily_rest.py
+   ```
+
+2. Implement the constraint following the pattern:
+   ```python
+   def add_daily_rest_constraints(model, x_vars, data, constraints):
+       # Fetch constraint values
+       MIN_REST_LEGAL = constraints.get_legal_value('min_rest_hours_daily')
+
+       # Add constraints to model
+       # ...
+
+       return violations  # List of violation variables
+   ```
+
+3. Update `config.py`:
+   ```python
+   ENABLED_CONSTRAINTS = [
+       # ... existing constraints
+       "LC_05_min_daily_rest",
+   ]
+   ```
+
+4. Import and call in `solver/model.py`:
+   ```python
+   from constraints.lc_05_daily_rest import add_daily_rest_constraints
+
+   # In _add_constraint_modules():
+   if "LC_05_min_daily_rest" in ENABLED_CONSTRAINTS:
+       viols = add_daily_rest_constraints(...)
+       self.violations.extend(viols)
+   ```
+
+### Adding New Constraint Values to Fetcher
+
+Update `preprocessing/constraints.py`:
+```python
+def fetch_daily_rest(self):
+    legal, company = self.client.fetch_constraint_values(
+        legal_constraint_name="min_daily_rest",
+        company_policy_name="Preferred Daily Rest",
+        planning_mode=self.planning_mode
+    )
+    self.legal['min_rest_hours'] = legal['parameter_value']['value']
+    self.company['min_rest_hours'] = company['parameter_value']['value']
+
+# Call in fetch_all_constraints():
+def fetch_all_constraints(self):
+    # ... existing fetches
+    self.fetch_daily_rest()
+```
+
+## Roadmap
+
+### Immediate Next Steps
+1. Test with small dataset (2 requests, 3 resources)
+2. Fix any issues found in testing
+3. Scale to full database
+
+### Remaining Legal Constraints (11 pending)
+- LC_05: min_daily_rest (11h)
+- LC_06: min_weekly_rest (35h)
+- LC_07: weekly_rest_timeframe (must include 06:00-20:00)
+- LC_08: min_break_after_continuous (15 min)
+- LC_09: max_consecutive_work_days (6 days)
+- LC_10-13: Night work rules
+- LC_14-15: Sunday work rules
+
+### Future Enhancements
+- Implement full continuous work segment tracking (LC_04)
+- Add Company Policy Constraints
+- Add Resource-Demand Matching Constraints
+- Implement multiple objective functions
+- Add visualization of solutions
+- Create test suite
+- Add logging configuration
+- Performance optimization for large datasets
+
+## Dependencies
+
+- **ortools**: Google OR-tools for constraint programming
+- **httpx**: Async HTTP client for API calls
+
+## Notes
+
+- All timestamps in UTC (database stores as ISO 8601 format)
+- Week definition: ISO 8601 (Monday 00:00 to Sunday 23:59)
+- Scaling factor: 100 (to convert floats to integers for CP-SAT)
+- Integer domain required by CP-SAT solver
+
+## Troubleshooting
+
+### Problem: "ModuleNotFoundError: No module named 'ortools'"
+**Solution**: Install dependencies: `pip install -r requirements.txt`
+
+### Problem: "Connection refused" when fetching data
+**Solution**: Ensure API server is running at `http://150.241.245.65:8002`
+
+### Problem: "INFEASIBLE" solution
+**Possible causes**:
+- Constraints too strict for the given dataset
+- Not enough resources for requests
+- Time windows don't allow feasible scheduling
+
+**Solutions**:
+- Try with fewer constraints enabled
+- Use TEST_MODE with smaller dataset
+- Check constraint values in preprocessing output
+
+### Problem: Solution takes too long
+**Solution**: Adjust `SOLVER_TIME_LIMIT_SECONDS` in config.py
+
+## Contact
+
+For questions about the solver implementation or constraint specifications, refer to:
+- Constraint specifications: `../constraints_v2/*.yaml`
+- Methodology document: `../constraints_v2/constraints_methodology.md`
+- Project context: `../.claude/PROJECT_CONTEXT.md`

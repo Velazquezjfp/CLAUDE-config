@@ -1,16 +1,20 @@
 {
   "language": "react",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "2.0",
+  "last_updated": "2025-12-16",
+  "description": "React/JSX/TSX grammar patterns for modern React projects with hooks, contexts, and shadcn/ui",
   "patterns": {
     "imports": [
       "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
-      "^\\s*import\\s+['\"]([^'\"]+)['\"]"
+      "^\\s*import\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+type\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]"
     ],
     "components": [
-      "(?:export\\s+)?(?:default\\s+)?(?:function|const)\\s+(\\w+)\\s*(?::|=)?\\s*(?:\\([^)]*\\))?\\s*(?::)?\\s*(?:React\\.FC|JSX\\.Element)?",
-      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)",
-      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>\\s*(?:\\{[^}]*return\\s*\\(|<|\\()"
+      "(?:export\\s+)?(?:default\\s+)?function\\s+(\\w+)\\s*\\([^)]*\\)\\s*(?::\\s*(?:JSX\\.Element|React\\.ReactNode|ReactNode))?\\s*\\{",
+      "(?:export\\s+)?(?:default\\s+)?function\\s+(\\w+)\\s*\\(\\{[^}]*\\}\\s*:\\s*\\w+\\)\\s*\\{",
+      "(?:export\\s+)?const\\s+(\\w+)\\s*(?::\\s*(?:React\\.)?FC(?:<[^>]*>)?)?\\s*=\\s*\\([^)]*\\)\\s*=>",
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=\\s*React\\.forwardRef",
+      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)"
     ],
     "hooks": [
       "useState(?:<[^>]*>)?\\(",
@@ -20,30 +24,75 @@
       "useCallback\\(",
       "useMemo\\(",
       "useRef(?:<[^>]*>)?\\(",
+      "useNavigate\\(",
+      "useParams\\(",
+      "useLocation\\(",
+      "useQuery\\(",
+      "useMutation\\(",
+      "useForm\\(",
       "use(\\w+)\\("
     ],
+    "custom_hooks": [
+      "(?:export\\s+)?function\\s+(use\\w+)\\s*\\(",
+      "(?:export\\s+)?const\\s+(use\\w+)\\s*=\\s*\\("
+    ],
+    "contexts": [
+      "createContext(?:<[^>]*>)?\\(",
+      "(?:export\\s+)?const\\s+(\\w+Context)\\s*=\\s*createContext",
+      "(?:export\\s+)?function\\s+(\\w+Provider)\\s*\\(",
+      "(?:export\\s+)?const\\s+(\\w+Provider)\\s*(?::\\s*[^=]+)?\\s*=",
+      "useContext\\((\\w+)\\)"
+    ],
     "jsx_elements": [
-      "<(\\w+)(?:\\s+[^>]*)?>",
-      "<([A-Z]\\w+)\\s*(?:/|>)"
+      "<([A-Z]\\w*)(?:\\s+[^>]*)?>",
+      "<([A-Z]\\w*)\\s*/>"
     ],
-    "props": [
-      "interface\\s+(\\w+Props)\\s*\\{",
-      "type\\s+(\\w+Props)\\s*=\\s*\\{"
+    "routes": [
+      "<Route\\s+path=['\"]([^'\"]+)['\"]",
+      "path:\\s*['\"]([^'\"]+)['\"]",
+      "navigate\\(['\"]([^'\"]+)['\"]\\)",
+      "to=['\"]([^'\"]+)['\"]"
     ],
-    "state": [
+    "props_interfaces": [
+      "interface\\s+(\\w+Props)\\s*(?:extends\\s+[^{]+)?\\{",
+      "type\\s+(\\w+Props)\\s*="
+    ],
+    "state_types": [
       "interface\\s+(\\w+State)\\s*\\{",
-      "type\\s+(\\w+State)\\s*=\\s*\\{"
+      "type\\s+(\\w+State)\\s*=",
+      "interface\\s+(\\w+ContextType)\\s*\\{"
     ],
     "event_handlers": [
       "on(\\w+)\\s*=\\s*\\{",
-      "handle(\\w+)\\s*=",
-      "const\\s+handle(\\w+)\\s*="
+      "(?:const|function)\\s+handle(\\w+)\\s*=?\\s*(?:\\([^)]*\\)\\s*=>|\\()",
+      "on(Click|Change|Submit|Focus|Blur|KeyDown|KeyUp|MouseEnter|MouseLeave)\\s*="
     ],
     "api_calls": [
       "fetch\\(['\"]([^'\"]+)['\"]",
       "axios\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]",
-      "\\$\\.(get|post|put|delete|ajax)\\(['\"]([^'\"]+)['\"]",
-      "api\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]"
+      "useQuery\\(['\"]([^'\"]+)['\"]",
+      "useMutation\\(['\"]([^'\"]+)['\"]"
+    ],
+    "form_handling": [
+      "useForm(?:<[^>]*>)?\\(",
+      "useFormContext\\(",
+      "handleSubmit\\(",
+      "register\\(['\"]([^'\"]+)['\"]",
+      "control\\s*:",
+      "zodResolver\\("
+    ],
+    "shadcn_ui": [
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=\\s*React\\.forwardRef",
+      "cva\\(",
+      "(?:export\\s+)?const\\s+(\\w+Variants)\\s*=\\s*cva\\(",
+      "VariantProps<typeof\\s+(\\w+)>"
+    ],
+    "radix_primitives": [
+      "import\\s+\\*\\s+as\\s+(\\w+)\\s+from\\s+['\"]@radix-ui",
+      "(\\w+)\\.Root",
+      "(\\w+)\\.Trigger",
+      "(\\w+)\\.Content",
+      "(\\w+)\\.Portal"
     ]
   }
 }

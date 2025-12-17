@@ -1,0 +1,120 @@
+# Database Schema Changes Summary
+**Date:** December 9, 2025
+**Database:** 150.241.245.65:5432/cff (External Database)
+
+## Changes Detected
+
+### 1. **demands** Table - NEW COLUMNS ADDED
+
+| Column Name | Type | Nullable | Description |
+|------------|------|----------|-------------|
+| `division_code` | VARCHAR | YES | Division code reference |
+| `location_code` | VARCHAR | YES | Location code reference |
+| `region_code` | VARCHAR | YES | Region code reference |
+
+**Total Columns:** 37 (was ~34)
+**Row Count:** 25,448
+
+**New Column Details:**
+- These are code-based references (not foreign keys)
+- Allow filtering demands by region/division/location
+- Complement existing organizational hierarchy
+
+---
+
+### 2. **resources** Table - NEW COLUMNS ADDED
+
+| Column Name | Type | Nullable | Description |
+|------------|------|----------|-------------|
+| `division_code` | VARCHAR | YES | Division code reference |
+| `location_code` | VARCHAR | YES | Home location code reference |
+| `region_code` | VARCHAR | YES | Region code reference |
+
+**Total Columns:** 30 (was ~27)
+**Row Count:** 374
+
+**Existing Related Columns** (unchanged):
+- `group_id` - INTEGER (FK to groups table)
+- `region_id` - INTEGER (FK to regions table)
+- `team_id` - INTEGER (FK to teams table)
+
+**Note:** Both ID-based FKs AND code-based references now exist for flexibility
+
+---
+
+## Summary of All Tables
+
+| Table | Rows | Columns | Changes |
+|-------|------|---------|---------|
+| absences | 6,190 | 13 | No changes |
+| assignments | 106,038 | 23 | No changes |
+| demands | 25,448 | 37 | ✅ +3 columns (division_code, location_code, region_code) |
+| demands_list | 25,577 | 38 | No changes |
+| divisions | 6 | 7 | No changes |
+| groups | 47 | 8 | No changes |
+| locations | 36 | 10 | No changes |
+| operation_points | 761 | 10 | No changes |
+| qualifications | 101 | 10 | No changes |
+| regions | 3 | 7 | No changes |
+| resource_category | 19 | 2 | No changes |
+| resources | 374 | 30 | ✅ +3 columns (division_code, location_code, region_code) |
+| teams | 61 | 8 | No changes |
+
+---
+
+## Impact on API
+
+### Routers Requiring Updates
+
+#### 1. **resources.py**
+**Status:** ✅ Needs Update
+- Add `division_code`, `location_code`, `region_code` to SELECT queries
+- Add optional filters: `?region_code=`, `?division_code=`, `?location_code=`
+- Update response examples in Swagger docs
+
+#### 2. **demands.py**
+**Status:** ✅ Needs Update
+- Add `division_code`, `location_code`, `region_code` to SELECT queries
+- Add optional filters: `?region_code=`, `?division_code=`, `?location_code=`
+- Update response examples in Swagger docs
+
+#### 3. **bsa_details.py**
+**Status:** ⚠️ Check if DB function updated
+- If `get_bsa_details_json()` function was updated to include new columns, no code changes needed (JSONB auto-includes)
+- Test endpoint to verify new fields appear in response
+
+### Documentation Requiring Updates
+
+1. **SQL_QUERIES_REFERENCE.md**
+   - Update resources table schema (section 2.6)
+   - Update demands table schema (section 2.8)
+   - Add example queries using new code filters
+
+2. **API_ENDPOINTS.md**
+   - Document new query parameters for resources and demands endpoints
+   - Add examples with code-based filtering
+
+3. **ROUTER_SUMMARY.md**
+   - Update resources router section with new filters
+   - Update demands router section with new filters
+
+---
+
+## Backward Compatibility
+
+✅ **Fully Backward Compatible**
+- New columns are nullable
+- Existing queries continue to work
+- No columns were removed
+- Old API clients can continue using existing endpoints
+
+---
+
+## Next Steps
+
+1. ✅ Update `resources.py` router
+2. ✅ Update `demands.py` router
+3. ✅ Update documentation
+4. ✅ Test new endpoints
+5. ✅ Deploy to production with `docker-compose up --build -d`
+

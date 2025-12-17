@@ -1,0 +1,360 @@
+"""
+Resources router - Full CRUD for resources table with pagination
+Connects to EXTERNAL database (data tables)
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+from datetime import datetime
+import math
+import json
+
+from database import get_external_db
+from models import PaginatedResponse
+from config import settings
+
+
+router = APIRouter(prefix="/resources", tags=["Resources"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_resources(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    status_filter: Optional[str] = Query(None, description="Filter by status (Actif, Inactif)"),
+    region_id: Optional[int] = Query(None, description="Filter by region ID"),
+    team_id: Optional[int] = Query(None, description="Filter by team ID"),
+    group_id: Optional[int] = Query(None, description="Filter by group ID"),
+    region_code: Optional[str] = Query(None, description="Filter by region code"),
+    division_code: Optional[str] = Query(None, description="Filter by division code"),
+    location_code: Optional[str] = Query(None, description="Filter by location code"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all resources with pagination and optional filters.
+    Data comes from external database.
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause dynamically
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if status_filter:
+            where_clauses.append("status = :status_filter")
+            params["status_filter"] = status_filter
+
+        if region_id:
+            where_clauses.append("region_id = :region_id")
+            params["region_id"] = region_id
+
+        if team_id:
+            where_clauses.append("team_id = :team_id")
+            params["team_id"] = team_id
+
+        if group_id:
+            where_clauses.append("group_id = :group_id")
+            params["group_id"] = group_id
+
+        if region_code:
+            where_clauses.append("region_code = :region_code")
+            params["region_code"] = region_code
+
+        if division_code:
+            where_clauses.append("division_code = :division_code")
+            params["division_code"] = division_code
+
+        if location_code:
+            where_clauses.append("location_code = :location_code")
+            params["location_code"] = location_code
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM resources {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch resources - updated columns for external DB
+        query = text(f"""
+            SELECT
+                resource_id, user_name, first_name, last_name, email, phone,
+                region_id, team_id, group_id, home_location,
+                region_code, division_code, location_code,
+                contract, shift_preference, weekly_hours, cost_per_hour,
+                resource_categories, qualifications, availability_pattern,
+                hire_date, status, address, npa, number, team_salon_hr,
+                created_at, created_by, updated_at, updated_by
+            FROM resources
+            {where_sql}
+            ORDER BY resource_id ASC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        resources = [dict(row._mapping) for row in rows]
+
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=resources,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching resources: {str(e)}",
+        )
+
+
+@router.get("/{resource_id}")
+async def get_resource(
+    resource_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single resource by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                resource_id, user_name, first_name, last_name, email, phone,
+                region_id, team_id, group_id, home_location,
+                region_code, division_code, location_code,
+                contract, shift_preference, weekly_hours, cost_per_hour,
+                resource_categories, qualifications, availability_pattern,
+                hire_date, status, address, npa, number, team_salon_hr,
+                created_at, created_by, updated_at, updated_by
+            FROM resources
+            WHERE resource_id = :resource_id
+        """)
+
+        result = await db.execute(query, {"resource_id": resource_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Resource with ID {resource_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching resource: {str(e)}",
+        )
+
+
+@router.post("/", status_code=201)
+async def create_resource(
+    resource: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new resource in external database.
+    Required fields: user_name, first_name, last_name, status
+    """
+    try:
+        # Validate required fields
+        required_fields = ["user_name", "first_name", "last_name", "status"]
+        for field in required_fields:
+            if field not in resource or not resource[field]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required field: {field}",
+                )
+
+        # Convert JSONB fields
+        qualifications_json = json.dumps(resource.get("qualifications")) if resource.get("qualifications") else None
+        resource_categories_json = json.dumps(resource.get("resource_categories")) if resource.get("resource_categories") else None
+        availability_json = json.dumps(resource.get("availability_pattern")) if resource.get("availability_pattern") else None
+
+        insert_query = text("""
+            INSERT INTO resources (
+                user_name, first_name, last_name, email, phone,
+                region_id, team_id, group_id, home_location,
+                contract, shift_preference, weekly_hours, cost_per_hour,
+                resource_categories, qualifications, availability_pattern,
+                hire_date, status, address, npa, number, team_salon_hr,
+                created_by
+            ) VALUES (
+                :user_name, :first_name, :last_name, :email, :phone,
+                :region_id, :team_id, :group_id, :home_location,
+                :contract, :shift_preference, :weekly_hours, :cost_per_hour,
+                :resource_categories::jsonb, :qualifications::jsonb, :availability_pattern::jsonb,
+                :hire_date, :status, :address, :npa, :number, :team_salon_hr,
+                :created_by
+            )
+            RETURNING *
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "user_name": resource.get("user_name"),
+                "first_name": resource.get("first_name"),
+                "last_name": resource.get("last_name"),
+                "email": resource.get("email"),
+                "phone": resource.get("phone"),
+                "region_id": resource.get("region_id"),
+                "team_id": resource.get("team_id"),
+                "group_id": resource.get("group_id"),
+                "home_location": resource.get("home_location"),
+                "contract": resource.get("contract"),
+                "shift_preference": resource.get("shift_preference"),
+                "weekly_hours": resource.get("weekly_hours"),
+                "cost_per_hour": resource.get("cost_per_hour"),
+                "resource_categories": resource_categories_json,
+                "qualifications": qualifications_json,
+                "availability_pattern": availability_json,
+                "hire_date": resource.get("hire_date"),
+                "status": resource.get("status", "Actif"),
+                "address": resource.get("address"),
+                "npa": resource.get("npa"),
+                "number": resource.get("number"),
+                "team_salon_hr": resource.get("team_salon_hr"),
+                "created_by": resource.get("created_by", "api"),
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating resource: {str(e)}",
+        )
+
+
+@router.put("/{resource_id}")
+async def update_resource(
+    resource_id: int,
+    resource: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing resource in external database.
+    """
+    try:
+        # Check if resource exists
+        check_query = text("SELECT resource_id FROM resources WHERE resource_id = :resource_id")
+        check_result = await db.execute(check_query, {"resource_id": resource_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Resource with ID {resource_id} not found",
+            )
+
+        # Build UPDATE clause dynamically based on provided fields
+        update_fields = []
+        params = {"resource_id": resource_id}
+
+        # Map of field names to their handling
+        simple_fields = [
+            "user_name", "first_name", "last_name", "email", "phone",
+            "region_id", "team_id", "group_id", "home_location",
+            "contract", "shift_preference", "weekly_hours", "cost_per_hour",
+            "hire_date", "status", "address", "npa", "number", "team_salon_hr"
+        ]
+
+        for field in simple_fields:
+            if field in resource and resource[field] is not None:
+                update_fields.append(f"{field} = :{field}")
+                params[field] = resource[field]
+
+        # Handle JSONB fields
+        if "qualifications" in resource:
+            update_fields.append("qualifications = :qualifications::jsonb")
+            params["qualifications"] = json.dumps(resource["qualifications"]) if resource["qualifications"] else None
+
+        if "resource_categories" in resource:
+            update_fields.append("resource_categories = :resource_categories::jsonb")
+            params["resource_categories"] = json.dumps(resource["resource_categories"]) if resource["resource_categories"] else None
+
+        if "availability_pattern" in resource:
+            update_fields.append("availability_pattern = :availability_pattern::jsonb")
+            params["availability_pattern"] = json.dumps(resource["availability_pattern"]) if resource["availability_pattern"] else None
+
+        # Add updated_by
+        update_fields.append("updated_by = :updated_by")
+        params["updated_by"] = resource.get("updated_by", "api")
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE resources
+            SET {', '.join(update_fields)}
+            WHERE resource_id = :resource_id
+            RETURNING *
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating resource: {str(e)}",
+        )
+
+
+@router.delete("/{resource_id}", status_code=204)
+async def delete_resource(
+    resource_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete a resource from external database.
+    """
+    try:
+        # Check if resource exists
+        check_query = text("SELECT resource_id FROM resources WHERE resource_id = :resource_id")
+        check_result = await db.execute(check_query, {"resource_id": resource_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Resource with ID {resource_id} not found",
+            )
+
+        delete_query = text("DELETE FROM resources WHERE resource_id = :resource_id")
+        await db.execute(delete_query, {"resource_id": resource_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting resource: {str(e)}",
+        )

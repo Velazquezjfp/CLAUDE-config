@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""
+Test script to debug PDF extraction issues
+"""
+import json
+import sys
+from extraction import PDFTimesheetExtractor
+import pdfplumber
+import pandas as pd
+
+def print_section(title):
+    """Print a formatted section header"""
+    print("\n" + "="*80)
+    print(f" {title}")
+    print("="*80)
+
+def test_pdf_extraction(pdf_path):
+    """Test PDF extraction with detailed debugging"""
+
+    print_section("STARTING PDF EXTRACTION TEST")
+    print(f"PDF File: {pdf_path}")
+
+    # Read PDF bytes
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+
+    # Initialize extractor
+    extractor = PDFTimesheetExtractor()
+
+    # Extract data
+    print_section("RUNNING EXTRACTION")
+    result = extractor.extract_pdf_data(pdf_bytes, pdf_path)
+
+    # Print results summary
+    print_section("EXTRACTION RESULTS")
+    print(f"Date: {result.get('date')}")
+    print(f"Consultant Name: {result.get('consultant_name')}")
+    print(f"Total Hours: {result.get('total_hours')}")
+    print(f"Onsite Hours: {result.get('onsite_hours')}")
+    print(f"Remote Hours: {result.get('remote_hours')}")
+    print(f"Checksum: {result.get('checksum')}")
+    print(f"Healthy: {result.get('healthy')}")
+    if result.get('healthy_status_reason'):
+        print(f"Issues: {result.get('healthy_status_reason')}")
+
+    # Print master data
+    print_section("MASTER DATA EXTRACTED")
+    masterdata = result.get('Masterdata', {})
+    if masterdata:
+        for key, value in masterdata.items():
+            print(f"{key}: {value}")
+    else:
+        print("No master data extracted")
+
+    # Now do detailed debugging
+    print_section("DETAILED DEBUGGING - TABLE ANALYSIS")
+
+    with pdfplumber.open(pdf_path) as pdf:
+        print(f"Total pages: {len(pdf.pages)}")
+
+        for page_num, page in enumerate(pdf.pages, 1):
+            print(f"\n--- PAGE {page_num} ---")
+
+            # Extract text
+            text = page.extract_text() or ""
+            print(f"\nPage text preview (first 500 chars):")
+            print(text[:500])
+
+            # Extract tables
+            tables = page.extract_tables()
+            print(f"\nNumber of tables found: {len(tables) if tables else 0}")
+
+            if tables:
+                for table_idx, table in enumerate(tables):
+                    print(f"\n  TABLE {table_idx + 1} (rows: {len(table)})")
+
+                    # Show raw table structure
+                    print(f"  Raw table (first 3 rows):")
+                    for i, row in enumerate(table[:3]):
+                        print(f"    Row {i}: {row}")
+
+                    # Create DataFrame
+                    if len(table) == 1:
+                        df = pd.DataFrame([table[0]], columns=[f"col_{i}" for i in range(len(table[0]))])
+                    else:
+                        df = extractor._create_dataframe_from_table_enhanced(table)
+
+                    print(f"\n  DataFrame columns: {list(df.columns)}")
+                    print(f"  DataFrame shape: {df.shape}")
+                    print(f"\n  DataFrame preview:")
+                    print(df.head(5).to_string())
+
+                    # Check if table has dates
+                    has_dates = extractor._table_has_dates(df)
+                    print(f"\n  Has dates: {has_dates}")
+
+                    if has_dates:
+                        # Identify column structure
+                        structure = extractor._identify_column_structure(df)
+                        print(f"\n  Column structure identified:")
+                        for key, cols in structure.items():
+                            if cols:
+                                print(f"    {key}: {cols}")
+
+                        # Try to extract hours
+                        hours = extractor._extract_hours_from_table(df, structure, text)
+                        print(f"\n  Hours extracted from this table:")
+                        print(f"    Total: {hours.get('total_hours')}")
+                        print(f"    Onsite: {hours.get('onsite_hours')}")
+                        print(f"    Remote: {hours.get('remote_hours')}")
+
+    # Save full result to JSON
+    output_file = "extraction_result.json"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        # Remove file_content for readability
+        result_copy = result.copy()
+        if 'file_content' in result_copy:
+            result_copy['file_content'] = "[BASE64_REMOVED_FOR_READABILITY]"
+        json.dump(result_copy, f, indent=2, ensure_ascii=False)
+
+    print_section("TEST COMPLETE")
+    print(f"Full results saved to: {output_file}")
+
+    return result
+
+if __name__ == "__main__":
+    # Allow PDF path as command line argument
+    if len(sys.argv) > 1:
+        pdf_path = sys.argv[1]
+    else:
+        pdf_path = "SVA_Unterstützung im WebSphere Umfeld (RHEL-Umgebung)_Wei-Dong_Yang_9_2025_V1,AD.pdf"
+
+    print(f"Testing with: {pdf_path}")
+    print(f"File exists: {__import__('os').path.exists(pdf_path)}")
+    print(f"File size: {__import__('os').path.getsize(pdf_path)} bytes")
+
+    try:
+        result = test_pdf_extraction(pdf_path)
+
+        # Exit with error code if unhealthy
+        if not result.get('healthy', False):
+            print("\n⚠️  Extraction completed with issues (see healthy_status_reason)")
+            sys.exit(1)
+        else:
+            print("\n✓ Extraction completed successfully")
+
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

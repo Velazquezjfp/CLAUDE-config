@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""
+Test script for extraction_v2.py - Enhanced PDF extraction with multi-page support
+"""
+import json
+import sys
+import os
+from extraction_v2 import PDFTimesheetExtractorV2
+
+def print_section(title):
+    """Print a formatted section header"""
+    print("\n" + "="*80)
+    print(f" {title}")
+    print("="*80)
+
+def test_pdf_extraction(pdf_path):
+    """Test PDF extraction with v2 extractor"""
+
+    print_section("STARTING PDF EXTRACTION TEST (V2)")
+    print(f"PDF File: {pdf_path}")
+
+    # Read PDF bytes
+    with open(pdf_path, 'rb') as f:
+        pdf_bytes = f.read()
+
+    # Initialize extractor
+    extractor = PDFTimesheetExtractorV2(enable_debug_logging=True)
+
+    # Extract data
+    print_section("RUNNING EXTRACTION")
+    result = extractor.extract_pdf_data(pdf_bytes, os.path.basename(pdf_path))
+
+    # Print results summary
+    print_section("EXTRACTION RESULTS")
+    print(f"Date: {result.get('date')}")
+    print(f"Consultant Name: {result.get('consultant_name')}")
+    print(f"Total Hours: {result.get('total_hours')}")
+    print(f"Onsite Hours: {result.get('onsite_hours')}")
+    print(f"Remote Hours: {result.get('remote_hours')}")
+    print(f"Checksum: {result.get('checksum')}")
+    print(f"Healthy: {result.get('healthy')}")
+    if result.get('healthy_status_reason'):
+        print(f"Issues: {result.get('healthy_status_reason')}")
+
+    # Print OCR Verification
+    print_section("OCR VERIFICATION")
+    ocr = result.get('ocr_verification', {})
+    print(f"Status: {ocr.get('status', 'N/A')}")
+    print(f"Expected Totals (from Summe**): {ocr.get('expected_totals', {})}")
+    print(f"Extracted Totals: {ocr.get('extracted_totals', {})}")
+    if ocr.get('discrepancy'):
+        print(f"Discrepancy: {ocr.get('discrepancy')} hours")
+    print("Details:")
+    for detail in ocr.get('details', []):
+        print(f"  - {detail}")
+
+    # Print master data
+    print_section("MASTER DATA EXTRACTED")
+    masterdata = result.get('Masterdata', {})
+    if masterdata:
+        for key, value in masterdata.items():
+            print(f"{key}: {value}")
+    else:
+        print("No master data extracted")
+
+    # Save full result to JSON
+    output_file = f"extraction_result_v2_{os.path.basename(pdf_path).replace('.pdf', '')}.json"
+    with open(output_file, 'w', encoding='utf-8') as f:
+        # Remove file_content for readability
+        result_copy = result.copy()
+        if 'file_content' in result_copy:
+            result_copy['file_content'] = "[BASE64_REMOVED_FOR_READABILITY]"
+        json.dump(result_copy, f, indent=2, ensure_ascii=False)
+
+    print_section("TEST COMPLETE")
+    print(f"Full results saved to: {output_file}")
+
+    return result
+
+def test_all_pdfs():
+    """Test all PDFs in current directory and test_pdf folder"""
+    results = []
+
+    # Get all PDFs
+    pdf_files = []
+
+    # Current directory
+    for f in os.listdir('.'):
+        if f.endswith('.pdf'):
+            pdf_files.append(f)
+
+    # test_pdf folder
+    test_pdf_dir = './test_pdf'
+    if os.path.exists(test_pdf_dir):
+        for f in os.listdir(test_pdf_dir):
+            if f.endswith('.pdf'):
+                pdf_files.append(os.path.join(test_pdf_dir, f))
+
+    print_section("BATCH TESTING ALL PDFs")
+    print(f"Found {len(pdf_files)} PDF files to test")
+
+    for pdf_path in pdf_files:
+        print(f"\n{'='*80}")
+        print(f"Testing: {pdf_path}")
+        print('='*80)
+
+        try:
+            result = test_pdf_extraction(pdf_path)
+            results.append({
+                'file': pdf_path,
+                'success': True,
+                'healthy': result.get('healthy'),
+                'total_hours': result.get('total_hours'),
+                'onsite_hours': result.get('onsite_hours'),
+                'remote_hours': result.get('remote_hours'),
+                'ocr_status': result.get('ocr_verification', {}).get('status'),
+                'expected_total': result.get('ocr_verification', {}).get('expected_totals', {}).get('total')
+            })
+        except Exception as e:
+            print(f"ERROR: {e}")
+            results.append({
+                'file': pdf_path,
+                'success': False,
+                'error': str(e)
+            })
+
+    # Print summary
+    print_section("BATCH TEST SUMMARY")
+    print(f"{'File':<60} {'Extracted':<12} {'Expected':<12} {'OCR Status':<15} {'Healthy'}")
+    print("-" * 110)
+
+    for r in results:
+        if r['success']:
+            extracted = f"{r['total_hours']:.2f}" if r['total_hours'] else "N/A"
+            expected = f"{r['expected_total']:.2f}" if r['expected_total'] else "N/A"
+            ocr = r['ocr_status'] or "N/A"
+            healthy = "Yes" if r['healthy'] else "NO"
+            filename = os.path.basename(r['file'])[:57] + "..." if len(os.path.basename(r['file'])) > 60 else os.path.basename(r['file'])
+            print(f"{filename:<60} {extracted:<12} {expected:<12} {ocr:<15} {healthy}")
+        else:
+            filename = os.path.basename(r['file'])[:57] + "..." if len(os.path.basename(r['file'])) > 60 else os.path.basename(r['file'])
+            print(f"{filename:<60} ERROR: {r['error']}")
+
+    return results
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '--all':
+            # Test all PDFs
+            results = test_all_pdfs()
+            # Exit with error if any failed
+            if any(not r['success'] or not r.get('healthy', False) for r in results):
+                sys.exit(1)
+        else:
+            # Test specific PDF
+            pdf_path = sys.argv[1]
+            print(f"Testing with: {pdf_path}")
+            print(f"File exists: {os.path.exists(pdf_path)}")
+            if os.path.exists(pdf_path):
+                print(f"File size: {os.path.getsize(pdf_path)} bytes")
+
+            try:
+                result = test_pdf_extraction(pdf_path)
+
+                # Exit with error code if unhealthy
+                if not result.get('healthy', False):
+                    print("\n[!] Extraction completed with issues (see healthy_status_reason)")
+                    sys.exit(1)
+                else:
+                    print("\n[OK] Extraction completed successfully")
+
+            except Exception as e:
+                print(f"\n[ERROR] {e}")
+                import traceback
+                traceback.print_exc()
+                sys.exit(1)
+    else:
+        print("Usage:")
+        print("  python test_extraction_v2.py <pdf_file>  - Test single PDF")
+        print("  python test_extraction_v2.py --all       - Test all PDFs in current and test_pdf directories")
+        sys.exit(1)

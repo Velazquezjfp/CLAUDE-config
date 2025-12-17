@@ -1,0 +1,337 @@
+"""
+CP-SAT Model Builder and Solver
+Main module that creates and solves the workforce planning problem
+"""
+from ortools.sat.python import cp_model
+import sys
+import json
+from datetime import datetime
+sys.path.append('..')
+from config import (
+    SOLVER_TIME_LIMIT_SECONDS,
+    USE_SOFT_CONSTRAINTS,
+    ENABLED_CONSTRAINTS,
+    ENABLED_OBJECTIVES,
+    WORKLOAD_BALANCE_WEIGHT,
+    SAVE_SOLUTION,
+    SOLUTION_OUTPUT_PATH
+)
+from constraints.lc_01_weekly_hours import add_weekly_hours_constraints
+from constraints.lc_02_daily_14h_span import add_14h_span_constraints
+from constraints.lc_03_absolute_daily import add_absolute_daily_constraints
+from constraints.lc_04_continuous_work import add_continuous_work_constraints
+from constraints.cp_02_qualification_matching import add_qualification_matching_constraints
+from objectives.workload_balance import add_workload_balance_objective
+from objectives.maximize_coverage import add_maximize_coverage_objective
+
+
+class WorkforcePlanningModel:
+    """Main model for workforce planning optimization"""
+
+    def __init__(self, preprocessed_data, constraint_values):
+        """
+        Initialize the model with preprocessed data
+
+        Args:
+            preprocessed_data: PreprocessedData object
+            constraint_values: ConstraintValues object
+        """
+        self.data = preprocessed_data
+        self.constraints = constraint_values
+        self.model = cp_model.CpModel()
+
+        # Decision variables
+        self.x = {}  # Assignment variables: {(resource_id, request_id): BoolVar}
+
+        # Violation variables (for soft constraints)
+        self.violations = []
+        self.violation_metadata = []  # NEW: Metadata for analysis
+
+        # Objective variables (workload balancing, etc.)
+        self.objective_vars = []
+
+        # Solution
+        self.solver = cp_model.CpSolver()
+        self.status = None
+        self.solution_assignments = []
+
+    def build_model(self):
+        """Build the complete CP-SAT model"""
+        print("\n" + "="*60)
+        print("BUILDING CP-SAT MODEL")
+        print("="*60)
+
+        # Step 1: Create decision variables
+        self._create_variables()
+
+        # Step 2: Add coverage constraints (each request must be covered)
+        self._add_coverage_constraints()
+
+        # Step 3: Add enabled constraints
+        self._add_constraint_modules()
+
+        # Step 4: Add enabled objectives
+        self._add_objectives()
+
+        # Step 5: Create objective function
+        self._create_objective()
+
+        print("="*60)
+        print("MODEL BUILD COMPLETE")
+        print("="*60 + "\n")
+
+    def _create_variables(self):
+        """Create assignment decision variables"""
+        print("\n[VARIABLES] Creating decision variables...")
+
+        for resource_id in self.data.resource_ids:
+            for request_id in self.data.request_ids:
+                var_name = f'x_{resource_id}_{request_id}'
+                self.x[(resource_id, request_id)] = self.model.NewBoolVar(var_name)
+
+        print(f"  Created {len(self.x)} assignment variables")
+        print(f"  ({len(self.data.resource_ids)} resources × {len(self.data.request_ids)} requests)")
+
+    def _add_coverage_constraints(self):
+        """Ensure each request is assigned to at most one resource"""
+        print("\n[COVERAGE] Adding coverage constraints...")
+
+        # Track which requests are covered (for maximize coverage objective)
+        self.coverage_vars = {}
+
+        for request_id in self.data.request_ids:
+            # Each request can be assigned to AT MOST one resource (allows partial coverage)
+            assignments = [
+                self.x[(resource_id, request_id)]
+                for resource_id in self.data.resource_ids
+            ]
+            self.model.Add(sum(assignments) <= 1)
+
+            # Create coverage tracking variable for objective
+            is_covered = self.model.NewBoolVar(f'covered_{request_id}')
+            self.model.Add(sum(assignments) == is_covered)
+            self.coverage_vars[request_id] = is_covered
+
+        print(f"  Mode: AT MOST ONE resource per request (partial coverage allowed)")
+        print(f"  Added {len(self.data.request_ids)} coverage constraints")
+        print(f"  Created {len(self.coverage_vars)} coverage tracking variables")
+
+    def _add_constraint_modules(self):
+        """Add all enabled constraint modules"""
+        print("\n[CONSTRAINTS] Adding constraint modules...")
+
+        if "LC_01_max_weekly_hours" in ENABLED_CONSTRAINTS:
+            viols, metadata = add_weekly_hours_constraints(
+                self.model, self.x, self.data, self.constraints
+            )
+            self.violations.extend(viols)
+            self.violation_metadata.extend(metadata)
+
+        if "LC_02_max_daily_hours_14h_span" in ENABLED_CONSTRAINTS:
+            viols, metadata = add_14h_span_constraints(
+                self.model, self.x, self.data, self.constraints
+            )
+            self.violations.extend(viols)
+            self.violation_metadata.extend(metadata)
+
+        if "LC_03_max_absolute_daily_hours" in ENABLED_CONSTRAINTS:
+            viols, metadata = add_absolute_daily_constraints(
+                self.model, self.x, self.data, self.constraints
+            )
+            self.violations.extend(viols)
+            self.violation_metadata.extend(metadata)
+
+        if "LC_04_max_continuous_work" in ENABLED_CONSTRAINTS:
+            viols, metadata = add_continuous_work_constraints(
+                self.model, self.x, self.data, self.constraints
+            )
+            self.violations.extend(viols)
+            self.violation_metadata.extend(metadata)
+
+        if "CP_02_qualification_matching" in ENABLED_CONSTRAINTS:
+            viols, metadata = add_qualification_matching_constraints(
+                self.model, self.x, self.data, self.constraints
+            )
+            self.violations.extend(viols)
+            self.violation_metadata.extend(metadata)
+
+        print(f"\n  Total soft violations tracked: {len(self.violations)}")
+
+    def _add_objectives(self):
+        """Add all enabled objective functions"""
+        print("\n[OBJECTIVES] Adding objective modules...")
+
+        if "maximize_coverage" in ENABLED_OBJECTIVES:
+            obj_vars = add_maximize_coverage_objective(
+                self.model, self.coverage_vars, self.data
+            )
+            self.objective_vars.extend(obj_vars)
+
+        if "balance_workload" in ENABLED_OBJECTIVES:
+            obj_vars = add_workload_balance_objective(
+                self.model, self.x, self.data
+            )
+            self.objective_vars.extend(obj_vars)
+
+        print(f"\n  Total objective variables tracked: {len(self.objective_vars)}")
+
+    def _create_objective(self):
+        """Create objective function"""
+        print("\n[OBJECTIVE] Creating objective function...")
+
+        objective_terms = []
+
+        # 1. Minimize total violations (if using soft constraints)
+        if USE_SOFT_CONSTRAINTS and self.violations:
+            # Weight violations heavily (highest priority)
+            VIOLATION_WEIGHT = 1000
+            for violation in self.violations:
+                objective_terms.append(violation * VIOLATION_WEIGHT)
+            print(f"  Added {len(self.violations)} violation terms (weight: {VIOLATION_WEIGHT})")
+
+        # 2. Add workload balancing objective
+        if self.objective_vars:
+            # Workload balancing gets configurable weight
+            for obj_var in self.objective_vars:
+                objective_terms.append(obj_var * int(WORKLOAD_BALANCE_WEIGHT * 100))
+            print(f"  Added {len(self.objective_vars)} workload balance terms (weight: {WORKLOAD_BALANCE_WEIGHT})")
+
+        # If no objective terms, just minimize any variable (feasibility problem)
+        if not objective_terms:
+            print("  Feasibility problem (no objective terms)")
+            # Just find any feasible solution
+            objective_terms = [0]
+        else:
+            print(f"  Total objective terms: {len(objective_terms)}")
+
+        self.model.Minimize(sum(objective_terms))
+
+    def solve(self, time_limit: int = SOLVER_TIME_LIMIT_SECONDS):
+        """
+        Solve the model
+
+        Args:
+            time_limit: Time limit in seconds
+
+        Returns:
+            True if optimal or feasible solution found, False otherwise
+        """
+        print("\n" + "="*60)
+        print("SOLVING MODEL")
+        print("="*60)
+        print(f"Time limit: {time_limit} seconds")
+        print("Searching for solution...\n")
+
+        # Set solver parameters
+        self.solver.parameters.max_time_in_seconds = time_limit
+        self.solver.parameters.log_search_progress = True
+
+        # Solve
+        self.status = self.solver.Solve(self.model)
+
+        # Report results
+        print("\n" + "="*60)
+        print("SOLVER RESULTS")
+        print("="*60)
+
+        if self.status == cp_model.OPTIMAL:
+            print("Status: OPTIMAL")
+            self._extract_solution()
+            return True
+        elif self.status == cp_model.FEASIBLE:
+            print("Status: FEASIBLE")
+            self._extract_solution()
+            return True
+        elif self.status == cp_model.INFEASIBLE:
+            print("Status: INFEASIBLE")
+            print("No solution satisfies all constraints!")
+            return False
+        else:
+            print("Status: UNKNOWN")
+            return False
+
+    def _extract_solution(self):
+        """Extract solution from solver"""
+        print("\nSOLUTION FOUND:")
+        print("-" * 60)
+
+        total_violations = 0
+        if self.violations:
+            total_violations = sum(self.solver.Value(v) for v in self.violations)
+
+        print(f"Objective Value: {self.solver.ObjectiveValue()}")
+        print(f"Total Violations: {total_violations}")
+        print(f"Solve Time: {self.solver.WallTime():.2f} seconds")
+        print(f"Branches: {self.solver.NumBranches()}")
+
+        print("\nASSIGNMENTS:")
+        print("-" * 60)
+
+        for request_id in self.data.request_ids:
+            for resource_id in self.data.resource_ids:
+                if self.solver.Value(self.x[(resource_id, request_id)]) == 1:
+                    # Find the request details
+                    req = next(r for r in self.data.requests if r['id'] == request_id)
+                    duration = self.data.task_duration[request_id]
+
+                    assignment = {
+                        'request_id': request_id,
+                        'resource_id': resource_id,
+                        'start': req['shift_start_time'],
+                        'end': req['shift_finish_time'],
+                        'duration_hours': duration
+                    }
+                    self.solution_assignments.append(assignment)
+
+                    print(f"  {request_id} → {resource_id}")
+                    print(f"    {req['shift_start_time']} to {req['shift_finish_time']} ({duration:.2f}h)")
+
+        print("="*60 + "\n")
+
+        # Save solution if configured
+        if SAVE_SOLUTION:
+            self._save_solution()
+
+    def _save_solution(self):
+        """Save solution to file"""
+        import os
+        os.makedirs(os.path.dirname(SOLUTION_OUTPUT_PATH), exist_ok=True)
+
+        solution_data = {
+            'metadata': {
+                'status': 'OPTIMAL' if self.status == cp_model.OPTIMAL else 'FEASIBLE',
+                'objective_value': int(self.solver.ObjectiveValue()),
+                'solve_time_seconds': self.solver.WallTime(),
+                'timestamp': datetime.now().isoformat()
+            },
+            'assignments': self.solution_assignments,
+            'statistics': {
+                'num_requests': len(self.data.request_ids),
+                'num_resources': len(self.data.resource_ids),
+                'num_violations': sum(self.solver.Value(v) for v in self.violations) if self.violations else 0
+            }
+        }
+
+        with open(SOLUTION_OUTPUT_PATH, 'w') as f:
+            json.dump(solution_data, f, indent=2)
+
+        print(f"Solution saved to: {SOLUTION_OUTPUT_PATH}")
+
+
+def create_and_solve_model(preprocessed_data, constraint_values,
+                          time_limit: int = SOLVER_TIME_LIMIT_SECONDS):
+    """
+    Convenience function to create and solve the model
+
+    Args:
+        preprocessed_data: PreprocessedData object
+        constraint_values: ConstraintValues object
+        time_limit: Solver time limit in seconds
+
+    Returns:
+        WorkforcePlanningModel with solution (if found)
+    """
+    model = WorkforcePlanningModel(preprocessed_data, constraint_values)
+    model.build_model()
+    model.solve(time_limit)
+    return model

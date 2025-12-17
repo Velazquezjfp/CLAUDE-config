@@ -1,0 +1,203 @@
+"""
+Workload Balance Objective Analyzer
+Analyzes workload distribution across resources
+"""
+from .base_analyzer import ObjectiveAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class WorkloadAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for balance_workload objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='balance_workload',
+            objective_name='Balance Workload Distribution'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """
+        Analyze workload distribution across resources
+        """
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        # Calculate workload per resource
+        workload = {}
+        for resource in data.resources:
+            res_id = resource['resource_id']
+            total_hours = sum(
+                a['duration_hours']
+                for a in assignments
+                if a['resource_id'] == res_id
+            )
+            workload[res_id] = total_hours
+
+        # Calculate statistics
+        hours_list = list(workload.values())
+        if not hours_list:
+            return {
+                "objective_id": "balance_workload",
+                "objective_name": "Balance Workload Distribution",
+                "target_description": "Minimize workload variance across resources",
+                "achieved_value": 0,
+                "max_possible_value": 0,
+                "achievement_rate": 0,
+                "performance_category": "N/A",
+                "message": "No assignments made",
+                "gaps": [],
+                "metrics": {}
+            }
+
+        avg_hours = sum(hours_list) / len(hours_list)
+        max_hours = max(hours_list)
+        min_hours = min(hours_list)
+        variance = max_hours - min_hours
+
+        # Calculate standard deviation for more nuanced analysis
+        squared_diffs = [(h - avg_hours) ** 2 for h in hours_list]
+        std_dev = (sum(squared_diffs) / len(squared_diffs)) ** 0.5
+
+        # Target variance: ideally max 5 hours difference
+        target_variance = 5.0
+        # Achievement rate: 100% if variance <= target, decreasing linearly
+        if variance <= target_variance:
+            achievement_rate = 100.0
+        else:
+            # Penalize excessive variance
+            achievement_rate = max(0, 100.0 * (1 - (variance - target_variance) / target_variance))
+
+        # Analyze gaps
+        gaps = self.get_gap_details(solution, data, workload, avg_hours)
+
+        return {
+            "objective_id": "balance_workload",
+            "objective_name": "Balance Workload Distribution",
+            "target_description": "Minimize workload variance across resources",
+            "achieved_value": variance,
+            "max_possible_value": target_variance,
+            "achievement_rate": round(achievement_rate, 2),
+            "performance_category": self.classify_performance(achievement_rate),
+            "gaps": gaps,
+            "metrics": {
+                "average_hours": round(avg_hours, 2),
+                "max_hours": round(max_hours, 2),
+                "min_hours": round(min_hours, 2),
+                "variance": round(variance, 2),
+                "standard_deviation": round(std_dev, 2),
+                "coefficient_of_variation": round((std_dev / avg_hours * 100) if avg_hours > 0 else 0, 2),
+                "resource_count": len(workload),
+                "resources_with_work": len([h for h in hours_list if h > 0]),
+                "idle_resources": len([h for h in hours_list if h == 0]),
+                "workload_distribution": {
+                    res_id: {
+                        "total_hours": round(hours, 2),
+                        "vs_average": round(hours - avg_hours, 2),
+                        "vs_average_pct": round(((hours - avg_hours) / avg_hours * 100) if avg_hours > 0 else 0, 2),
+                        "status": self._classify_workload_status(hours, avg_hours)
+                    }
+                    for res_id, hours in sorted(workload.items(), key=lambda x: x[1], reverse=True)
+                }
+            }
+        }
+
+    def get_gap_details(self, solution, data, workload, avg_hours):
+        """Analyze workload imbalance issues"""
+        gaps = []
+
+        # Identify overloaded resources (>20% above average)
+        overloaded = [
+            (res_id, hours)
+            for res_id, hours in workload.items()
+            if hours > avg_hours * 1.2 and avg_hours > 0
+        ]
+
+        if overloaded:
+            overload_amount = sum(h - avg_hours for _, h in overloaded)
+            gaps.append({
+                "gap_type": "WORKLOAD_OVERLOAD",
+                "description": f"{len(overloaded)} resources overloaded (>20% above average)",
+                "impact": f"Total excess workload: {overload_amount:.1f}h",
+                "severity": "HIGH" if len(overloaded) > len(workload) * 0.3 else "MEDIUM",
+                "recommendations": [
+                    f"Redistribute {overload_amount:.1f}h from overloaded to underutilized resources",
+                    f"Focus on: {', '.join([res_id for res_id, _ in sorted(overloaded, key=lambda x: x[1], reverse=True)[:3]])}"
+                ],
+                "affected_resources": [
+                    {
+                        "resource_id": res_id,
+                        "hours": round(hours, 2),
+                        "over_average_by": round(hours - avg_hours, 2)
+                    }
+                    for res_id, hours in sorted(overloaded, key=lambda x: x[1], reverse=True)
+                ]
+            })
+
+        # Identify underutilized resources (<50% of average)
+        underutilized = [
+            (res_id, hours)
+            for res_id, hours in workload.items()
+            if hours < avg_hours * 0.5 and avg_hours > 0
+        ]
+
+        if underutilized:
+            unused_capacity = sum(avg_hours - h for _, h in underutilized)
+            gaps.append({
+                "gap_type": "UNDERUTILIZATION",
+                "description": f"{len(underutilized)} resources underutilized (<50% of average)",
+                "impact": f"Total unused capacity: {unused_capacity:.1f}h",
+                "severity": "MEDIUM" if len(underutilized) > len(workload) * 0.2 else "LOW",
+                "recommendations": [
+                    f"Assign {unused_capacity:.1f}h more work to underutilized resources",
+                    "Check if underutilized resources have necessary qualifications",
+                    "Consider cross-training to increase assignment flexibility"
+                ],
+                "affected_resources": [
+                    {
+                        "resource_id": res_id,
+                        "hours": round(hours, 2),
+                        "below_average_by": round(avg_hours - hours, 2)
+                    }
+                    for res_id, hours in sorted(underutilized, key=lambda x: x[1])
+                ]
+            })
+
+        # Identify idle resources
+        idle = [res_id for res_id, hours in workload.items() if hours == 0]
+        if idle:
+            gaps.append({
+                "gap_type": "IDLE_RESOURCES",
+                "description": f"{len(idle)} resources with zero assignments",
+                "impact": "Complete resource underutilization",
+                "severity": "HIGH",
+                "recommendations": [
+                    "Check qualification constraints blocking these resources",
+                    "Review resource availability and capacity",
+                    "Consider reassigning work from overloaded resources"
+                ],
+                "affected_resources": [
+                    {"resource_id": res_id, "hours": 0}
+                    for res_id in idle
+                ]
+            })
+
+        return gaps
+
+    def _classify_workload_status(self, hours, avg_hours):
+        """Classify resource workload status"""
+        if avg_hours == 0:
+            return "N/A"
+        if hours == 0:
+            return "IDLE"
+        pct_of_avg = (hours / avg_hours) * 100
+        if pct_of_avg > 120:
+            return "OVERLOADED"
+        elif pct_of_avg > 110:
+            return "ABOVE_AVERAGE"
+        elif pct_of_avg >= 90:
+            return "BALANCED"
+        elif pct_of_avg >= 50:
+            return "BELOW_AVERAGE"
+        else:
+            return "UNDERUTILIZED"

@@ -1,0 +1,246 @@
+# CFF Workforce Planning - Constraint Specification Methodology
+
+**Session Date**: November 17, 2025
+**Session Focus**: Establishing database-aligned constraint specifications for OR-tools CP-SAT solver
+
+## Methodology for Building Constraint Specifications
+
+### Core Principles
+
+1. **Database-First Approach**
+   - All constraint values are fetched from the live API at runtime
+   - No hardcoded values except legal constraints (which are fixed by law)
+   - Dynamic values allow policy changes without code redeployment
+
+2. **Two-Tier Constraint System**
+   ```python
+   # Tier 1: Legal (FIXED) - Hard constraints, never violated
+   legal_limit = fetch_from_api("/legal-constraints/")  # e.g., 50h/week
+
+   # Tier 2: Company (DYNAMIC) - Soft constraints, can violate with penalties
+   company_limit = fetch_from_api("/company-policy-constraints/", context)  # e.g., 45h/week
+   ```
+
+3. **Dynamic Value Architecture**
+   - **Legal constraints**: IMMUTABLE (only change with legislation)
+   - **Company policies**: FULLY DYNAMIC (vary by planning mode, context, time period)
+   - **Operational parameters**: FULLY DYNAMIC (travel, team composition, costs)
+
+### Standard Specification Structure
+
+Each constraint specification includes:
+
+1. **Constraint Metadata**
+   - Name, category, layer, type
+   - Legal reference (if applicable)
+   - Database constraint_id for API fetching
+
+2. **Constraint Parameters**
+   - Legal limit (FIXED)
+   - Company preference (DYNAMIC)
+   - API endpoints for fetching values
+   - Notes on how values can vary
+
+3. **Data Inputs from Database**
+   - Required tables: requests, resources, absences, assignments
+   - API endpoints for each data source
+   - Required fields from each table
+
+4. **Preprocessed Data**
+   - Calculations done before solver runs
+   - Time window generation
+   - Task-to-period allocation
+   - Cross-midnight handling
+
+5. **Mathematical Formulation**
+   - Clear equations for both legal and company constraints
+   - Scaling factor (100) for integer domain
+   - Violation variables for soft constraints
+
+6. **Implementation Notes**
+   - Async API fetching patterns
+   - Dynamic value retrieval based on context
+   - Preprocessing pipeline
+
+7. **Dynamic Value Examples**
+   - Conservative mode values
+   - Balanced mode values
+   - Aggressive mode values
+   - Special context variations (night, holidays, emergencies)
+
+### API Integration Pattern
+
+```python
+async def fetch_constraint_values(constraint_name, planning_mode=None):
+    # Legal constraint (FIXED)
+    legal = await api.get(f"/legal-constraints/?constraint_name={constraint_name}")
+
+    # Company policy (DYNAMIC - varies by context)
+    params = {"policy_name": corresponding_policy}
+    if planning_mode:
+        params["planning_mode"] = planning_mode
+    company = await api.get("/company-policy-constraints/", params=params)
+
+    return legal, company
+```
+
+### Preprocessing Pipeline
+
+1. **Fetch** constraint values from API
+2. **Transform** timestamps to scaled integers
+3. **Allocate** tasks to time periods (weeks, days, windows)
+4. **Handle** edge cases (cross-midnight, cross-week)
+5. **Generate** auxiliary data structures
+
+## Session Summary - November 17, 2025
+
+### Completed Work
+
+Successfully created database-aligned specifications for 4 legal constraints:
+
+1. **LC_01_max_weekly_hours_v3.yaml**
+   - Legal: 50 hours/week
+   - Company: 45 hours/week (dynamic)
+   - Handles cross-week task allocation
+
+2. **LC_02_max_daily_hours_14h_span.yaml**
+   - Legal: 9 hours in any 14-hour span
+   - Company: 8.5 hours (dynamic)
+   - Rolling window approach with hourly sliding
+
+3. **LC_03_max_absolute_daily_hours.yaml**
+   - Legal: 12.5 hours per calendar day
+   - Company: 10 hours (dynamic)
+   - Handles midnight-crossing tasks
+
+4. **LC_04_max_continuous_work.yaml**
+   - Legal: 5.5 hours continuous work
+   - Company: 5 hours (dynamic)
+   - 15-minute break requirement
+   - Segment-based tracking
+
+### Key Achievements
+
+- ✅ Established consistent methodology across all constraints
+- ✅ Integrated with live API (http://150.241.245.65:8002)
+- ✅ Implemented two-tier constraint system (legal hard + company soft)
+- ✅ Created preprocessing patterns for complex time calculations
+- ✅ Documented dynamic value fetching for all non-legal parameters
+
+### Remaining Legal Constraints (11 constraints pending)
+
+#### Rest Period Requirements (3 constraints)
+- **LC_05**: min_daily_rest (11 hours minimum)
+- **LC_06**: min_weekly_rest (35 hours minimum)
+- **LC_07**: weekly_rest_timeframe (must include daytime 06:00-20:00)
+
+#### Work Schedule Limits (2 constraints)
+- **LC_08**: min_break_after_continuous (15 minutes after 5.5 hours)
+- **LC_09**: max_consecutive_work_days (6 days maximum)
+
+#### Night Work Rules (4 constraints)
+- **LC_10**: night_work_period_start (23:00)
+- **LC_11**: night_work_period_end (06:00)
+- **LC_12**: max_night_work_in_10h (9 hours in 10-hour period)
+- **LC_13**: night_work_compensation (10% time compensation)
+
+#### Sunday Work Rules (2 constraints)
+- **LC_14**: sunday_work_requires_rest (35 hours replacement)
+- **LC_15**: sunday_rest_timeframe (same week or following week)
+
+### Company Policy Constraints (To be modeled)
+
+All company policies are DYNAMIC and fetched from `/api/v1/company-policy-constraints/`:
+- Working hours preferences (already integrated as soft constraints)
+- Rest period preferences
+- Team composition rules
+- Regional proximity constraints
+- Night work recovery requirements
+- Planning mode variations
+
+### Resource-Demand Matching Constraints (To be modeled)
+
+- Qualification matching
+- Availability checking
+- Location/travel constraints
+- Team size requirements
+
+### Objective Functions (To be modeled)
+
+Multiple objectives to balance:
+1. Minimize uncovered tasks
+2. Minimize travel costs
+3. Minimize overtime costs
+4. Maximize team continuity
+5. Balance workload distribution
+6. Others as defined in requirements
+
+## Critical Insights
+
+### Calendar Data Enhancement (Recommended)
+
+Currently missing a centralized calendar system. The system tracks individual resource absences but lacks:
+- Public holiday definitions
+- Operational calendar (reduced service days)
+- Seasonal adjustments
+- Event-based demand modifications
+
+**Recommended Enhancement**: Create a calendar service that consolidates:
+```python
+calendar_days = {
+    "date": "2025-12-25",
+    "day_type": "public_holiday",
+    "operational_mode": "minimal",
+    "demand_factor": 0.3,
+    "compensation_rules": {...}
+}
+```
+
+### Key Technical Decisions
+
+1. **Integer Scaling**: All time values scaled by 100 to maintain integer domain for CP-SAT solver
+2. **Time Zones**: All timestamps in UTC, converted as needed
+3. **Week Definition**: ISO 8601 (Monday 00:00 to Sunday 23:59)
+4. **Break Definition**: Minimum 15 minutes to reset continuous work
+
+## Next Steps
+
+1. **Continue Legal Constraints**: Complete the remaining 11 legal constraints following the established methodology
+2. **Model Company Policies**: Create specifications for company-specific rules
+3. **Define Matching Logic**: Specify resource-demand matching constraints
+4. **Implement Objectives**: Create multi-objective optimization specifications
+5. **Calendar Enhancement**: Implement centralized calendar system
+6. **Integration Testing**: Validate preprocessing pipeline with live data
+
+## Notes for Future Sessions
+
+- All constraint values except legal limits are DYNAMIC and fetched from API
+- Use the established template structure for consistency
+- Test API endpoints before modeling to understand data structure
+- Consider edge cases: cross-midnight tasks, cross-week allocations, holiday periods
+- Maintain the two-tier system: legal (hard) + company (soft with violations)
+
+## API Endpoints Reference
+
+- Legal Constraints: `GET /api/v1/legal-constraints/`
+- Company Policies: `GET /api/v1/company-policy-constraints/`
+- Resources: `GET /api/v1/resources/`
+- Requests: `GET /api/v1/requests/`
+- Absences: `GET /api/v1/absences/`
+- Assignments: `GET /api/v1/assignments/`
+
+## Files Created This Session
+
+```
+constraints_v2/
+├── constraint_template.yaml          # Master template
+├── LC_01_max_weekly_hours_v2.yaml   # Initial version
+├── LC_01_max_weekly_hours_v3.yaml   # Database-aligned version
+├── LC_02_max_daily_hours_14h_span.yaml
+├── LC_03_max_absolute_daily_hours.yaml
+├── LC_04_max_continuous_work.yaml
+└── constraints_methodology.md        # This document
+```
+
+---
+*End of Session - November 17, 2025*

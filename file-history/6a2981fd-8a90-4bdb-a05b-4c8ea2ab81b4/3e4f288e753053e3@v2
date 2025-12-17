@@ -1,0 +1,273 @@
+# Deployment Checklist - Schema Changes v2.1.2
+**Date:** December 10, 2025
+**Database:** 150.241.245.65:5432/cff (External Database)
+
+## ✅ Completed Tasks
+
+### 1. Database Schema Exploration
+- ✅ Explored external database with explore_db.py
+- ✅ Detected 3 new columns in `resources` table
+- ✅ Detected 3 new columns in `demands` table
+- ✅ Created DB_SCHEMA_CHANGES_SUMMARY.md
+
+### 2. Router Updates
+- ✅ Updated `api/routers/resources.py`
+  - Added 3 new filter parameters
+  - Updated SELECT queries for GET / and GET /{id}
+- ✅ Updated `api/routers/demands.py`
+  - Added 3 new filter parameters
+  - Updated SELECT queries for GET / and GET /{id}
+- ✅ Created ROUTER_UPDATES_SUMMARY.md
+
+### 3. Documentation Updates
+- ✅ Updated `docs/SQL_QUERIES_REFERENCE.md`
+  - Added new columns to resources table schema
+  - Added new columns to demands table schema
+  - Added example queries with code filters
+- ✅ Updated `api/routers/ROUTER_SUMMARY.md`
+  - Updated resources router documentation
+  - Updated demands router documentation
+  - Documented new filter parameters
+
+---
+
+## 📋 Files Modified
+
+### Code Changes:
+1. `/api/routers/resources.py` - Added code filter parameters
+2. `/api/routers/demands.py` - Added code filter parameters
+
+### Documentation Changes:
+3. `/docs/SQL_QUERIES_REFERENCE.md` - Updated table schemas
+4. `/api/routers/ROUTER_SUMMARY.md` - Updated router documentation
+
+---
+
+## 🚀 Deployment Instructions
+
+### Step 1: Commit Changes
+
+```bash
+cd /home/javiervel/clients/CFF/mock_data_v2/database_application_v2
+
+# Stage changes
+git add api/routers/resources.py
+git add api/routers/demands.py
+git add docs/SQL_QUERIES_REFERENCE.md
+git add api/routers/ROUTER_SUMMARY.md
+
+# Commit
+git commit -m "v2.1.2: Add code-based filters for resources and demands
+
+Database schema changes:
+- Added region_code, division_code, location_code to resources table
+- Added region_code, division_code, location_code to demands table
+
+API changes:
+- Added 3 new filter parameters to /api/v1/resources/
+- Added 3 new filter parameters to /api/v1/demands/
+- Both GET list and GET by ID endpoints return new fields
+
+Documentation:
+- Updated SQL_QUERIES_REFERENCE.md with new columns and queries
+- Updated ROUTER_SUMMARY.md with new filter parameters
+
+Backward compatible: All new columns are nullable, all filters optional
+
+🤖 Generated with Claude Code"
+
+# Push to remote
+git push origin master
+```
+
+### Step 2: Deploy to Production
+
+```bash
+# On production server (150.241.245.65)
+cd /path/to/database_application_v2
+
+# Pull latest changes
+git pull origin master
+
+# Rebuild Docker image with updated routers
+docker-compose up --build -d
+
+# Wait for containers to start
+sleep 10
+
+# Check logs
+docker-compose logs api | tail -50
+```
+
+### Step 3: Verify Deployment
+
+```bash
+# Test health endpoint
+curl http://150.241.245.65:8002/health
+
+# Test resources with new filter
+curl "http://150.241.245.65:8002/api/v1/resources/?region_code=RWT&per_page=5"
+
+# Test demands with new filter
+curl "http://150.241.245.65:8002/api/v1/demands/?division_code=FB&per_page=5"
+
+# Check specific resource
+curl "http://150.241.245.65:8002/api/v1/resources/1"
+
+# Check Swagger docs
+# Open: http://150.241.245.65:8002/docs
+```
+
+---
+
+## 🧪 Test Cases
+
+### Resources Endpoint Tests
+
+```bash
+# 1. Filter by region code
+curl -s "http://150.241.245.65:8002/api/v1/resources/?region_code=RWT" | python3 -m json.tool
+
+# Expected: Returns resources with region_code='RWT'
+
+# 2. Filter by division code
+curl -s "http://150.241.245.65:8002/api/v1/resources/?division_code=FB" | python3 -m json.tool
+
+# Expected: Returns resources with division_code='FB'
+
+# 3. Filter by location code
+curl -s "http://150.241.245.65:8002/api/v1/resources/?location_code=ALL" | python3 -m json.tool
+
+# Expected: Returns resources with location_code='ALL'
+
+# 4. Combine multiple filters
+curl -s "http://150.241.245.65:8002/api/v1/resources/?region_code=RWT&status_filter=Actif" | python3 -m json.tool
+
+# Expected: Returns active resources in RWT region
+
+# 5. Get single resource (check new fields present)
+curl -s "http://150.241.245.65:8002/api/v1/resources/1" | python3 -m json.tool
+
+# Expected: Response includes region_code, division_code, location_code fields
+```
+
+### Demands Endpoint Tests
+
+```bash
+# 1. Filter by region code
+curl -s "http://150.241.245.65:8002/api/v1/demands/?region_code=RWT&per_page=5" | python3 -m json.tool
+
+# Expected: Returns demands with region_code='RWT'
+
+# 2. Filter by division code
+curl -s "http://150.241.245.65:8002/api/v1/demands/?division_code=FB&per_page=5" | python3 -m json.tool
+
+# Expected: Returns demands with division_code='FB'
+
+# 3. Combine with assignment status
+curl -s "http://150.241.245.65:8002/api/v1/demands/?region_code=RWT&assignment_status=Pré-réservé" | python3 -m json.tool
+
+# Expected: Returns pre-reserved demands in RWT region
+
+# 4. Get single demand (check new fields present)
+curl -s "http://150.241.245.65:8002/api/v1/demands/1" | python3 -m json.tool
+
+# Expected: Response includes region_code, division_code, location_code fields
+```
+
+---
+
+## ✅ Success Criteria
+
+- [ ] API health check returns 200 OK
+- [ ] Resources endpoint returns data with new code fields
+- [ ] Demands endpoint returns data with new code fields
+- [ ] Filtering by region_code works
+- [ ] Filtering by division_code works
+- [ ] Filtering by location_code works
+- [ ] Swagger UI shows new filter parameters
+- [ ] No errors in docker-compose logs
+- [ ] Backward compatibility: Old clients without filters still work
+
+---
+
+## 🔄 Rollback Plan (if needed)
+
+```bash
+# On production server
+cd /path/to/database_application_v2
+
+# Revert to previous commit
+git log --oneline -5  # Find previous commit hash
+git checkout <previous-commit-hash>
+
+# Rebuild with old code
+docker-compose up --build -d
+
+# Verify rollback
+curl http://150.241.245.65:8002/health
+```
+
+---
+
+## 📊 Expected Response Format
+
+### Resources Response (with new fields):
+```json
+{
+  "total": 374,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 8,
+  "data": [
+    {
+      "resource_id": 1,
+      "user_name": "U140171",
+      "first_name": "Stéphane",
+      "last_name": "Santiso",
+      "region_id": null,
+      "team_id": 1,
+      "group_id": 1,
+      "region_code": "RWT",
+      "division_code": "FB",
+      "location_code": "ALL",
+      "status": "Actif",
+      ...
+    }
+  ]
+}
+```
+
+### Demands Response (with new fields):
+```json
+{
+  "total": 25448,
+  "page": 1,
+  "per_page": 50,
+  "total_pages": 509,
+  "data": [
+    {
+      "id": 1,
+      "bsa_id": "803380",
+      "task_name": "IH-RWT GE ren. l'encl. trv. généraux",
+      "branch": "Genève",
+      "region_code": null,
+      "division_code": null,
+      "location_code": null,
+      "assignment_status": "Pré-réservé",
+      ...
+    }
+  ]
+}
+```
+
+---
+
+## 📝 Version Information
+
+**Version:** 2.1.2
+**Previous Version:** 2.1.1
+**Changes:** Schema updates (code-based filtering)
+**Backward Compatible:** Yes ✅
+**Breaking Changes:** None ❌
+

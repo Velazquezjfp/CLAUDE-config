@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""
+Test PUT/DELETE operations on existing records.
+Note: External DB doesn't have auto-increment IDs, so POST may not work.
+This script tests PUT/DELETE on existing records only.
+"""
+
+import requests
+import json
+from datetime import datetime
+
+BASE_URL = "http://localhost:8002/api/v1"
+
+def test_put(name, endpoint, id_field, update_data):
+    """Test PUT for an endpoint."""
+    print(f"\n{'='*60}")
+    print(f"Testing PUT: {name}")
+    print(f"{'='*60}")
+
+    # Get existing record
+    resp = requests.get(f"{BASE_URL}{endpoint}")
+    if resp.status_code != 200 or not resp.json():
+        print(f"   SKIPPED: No records available")
+        return None
+
+    data = resp.json()
+    # Handle both list and paginated dict responses
+    if isinstance(data, list):
+        records = data
+    elif isinstance(data, dict) and "data" in data:
+        records = data["data"]
+    elif isinstance(data, dict) and "items" in data:
+        records = data["items"]
+    else:
+        records = [data] if data else []
+
+    if not records:
+        print(f"   SKIPPED: No records available")
+        return None
+
+    record = records[0]
+    record_id = record.get(id_field)
+    print(f"   Using existing record: {id_field}={record_id}")
+
+    # PUT - Update
+    print(f"\n   PUT {endpoint}{record_id}")
+    try:
+        resp = requests.put(f"{BASE_URL}{endpoint}{record_id}", json=update_data)
+        if resp.status_code == 200:
+            updated = resp.json()
+            print(f"   Updated successfully: {json.dumps(update_data)}")
+            return True
+        else:
+            print(f"   FAILED: {resp.status_code} - {resp.text[:200]}")
+            return False
+    except Exception as e:
+        print(f"   ERROR: {e}")
+        return False
+
+def test_get_endpoints():
+    """Test GET endpoints to verify API is working."""
+    print(f"\n{'='*60}")
+    print("Testing GET endpoints")
+    print(f"{'='*60}")
+
+    endpoints = [
+        ("/teams/", "Teams"),
+        ("/groups/", "Groups"),
+        ("/divisions/", "Divisions"),
+        ("/regions/", "Regions"),
+        ("/locations/", "Locations"),
+        ("/qualifications/", "Qualifications"),
+        ("/resources/", "Resources"),
+        ("/demands/", "Demands"),
+        ("/assignments/", "Assignments"),
+        ("/absences/", "Absences"),
+        ("/demands-list/", "Demands List"),
+    ]
+
+    results = {}
+    for endpoint, name in endpoints:
+        try:
+            resp = requests.get(f"{BASE_URL}{endpoint}?per_page=1")
+            if resp.status_code == 200:
+                data = resp.json()
+                count = len(data) if isinstance(data, list) else data.get("total", 0)
+                print(f"   {name}: OK ({count} records)")
+                results[name] = True
+            else:
+                print(f"   {name}: FAILED ({resp.status_code})")
+                results[name] = False
+        except Exception as e:
+            print(f"   {name}: ERROR ({e})")
+            results[name] = False
+
+    return results
+
+def main():
+    print("="*60)
+    print("CFF API PUT Test Suite")
+    print(f"Base URL: {BASE_URL}")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print("="*60)
+
+    # First test GET endpoints
+    get_results = test_get_endpoints()
+
+    # Test PUT on various endpoints with safe updates
+    put_results = {}
+
+    # Test Teams PUT
+    put_results["teams"] = test_put(
+        name="Teams",
+        endpoint="/teams/",
+        id_field="team_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Test Groups PUT
+    put_results["groups"] = test_put(
+        name="Groups",
+        endpoint="/groups/",
+        id_field="group_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Test Regions PUT
+    put_results["regions"] = test_put(
+        name="Regions",
+        endpoint="/regions/",
+        id_field="region_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Test Divisions PUT
+    put_results["divisions"] = test_put(
+        name="Divisions",
+        endpoint="/divisions/",
+        id_field="division_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Test Locations PUT
+    put_results["locations"] = test_put(
+        name="Locations",
+        endpoint="/locations/",
+        id_field="location_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Test Qualifications PUT
+    put_results["qualifications"] = test_put(
+        name="Qualifications",
+        endpoint="/qualifications/",
+        id_field="qualification_id",
+        update_data={"updated_by": "test_api"}
+    )
+
+    # Summary
+    print("\n" + "="*60)
+    print("TEST SUMMARY")
+    print("="*60)
+
+    print("\nGET Endpoints:")
+    get_passed = sum(1 for r in get_results.values() if r is True)
+    print(f"  {get_passed}/{len(get_results)} passed")
+
+    print("\nPUT Operations:")
+    for name, result in put_results.items():
+        status = "PASSED" if result else ("SKIPPED" if result is None else "FAILED")
+        print(f"  {name}: {status}")
+
+    passed = sum(1 for r in put_results.values() if r is True)
+    failed = sum(1 for r in put_results.values() if r is False)
+    skipped = sum(1 for r in put_results.values() if r is None)
+    print(f"\nTotal PUT: {passed} passed, {failed} failed, {skipped} skipped")
+
+if __name__ == "__main__":
+    main()

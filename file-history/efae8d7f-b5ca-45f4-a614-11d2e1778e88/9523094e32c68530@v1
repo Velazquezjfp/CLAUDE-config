@@ -1,0 +1,208 @@
+"""
+HC_01: Absence Blocking (HARD CONSTRAINT)
+Resources cannot be assigned to demands during their registered absence periods.
+
+Based on: ../../constraints_v2/HC_01_absence_blocking.yaml
+
+This is a HARD constraint - resources on absence are BLOCKED from assignment.
+No penalties, no compromises. If absent, cannot be assigned.
+
+Layer 0: Fundamental availability (processed before legal constraints)
+"""
+from ortools.sat.python import cp_model
+from datetime import datetime, timezone
+import sys
+sys.path.append('..')
+from config import ENFORCE_ABSENCE_BLOCKING
+
+
+def add_absence_blocking_constraints(model: cp_model.CpModel,
+                                      x_vars: dict,
+                                      data,
+                                      constraints) -> tuple:
+    """
+    Add HARD absence blocking constraints to the model.
+
+    Resources cannot be assigned to demands during their registered absence periods.
+    This constraint is applied by setting x[resource, demand] = 0 for any
+    resource-demand pair where the demand overlaps with an absence.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with resources, requests, and resource_absences
+        constraints: ConstraintValues object (not used - this is hard constraint)
+
+    Returns:
+        Tuple of (violations, metadata) - violations empty for hard constraints,
+        metadata contains blocking information for analysis
+    """
+    print(f"\n[HC_01] Adding HARD absence blocking constraints...")
+
+    if not ENFORCE_ABSENCE_BLOCKING:
+        print(f"  Absence blocking is DISABLED in config")
+        return [], []
+
+    print(f"  Mode: HARD CONSTRAINT (blocks assignments during absences)")
+    print(f"  Resources with absences: {data.absences_stats['resources_with_absences']}")
+    print(f"  Total absences (filtered): {data.absences_stats['filtered']}")
+
+    blocked_count = 0
+    blocked_by_resource = {}
+    metadata = []
+
+    for resource_id in data.resource_ids:
+        # Skip resources without absences
+        if resource_id not in data.resource_absences:
+            continue
+
+        resource_blocked = 0
+
+        for request in data.requests:
+            req_id = request['id']
+
+            # Parse demand datetime
+            req_start = _parse_demand_datetime(request['shift_start_time'])
+            req_end = _parse_demand_datetime(request['shift_finish_time'])
+
+            if req_start is None or req_end is None:
+                continue
+
+            # Check if resource is available (not on absence)
+            blocking_absence = data.get_blocking_absence(resource_id, req_start, req_end)
+
+            if blocking_absence:
+                # BLOCK this assignment
+                x_var = x_vars[(resource_id, req_id)]
+                model.Add(x_var == 0)
+                blocked_count += 1
+                resource_blocked += 1
+
+                # Store metadata for analysis
+                metadata.append({
+                    'constraint_id': 'HC_01',
+                    'constraint_type': 'hard',
+                    'resource_id': resource_id,
+                    'request_id': req_id,
+                    'reason': 'absence_overlap',
+                    'absence_type': blocking_absence.get('type'),
+                    'absence_start': str(blocking_absence.get('start')),
+                    'absence_end': str(blocking_absence.get('end')),
+                    'absence_id': blocking_absence.get('absence_id')
+                })
+
+        if resource_blocked > 0:
+            blocked_by_resource[resource_id] = resource_blocked
+
+    print(f"  Blocked assignments: {blocked_count}")
+    print(f"  Resources affected: {len(blocked_by_resource)}")
+
+    if blocked_count > 0:
+        # Show top 5 most affected resources
+        top_affected = sorted(blocked_by_resource.items(), key=lambda x: -x[1])[:5]
+        print(f"  Top affected resources:")
+        for res_id, count in top_affected:
+            print(f"    {res_id}: {count} blocked assignments")
+
+    # Return empty violations (hard constraint) but include metadata for analysis
+    return [], metadata
+
+
+def _parse_demand_datetime(dt_string: str) -> datetime:
+    """
+    Parse demand datetime string to timezone-aware datetime.
+    """
+    if not dt_string:
+        return None
+
+    try:
+        # Handle Z suffix
+        if dt_string.endswith('Z'):
+            dt_string = dt_string.replace('Z', '+00:00')
+
+        # Parse datetime
+        dt = datetime.fromisoformat(dt_string)
+
+        # Ensure timezone-aware (UTC)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        return dt
+    except (ValueError, AttributeError):
+        return None
+
+
+def get_absence_blocking_metrics(data, x_solution: dict = None) -> dict:
+    """
+    Generate detailed absence blocking metrics for AI agent and analysis.
+
+    Args:
+        data: PreprocessedData object
+        x_solution: Optional dict of {(resource_id, request_id): 0 or 1} from solver
+
+    Returns:
+        Dict with detailed absence blocking metrics
+    """
+    metrics = {
+        'total_absences': data.absences_stats['filtered'],
+        'resources_with_absences': data.absences_stats['resources_with_absences'],
+        'blocked_assignments': 0,
+        'potentially_uncoverable_requests': [],
+        'resources_most_affected': []
+    }
+
+    # Count blocked assignments and track affected requests
+    blocked_by_request = {}
+    blocked_by_resource = {}
+    all_blocked_for_request = {}
+
+    for resource_id in data.resource_ids:
+        if resource_id not in data.resource_absences:
+            continue
+
+        for request in data.requests:
+            req_id = request['id']
+            req_start = _parse_demand_datetime(request['shift_start_time'])
+            req_end = _parse_demand_datetime(request['shift_finish_time'])
+
+            if req_start is None or req_end is None:
+                continue
+
+            if not data.is_resource_available(resource_id, req_start, req_end):
+                metrics['blocked_assignments'] += 1
+
+                # Track by request
+                if req_id not in blocked_by_request:
+                    blocked_by_request[req_id] = []
+                blocked_by_request[req_id].append(resource_id)
+
+                # Track by resource
+                if resource_id not in blocked_by_resource:
+                    blocked_by_resource[resource_id] = 0
+                blocked_by_resource[resource_id] += 1
+
+    # Find requests where ALL resources are blocked (uncoverable)
+    for req in data.requests:
+        req_id = req['id']
+        req_start = _parse_demand_datetime(req['shift_start_time'])
+        req_end = _parse_demand_datetime(req['shift_finish_time'])
+
+        available_resources = [
+            res_id for res_id in data.resource_ids
+            if data.is_resource_available(res_id, req_start, req_end)
+        ]
+
+        if len(available_resources) == 0:
+            metrics['potentially_uncoverable_requests'].append({
+                'request_id': req_id,
+                'reason': 'all_resources_on_absence',
+                'blocked_resources': blocked_by_request.get(req_id, [])
+            })
+
+    # Top affected resources
+    metrics['resources_most_affected'] = sorted(
+        [{'resource_id': k, 'blocked_count': v} for k, v in blocked_by_resource.items()],
+        key=lambda x: -x['blocked_count']
+    )[:10]
+
+    return metrics

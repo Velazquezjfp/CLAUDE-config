@@ -1,0 +1,422 @@
+# CFF Personnel Planning API - Router Summary
+
+## Overview
+This document provides a comprehensive overview of all FastAPI routers created for the CFF Personnel Planning API.
+
+**Total Routers:** 11  
+**Total Lines of Code:** ~3,092  
+**Architecture:** Async SQLAlchemy with raw SQL queries  
+**Database:** PostgreSQL 14+
+
+---
+
+## Router Files
+
+### 1. **resources.py** - Resources Management
+**Endpoint Base:** `/api/v1/resources`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `resource_id` (VARCHAR)
+
+#### Endpoints:
+- `GET /` - List all resources with pagination
+  - Query params: `page`, `per_page`, `type`, `status`, `region_id`, `team_id`
+  - Returns: PaginatedResponse with resources
+  
+- `GET /{resource_id}` - Get single resource by ID
+  - Returns: Resource object
+  
+- `POST /` - Create new resource
+  - Body: ResourceCreate
+  - Returns: Created Resource (201)
+  
+- `PUT /{resource_id}` - Update existing resource
+  - Body: ResourceUpdate
+  - Returns: Updated Resource
+  
+- `DELETE /{resource_id}` - Delete resource
+  - Returns: 204 No Content
+
+#### Special Features:
+- Validates hierarchical constraints (region -> team -> sub_group)
+- Handles JSONB fields (qualifications, availability_pattern)
+- Filters by type (Internal/External), status, region, team
+
+---
+
+### 2. **regions.py** - Regions Management
+**Endpoint Base:** `/api/v1/regions`  
+**Status:** Full CRUD  
+**Primary Key:** `region_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all regions (ordered by name)
+- `GET /{region_id}` - Get single region
+- `POST /` - Create new region
+- `PUT /{region_id}` - Update region
+- `DELETE /{region_id}` - Delete region
+
+#### Validation:
+- Unique region_name constraint
+- Cascade considerations for dependent teams
+
+---
+
+### 3. **teams.py** - Teams Management
+**Endpoint Base:** `/api/v1/teams`  
+**Status:** Full CRUD  
+**Primary Key:** `team_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all teams
+  - Query param: `region_id` (filter by region)
+- `GET /{team_id}` - Get single team
+- `POST /` - Create new team
+- `PUT /{team_id}` - Update team
+- `DELETE /{team_id}` - Delete team
+
+#### Validation:
+- Validates region_id exists before creation/update
+- Unique team_name constraint
+- Cascade to sub_groups
+
+---
+
+### 4. **groups.py** - Sub-Groups Management
+**Endpoint Base:** `/api/v1/sub-groups`  
+**Status:** Full CRUD  
+**Primary Key:** `sub_group_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all sub-groups
+  - Query param: `team_id` (filter by team)
+- `GET /{sub_group_id}` - Get single sub-group
+- `POST /` - Create new sub-group
+- `PUT /{sub_group_id}` - Update sub-group
+- `DELETE /{sub_group_id}` - Delete sub-group
+
+#### Validation:
+- Validates team_id exists before creation/update
+- Unique constraint: (sub_group_name, team_id)
+- Color code support (Orange, Jaune, Blanc, etc.)
+
+---
+
+### 5. **absences.py** - Absences Management
+**Endpoint Base:** `/api/v1/absences`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `absence_id` (VARCHAR)
+
+#### Endpoints:
+- `GET /` - List all absences with pagination
+  - Query params: `page`, `per_page`, `resource_id`, `type`, `status`, `start_date`, `end_date`
+  - Returns: PaginatedResponse
+  
+- `GET /{absence_id}` - Get single absence
+- `POST /` - Create new absence
+- `PUT /{absence_id}` - Update absence
+- `DELETE /{absence_id}` - Delete absence
+
+#### Special Features:
+- Validates resource_id exists
+- Date range validation (end_date >= start_date)
+- Auto-calculated `number_of_days` (database-side)
+- Supports absence types: Holiday, Training, Sick_Leave, Personal, Conference, Assignment_Blocked
+- Status tracking: En_attente, Approuvé, Rejeté, Annulé
+
+---
+
+### 6. **requests.py** - Requests Management
+**Endpoint Base:** `/api/v1/requests`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `request_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all requests with pagination
+  - Query params: `page`, `per_page`, `bsa_id`, `status`, `priority`, `branch`, `locked`
+  - Returns: PaginatedResponse
+  
+- `GET /{request_id}` - Get single request
+- `POST /` - Create new request
+- `PUT /{request_id}` - Update request
+- `DELETE /{request_id}` - Delete request
+
+#### Special Features:
+- Handles JSONB fields (required_qualifications, assigned_resources)
+- DateTime validation (end_datetime >= start_datetime)
+- BSA-ID tracking (can have duplicates for multiple resource needs)
+- Priority levels: low, medium, high, critical
+- Status tracking: pending, pre-reserved, reserved, confirmed, external_confirmed, completed, cancelled
+- Shift types: morning, afternoon, night, day, full_day
+
+---
+
+### 7. **assignments.py** - Assignments Management
+**Endpoint Base:** `/api/v1/assignments`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `assignment_id` (VARCHAR)
+
+#### Endpoints:
+- `GET /` - List all assignments with pagination
+  - Query params: `page`, `per_page`, `resource_id`, `request_id`, `status`, `type`, `start_date`, `end_date`
+  - Returns: PaginatedResponse
+  
+- `GET /{assignment_id}` - Get single assignment
+- `POST /` - Create new assignment
+- `PUT /{assignment_id}` - Update assignment
+- `DELETE /{assignment_id}` - Delete assignment
+
+#### Special Features:
+- Validates resource_id exists
+- Date range validation
+- Supports Internal and External assignments (different field sets)
+- Links resources to requests (BSA-ID)
+- Cost tracking (estimated_cost_chf)
+- Status: Confirmé, Provisoire, Pré-réservé, Externe confirmé, Cancelled
+- Auto-creates Assignment_Blocked absences (via database trigger)
+
+---
+
+### 8. **locations.py** - Locations Management
+**Endpoint Base:** `/api/v1/locations`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `location_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all locations with pagination
+  - Query params: `page`, `per_page`, `canton`, `location_name` (partial search)
+  - Returns: PaginatedResponse
+  
+- `GET /{location_id}` - Get single location
+- `POST /` - Create new location
+- `PUT /{location_id}` - Update location
+- `DELETE /{location_id}` - Delete location
+
+#### Special Features:
+- Unique location_name constraint
+- Canton filtering
+- Latitude/Longitude coordinates support
+- Location code support
+- Used for distance calculations and travel time
+
+---
+
+### 9. **qualifications.py** - Qualifications Management
+**Endpoint Base:** `/api/v1/qualifications`  
+**Status:** Full CRUD with Pagination  
+**Primary Key:** `qualification_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all qualifications with pagination
+  - Query params: `page`, `per_page`, `category`, `certification_required`, `qualification_name`
+  - Returns: PaginatedResponse
+  
+- `GET /{qualification_id}` - Get single qualification
+- `POST /` - Create new qualification
+- `PUT /{qualification_id}` - Update qualification
+- `DELETE /{qualification_id}` - Delete qualification
+
+#### Special Features:
+- Category-based filtering
+- Certification requirement flag
+- Validity period tracking (validity_months)
+- Partial name search (ILIKE)
+- Master reference list for required_qualifications in resources and requests
+
+---
+
+### 10. **constraints.py** - Legal Constraints (READ-ONLY)
+**Endpoint Base:** `/api/v1/legal-constraints`  
+**Status:** READ-ONLY (No POST/PUT/DELETE)  
+**Primary Key:** `constraint_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all legal constraints
+  - Query param: `category` (filter by category)
+  - Returns: List of LegalConstraint
+  
+- `GET /{constraint_id}` - Get single legal constraint
+  
+- `GET /categories/list` - Get distinct constraint categories
+  
+- `POST /` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be created via API"
+  
+- `PUT /{constraint_id}` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be modified via API"
+  
+- `DELETE /{constraint_id}` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be deleted via API"
+
+#### Special Features:
+- Immutable constraints defined by Swiss LDT law
+- JSONB parameter_value field
+- Categories: work_time, rest_periods, work_schedule, night_work, sunday_work
+- Legal reference tracking
+- Database-enforced immutability (immutable = TRUE constraint)
+
+---
+
+## Common Features Across All Routers
+
+### Error Handling
+All routers implement consistent error handling:
+- **404 Not Found:** When resource doesn't exist
+- **400 Bad Request:** Invalid data, constraint violations
+- **405 Method Not Allowed:** For read-only endpoints (constraints)
+- **500 Internal Server Error:** Database or unexpected errors
+
+### Database Patterns
+- **Async Sessions:** All use `AsyncSession = Depends(get_db)`
+- **Raw SQL:** All queries use SQLAlchemy `text()` for parameterized SQL
+- **Transactions:** Automatic commit on success, rollback on error
+- **Connection Pooling:** Configured in database.py
+
+### Response Models
+- All use Pydantic models from `models.py`
+- Consistent naming: `{Entity}`, `{Entity}Create`, `{Entity}Update`
+- PaginatedResponse wrapper for list endpoints
+
+### Pagination (where applicable)
+- Default: 50 items per page
+- Max: 200 items per page
+- Returns: `total`, `page`, `per_page`, `total_pages`, `data`
+
+---
+
+## Integration with main.py
+
+All routers are imported and registered in `main.py`:
+
+```python
+from routers import (
+    resources_router,
+    regions_router,
+    teams_router,
+    sub_groups_router,
+    absences_router,
+    requests_router,
+    assignments_router,
+    locations_router,
+    qualifications_router,
+    constraints_router,
+)
+
+# All routers mounted at /api/v1
+app.include_router(resources_router, prefix=f"{settings.API_V1_STR}")
+# ... etc
+```
+
+---
+
+## API Endpoints Summary
+
+### Full CRUD with Pagination (8 routers):
+1. `/api/v1/resources` - Resources
+2. `/api/v1/absences` - Absences
+3. `/api/v1/requests` - Requests
+4. `/api/v1/assignments` - Assignments
+5. `/api/v1/locations` - Locations
+6. `/api/v1/qualifications` - Qualifications
+
+### Full CRUD without Pagination (3 routers):
+7. `/api/v1/regions` - Regions (small dataset)
+8. `/api/v1/teams` - Teams
+9. `/api/v1/sub-groups` - Sub-Groups
+
+### Read-Only (1 router):
+10. `/api/v1/legal-constraints` - Legal Constraints
+
+---
+
+## Testing the API
+
+### Start the server:
+```bash
+cd /home/javiervel/clients/CFF/mock_data_v2/database_application_v2/api
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Access documentation:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **OpenAPI JSON:** http://localhost:8000/api/v1/openapi.json
+
+### Health check:
+```bash
+curl http://localhost:8000/health
+```
+
+---
+
+## Dependencies
+
+### Required imports for all routers:
+```python
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+from database import get_db
+from models import [appropriate models]
+```
+
+### Additional imports where needed:
+- `datetime` - For date/time handling
+- `math` - For pagination calculations
+- `json` - For JSONB field serialization
+
+---
+
+## File Structure
+```
+database_application_v2/api/routers/
+├── __init__.py              # Exports all routers
+├── resources.py             # Resources CRUD (14KB)
+├── regions.py               # Regions CRUD (6KB)
+├── teams.py                 # Teams CRUD (7.5KB)
+├── groups.py            # Sub-groups CRUD (8KB)
+├── absences.py              # Absences CRUD (12KB)
+├── requests.py              # Requests CRUD (17KB)
+├── assignments.py           # Assignments CRUD (19KB)
+├── locations.py             # Locations CRUD (8.7KB)
+├── qualifications.py        # Qualifications CRUD (11KB)
+├── constraints.py           # Legal Constraints READ-ONLY (4.6KB)
+└── ROUTER_SUMMARY.md        # This file
+```
+
+---
+
+## Best Practices Implemented
+
+1. **Separation of Concerns:** Each router handles one table/entity
+2. **Consistent Patterns:** All routers follow same structure
+3. **Input Validation:** Pydantic models validate all inputs
+4. **Foreign Key Validation:** Checks references before insert/update
+5. **Atomic Transactions:** Database sessions handle commits/rollbacks
+6. **Parameterized Queries:** All SQL uses bound parameters (SQL injection safe)
+7. **Error Messages:** Clear, actionable error messages
+8. **HTTP Status Codes:** Proper use of 200, 201, 204, 400, 404, 405, 500
+9. **Documentation:** OpenAPI/Swagger auto-generated from code
+10. **Type Safety:** Full type hints throughout
+
+---
+
+## Future Enhancements
+
+Potential improvements for consideration:
+- [ ] Add filtering by date ranges for all timestamp fields
+- [ ] Implement soft deletes (status=deleted) instead of hard deletes
+- [ ] Add bulk operations (create/update/delete multiple)
+- [ ] Implement caching for read-heavy endpoints
+- [ ] Add rate limiting middleware
+- [ ] Create aggregation endpoints (statistics, summaries)
+- [ ] Add export endpoints (CSV, Excel)
+- [ ] Implement field-level permissions
+- [ ] Add audit logging for all mutations
+- [ ] Create webhook notifications for events
+
+---
+
+**Generated:** 2025-11-10  
+**Version:** 2.0.0  
+**Author:** Claude Code Assistant

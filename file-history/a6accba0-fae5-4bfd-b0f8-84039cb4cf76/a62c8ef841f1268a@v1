@@ -1,0 +1,284 @@
+# Getting Started with CFF Solver
+
+Quick guide to get up and running with the CFF Workforce Planning Solver.
+
+## ✅ Prerequisites Checklist
+
+Before you begin, ensure you have:
+- [x] Python 3.8+ installed
+- [x] Virtual environment activated
+- [x] Access to API at `http://150.241.245.65:8002`
+- [x] OR-tools and httpx packages installed
+
+## 🚀 Quick Start (5 Minutes)
+
+### 1. Install Dependencies
+
+```bash
+cd /home/javiervel/clients/CFF/solver_v2
+pip install -r requirements.txt
+```
+
+**Expected output:**
+```
+Successfully installed ortools-9.14.6206 httpx-0.28.1 ...
+```
+
+### 2. Verify API Connection
+
+```bash
+python utils/check_api.py
+```
+
+**Expected output:**
+```
+============================================================
+CFF API CONNECTION CHECK
+============================================================
+
+[✓] API client created successfully
+[✓] Fetched 50 requests (limited to 5)
+[✓] Fetched 50 resources (limited to 5)
+...
+✅ ALL CHECKS PASSED - API is ready!
+```
+
+### 3. Run Test Solver
+
+```bash
+python main.py
+```
+
+**Expected output:**
+```
+======================================================================
+ CFF WORKFORCE PLANNING SOLVER - MVP
+======================================================================
+Mode: TEST (small dataset)
+...
+Status: OPTIMAL
+Solve Time: 0.023 seconds
+Assignments Found: 2
+✅ Solution saved to: output/solution.json
+```
+
+### 4. Check Results
+
+```bash
+cat output/solution.json
+```
+
+**You should see:**
+```json
+{
+  "metadata": {
+    "status": "OPTIMAL",
+    "solve_time_seconds": 0.023,
+    ...
+  },
+  "assignments": [
+    {
+      "request_id": "REQ-828796-41",
+      "resource_id": "RES-INT-0002",
+      ...
+    }
+  ]
+}
+```
+
+## ✅ Success! What Now?
+
+### Option 1: Test with Full Database
+
+Edit `config.py`:
+```python
+TEST_MODE = False  # Change from True to False
+```
+
+Then run:
+```bash
+python main.py
+```
+
+### Option 2: Add More Constraints
+
+Follow the guide in `README.md` section "Extending the Solver" to add LC_05 (minimum daily rest).
+
+**Quick steps:**
+1. Read spec: `../constraints_v2/LC_05_min_daily_rest.yaml`
+2. Add fetcher in `preprocessing/constraints.py`
+3. Create module: `constraints/lc_05_daily_rest.py`
+4. Register in `solver/model.py`
+5. Enable in `config.py`
+
+### Option 3: Modify Planning Mode
+
+Edit `config.py`:
+```python
+PLANNING_MODE = "Conservative"  # or "Aggressive"
+```
+
+This will change company policy values dynamically!
+
+## 📊 Understanding the Output
+
+### Solution JSON Structure
+
+```json
+{
+  "metadata": {
+    "status": "OPTIMAL",           // OPTIMAL, FEASIBLE, or INFEASIBLE
+    "objective_value": 600000,     // Total penalty (lower is better)
+    "solve_time_seconds": 0.023,   // How long solver took
+    "timestamp": "2025-11-17T..."  // When solved
+  },
+  "assignments": [
+    {
+      "request_id": "REQ-828796-41",      // Task ID
+      "resource_id": "RES-INT-0002",      // Who does it
+      "start": "2025-12-18T21:00:00Z",    // When it starts
+      "end": "2025-12-19T06:00:00Z",      // When it ends
+      "duration_hours": 9.0               // How long
+    }
+  ],
+  "statistics": {
+    "num_requests": 2,              // Total tasks
+    "num_resources": 3,             // Total workers
+    "num_violations": 600           // Total soft violations
+  }
+}
+```
+
+### Status Meanings
+
+- **OPTIMAL:** Best possible solution found (all hard constraints met, soft violations minimized)
+- **FEASIBLE:** Valid solution found (all hard constraints met, but might not be optimal)
+- **INFEASIBLE:** No valid solution exists (hard constraints cannot be satisfied)
+
+### Violation Interpretation
+
+Violations = soft constraint violations × 1000 (penalty weight)
+- 0 violations = Perfect (all preferences met)
+- 600 violations = 0.6 hours over company preference
+- Higher = more deviation from company preferences (but still legal!)
+
+## 🔧 Configuration Quick Reference
+
+Edit `config.py` to customize:
+
+```python
+# What to fetch
+TEST_MODE = True              # True=2 requests, False=all
+TEST_NUM_REQUESTS = 2         # Only if TEST_MODE=True
+TEST_NUM_RESOURCES = 3        # Only if TEST_MODE=True
+
+# How to solve
+PLANNING_MODE = "Balanced"    # Conservative/Balanced/Aggressive
+SOLVER_TIME_LIMIT_SECONDS = 60
+USE_SOFT_CONSTRAINTS = True
+
+# Which constraints
+ENABLED_CONSTRAINTS = [
+    "LC_01_max_weekly_hours",
+    "LC_02_max_daily_hours_14h_span",
+    "LC_03_max_absolute_daily_hours",
+    "LC_04_max_continuous_work",
+    # Add more as you implement them
+]
+```
+
+## 🐛 Troubleshooting
+
+### Problem: "ModuleNotFoundError: No module named 'ortools'"
+
+**Solution:**
+```bash
+pip install -r requirements.txt
+```
+
+### Problem: "Connection refused" when running
+
+**Solution:**
+Check API is accessible:
+```bash
+curl http://150.241.245.65:8002/api/v1/requests/ | head
+```
+
+If this fails, the server might be down.
+
+### Problem: Status shows "INFEASIBLE"
+
+**Possible causes:**
+1. Constraints too strict for the data
+2. Not enough resources for requests
+3. Time windows don't allow valid assignments
+
+**Solutions:**
+- Run in TEST_MODE first (simpler dataset)
+- Disable some constraints to isolate issue
+- Check `LC_04` has breaks assumption (should NOT block tasks)
+- Review constraint values are reasonable
+
+### Problem: Slow solve times (>10 seconds)
+
+**Solutions:**
+- Increase `SOLVER_TIME_LIMIT_SECONDS` in config.py
+- Reduce dataset size (TEST_MODE=True)
+- Disable some constraints for testing
+- Check for constraint conflicts
+
+### Problem: Timezone errors
+
+**Status:** ✅ Fixed in current version
+**If still occurring:** All datetime objects should be UTC-aware
+
+Check `preprocessing/time_windows.py` lines 31 and 36 have `tzinfo=timezone.utc`
+
+## 📚 Next Steps
+
+1. **Read the README:** Full documentation in `README.md`
+2. **Check CHANGELOG:** See what's been implemented in `CHANGELOG.md`
+3. **Review Constraints:** Read YAML specs in `../constraints_v2/`
+4. **Add Constraints:** Follow pattern to implement LC_05 through LC_15
+5. **Test Scaling:** Try with full database (TEST_MODE=False)
+
+## 🎯 Development Workflow
+
+```mermaid
+graph LR
+    A[Read YAML Spec] --> B[Add Fetcher]
+    B --> C[Create Constraint Module]
+    C --> D[Register in Model]
+    D --> E[Enable in Config]
+    E --> F[Test with main.py]
+    F --> G{OPTIMAL?}
+    G -->|Yes| H[Document in CHANGELOG]
+    G -->|No| I[Debug & Fix]
+    I --> F
+```
+
+## 💡 Tips for Success
+
+1. **Start Small:** Always test new constraints with TEST_MODE=True first
+2. **One at a Time:** Add and test one constraint before adding the next
+3. **Check Specs:** Always read the YAML spec before implementing
+4. **Follow Pattern:** Use existing constraints (LC_01-04) as templates
+5. **Test Frequently:** Run `python main.py` after each change
+6. **Document:** Update CHANGELOG.md when adding features
+
+## 📞 Need Help?
+
+- **Documentation:** See `README.md` for comprehensive guide
+- **Patterns:** See `README.md` section "Extending the Solver"
+- **Issues:** Check `CHANGELOG.md` "Fixed" section for known issues
+- **API Check:** Run `python utils/check_api.py` if data issues
+
+## ✅ You're Ready!
+
+The solver is working and ready for development. You can now:
+- Add more constraints
+- Test with full database
+- Tune solver parameters
+- Implement objective functions
+
+**Happy solving! 🚀**

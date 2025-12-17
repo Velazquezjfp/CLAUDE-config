@@ -1,0 +1,1707 @@
+# CFF Personnel Planning System - Deployment Guide
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [System Requirements](#system-requirements)
+3. [Prerequisites Installation](#prerequisites-installation)
+4. [Pre-Deployment Configuration](#pre-deployment-configuration)
+5. [Deployment Instructions](#deployment-instructions)
+6. [Storage Configuration](#storage-configuration)
+7. [Database Initialization](#database-initialization)
+8. [Network Configuration](#network-configuration)
+9. [Security Considerations](#security-considerations)
+10. [Deployment Verification](#deployment-verification)
+11. [Common Deployment Scenarios](#common-deployment-scenarios)
+12. [Troubleshooting Guide](#troubleshooting-guide)
+13. [Backup and Restore](#backup-and-restore)
+14. [Upgrading the System](#upgrading-the-system)
+15. [Monitoring and Logs](#monitoring-and-logs)
+16. [Performance Tuning](#performance-tuning)
+
+---
+
+## Overview
+
+The CFF Personnel Planning System is a containerized application consisting of:
+- **PostgreSQL 14** database with custom schema and extensions
+- **FastAPI** REST API service with automatic OpenAPI documentation
+- **Docker Compose** orchestration for multi-container deployment
+- **Health check** endpoints and automated monitoring
+
+This guide covers deployment from development to production environments.
+
+---
+
+## System Requirements
+
+### Minimum Hardware Requirements
+
+**Development Environment:**
+- CPU: 2 cores
+- RAM: 4 GB
+- Disk: 20 GB free space
+- Network: 100 Mbps
+
+**Staging/Testing Environment:**
+- CPU: 4 cores
+- RAM: 8 GB
+- Disk: 50 GB free space
+- Network: 1 Gbps
+
+**Production Environment:**
+- CPU: 8+ cores (recommended)
+- RAM: 16+ GB (recommended)
+- Disk: 100+ GB SSD (recommended)
+- Network: 1 Gbps or higher
+
+### Software Requirements
+
+- **Operating System**: Linux (Ubuntu 20.04+, Debian 11+, RHEL 8+), macOS 11+, Windows 10+ with WSL2
+- **Docker**: Version 20.10.0 or higher
+- **Docker Compose**: Version 2.0.0 or higher (or Docker Compose V1 1.29+)
+- **Python**: 3.11+ (for development/testing only)
+- **Git**: For version control and deployment
+
+### Network Requirements
+
+- **Inbound Ports**:
+  - `8000` (API service - configurable)
+  - `5432` (PostgreSQL - configurable, typically only exposed for development)
+
+- **Outbound Connectivity**: Required for Docker image pulls during initial setup
+
+---
+
+## Prerequisites Installation
+
+### Installing Docker (Ubuntu/Debian)
+
+```bash
+# Update package index
+sudo apt-get update
+
+# Install dependencies
+sudo apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Add Docker's official GPG key
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+    sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Set up the repository
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker Engine
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Verify installation
+docker --version
+docker compose version
+
+# Add your user to the docker group (optional, to run Docker without sudo)
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### Installing Docker (RHEL/CentOS)
+
+```bash
+# Install required packages
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+# Install Docker
+sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Start Docker service
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Verify installation
+docker --version
+docker compose version
+```
+
+### Verifying Installation
+
+```bash
+# Test Docker installation
+docker run hello-world
+
+# Check Docker Compose
+docker compose version
+
+# Verify Docker daemon is running
+docker ps
+```
+
+---
+
+## Pre-Deployment Configuration
+
+### 1. Clone or Download the Repository
+
+```bash
+git clone <repository-url>
+cd database_application_v2
+```
+
+### 2. Environment Configuration
+
+The system uses a `.env` file for configuration. Create it from the example:
+
+```bash
+cp .env.example .env
+```
+
+### 3. Configure Environment Variables
+
+Edit the `.env` file with your desired configuration:
+
+```bash
+# Database Configuration
+DB_NAME=cff_planning                # Database name
+DB_USER=cff_app_user                # Database user (change for production)
+DB_PASSWORD=changeme                # IMPORTANT: Change this for production!
+DB_PORT=5432                        # PostgreSQL port (5432 is default)
+
+# Database Connection Pool
+DB_POOL_SIZE=20                     # Max connections in pool
+DB_MAX_OVERFLOW=10                  # Max overflow connections
+DB_POOL_TIMEOUT=30                  # Connection timeout (seconds)
+
+# API Configuration
+API_PORT=8000                       # API service port
+LOG_LEVEL=INFO                      # Logging level: DEBUG, INFO, WARNING, ERROR
+
+# CORS Origins (comma-separated JSON array)
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]
+
+# Storage Configuration
+# Set to absolute host path for persistent storage, or leave as default for docker volume
+POSTGRES_DATA_PATH=./data/postgres
+```
+
+### Environment Variable Details
+
+| Variable | Description | Default | Production Notes |
+|----------|-------------|---------|------------------|
+| `DB_NAME` | PostgreSQL database name | `cff_planning` | Keep consistent across environments |
+| `DB_USER` | Database username | `cff_app_user` | Use different user per environment |
+| `DB_PASSWORD` | Database password | `changeme` | **MUST change for production** |
+| `DB_PORT` | PostgreSQL port | `5432` | Change if port conflict exists |
+| `DB_POOL_SIZE` | Connection pool size | `20` | Increase for high traffic |
+| `DB_MAX_OVERFLOW` | Max overflow connections | `10` | Increase for high traffic |
+| `DB_POOL_TIMEOUT` | Connection timeout (seconds) | `30` | Increase for slow networks |
+| `API_PORT` | FastAPI service port | `8000` | Change if port conflict exists |
+| `LOG_LEVEL` | Application log level | `INFO` | Use `DEBUG` for troubleshooting |
+| `CORS_ORIGINS` | Allowed CORS origins | `["http://localhost:3000","http://localhost:8080"]` | Add your frontend URLs |
+| `POSTGRES_DATA_PATH` | Data storage path | `./data/postgres` | Use absolute path for production |
+
+### External Database Configuration (v2.1+)
+
+The CFF Personnel Planning System v2.1+ uses a **dual database architecture**:
+
+1. **Internal Database** (PostgreSQL container): Stores parameters, constraints, optimization weights
+2. **External Database** (Production server): Stores production data (resources, demands, assignments)
+
+Add these environment variables to connect to the external production database:
+
+```bash
+# External Database Configuration (v2.1)
+EXTERNAL_DB_HOST=150.241.245.65         # External database host
+EXTERNAL_DB_PORT=5432                    # External database port
+EXTERNAL_DB_NAME=cff                     # External database name
+EXTERNAL_DB_USER=cffdev                  # External database user
+EXTERNAL_DB_PASSWORD=****               # External database password (contact admin)
+```
+
+| Variable | Description | Default | Production Notes |
+|----------|-------------|---------|------------------|
+| `EXTERNAL_DB_HOST` | External PostgreSQL host | `150.241.245.65` | Production server |
+| `EXTERNAL_DB_PORT` | External PostgreSQL port | `5432` | Standard PostgreSQL port |
+| `EXTERNAL_DB_NAME` | External database name | `cff` | Production database |
+| `EXTERNAL_DB_USER` | External database username | `cffdev` | Contact admin for credentials |
+| `EXTERNAL_DB_PASSWORD` | External database password | - | **REQUIRED** - Contact admin |
+
+**Data Flow:**
+
+| Operation | Internal DB | External DB |
+|-----------|-------------|-------------|
+| Legal Constraints (read-only) | X | |
+| Company Policies | X | |
+| Objective Weights | X | |
+| Utilization Targets | X | |
+| Resources | | X |
+| Demands | | X |
+| Assignments | | X |
+| Absences | | X |
+| Organizational (regions, teams, groups) | | X |
+| Locations, Qualifications | | X |
+
+---
+
+## Deployment Instructions
+
+### Quick Start (Development)
+
+For a basic development deployment with default settings:
+
+```bash
+# Run the deployment script
+./scripts/deploy.sh
+```
+
+This will:
+1. Check prerequisites (Docker, Docker Compose)
+2. Create necessary directories
+3. Set up environment configuration
+4. Build Docker images
+5. Start all services
+6. Run health checks
+7. Display service URLs and credentials
+
+### Deployment Script Options
+
+The `deploy.sh` script supports several options:
+
+```bash
+./scripts/deploy.sh [OPTIONS]
+
+OPTIONS:
+    --storage-path PATH     Path for persistent storage (default: ./data)
+    --use-host-storage      Use server internal storage instead of docker volume
+    --clean                 Clean rebuild (remove existing volumes and containers)
+    --no-migrate            Skip data migration (use existing data)
+    --env-file FILE         Environment file to use (default: .env)
+    -h, --help              Show help message
+```
+
+### Detailed Deployment Steps
+
+#### Step 1: Basic Deployment
+
+```bash
+# Standard deployment with docker volumes
+./scripts/deploy.sh
+
+# Deployment with custom storage path
+./scripts/deploy.sh --storage-path /var/lib/cff-data
+
+# Deployment using host storage (for persistent data)
+./scripts/deploy.sh --use-host-storage --storage-path /mnt/persistent/cff
+```
+
+#### Step 2: Clean Deployment (First Time or Reset)
+
+```bash
+# Clean deployment removes all existing data and containers
+./scripts/deploy.sh --clean
+```
+
+**Warning**: The `--clean` flag will:
+- Stop and remove all containers
+- Delete all Docker volumes
+- Remove the data directory
+- Delete built images
+- **ALL DATA WILL BE LOST**
+
+You will be prompted for confirmation before proceeding.
+
+#### Step 3: Custom Environment File
+
+```bash
+# Use a specific environment file (e.g., for staging)
+./scripts/deploy.sh --env-file .env.staging
+```
+
+---
+
+## Storage Configuration
+
+### Docker Volumes (Default)
+
+Docker volumes are managed by Docker and provide:
+- Easy backup/restore
+- Automatic management
+- Good performance on most systems
+- Portable across deployments
+
+**Default configuration (docker-compose.yml):**
+```yaml
+volumes:
+  postgres_data:
+    name: cff_postgres_data
+```
+
+### Host Storage (Production Recommended)
+
+Host storage uses a directory on the server filesystem:
+- Full control over backup location
+- Direct access to data files
+- Better for enterprise backup systems
+- Required for some cloud storage solutions
+
+**Configuration:**
+
+1. Set in `.env`:
+```bash
+POSTGRES_DATA_PATH=/var/lib/cff-data/postgres
+```
+
+2. Deploy with host storage flag:
+```bash
+./scripts/deploy.sh --use-host-storage --storage-path /var/lib/cff-data
+```
+
+**Storage Path Recommendations:**
+
+| Environment | Recommended Path | Notes |
+|-------------|------------------|-------|
+| Development | `./data/postgres` | Local directory, easy cleanup |
+| Staging | `/opt/cff-staging/data` | Persistent, separate from production |
+| Production | `/var/lib/cff-production/data` | Persistent, backed up regularly |
+| Cloud (AWS) | `/mnt/ebs/cff-data` | Mounted EBS volume |
+| Cloud (GCP) | `/mnt/persistent-disk/cff-data` | Mounted persistent disk |
+
+---
+
+## Database Initialization
+
+### Automatic Initialization
+
+The PostgreSQL container automatically initializes the database on first start:
+
+1. **Schema Creation** (`01-schema.sql`):
+   - Creates database schema
+   - Defines tables, indexes, constraints
+   - Sets up ENUM types
+   - Creates triggers and functions
+
+2. **Seed Data** (`02-constraints.sql`):
+   - Inserts legal constraints data
+   - Loads reference data
+
+3. **Data Migration** (`03-init-db.sh`):
+   - Runs Python migration script
+   - Imports JSON data from `/data/core_data`
+   - Creates hierarchical relationships
+
+### Initialization Order
+
+The initialization scripts run in order based on filename prefix:
+```
+/docker-entrypoint-initdb.d/
+  ├── 01-schema.sql              (Schema)
+  ├── 02-constraints.sql         (Seed data)
+  └── 03-init-db.sh             (Migration)
+```
+
+### Skipping Migration
+
+To deploy without running the migration (useful for restoring from backup):
+
+```bash
+./scripts/deploy.sh --no-migrate
+```
+
+### Manual Database Initialization
+
+If you need to manually initialize or reset the database:
+
+```bash
+# Connect to the database container
+docker exec -it cff_postgres psql -U cff_app_user -d cff_planning
+
+# Run schema manually
+\i /docker-entrypoint-initdb.d/01-schema.sql
+
+# Exit
+\q
+```
+
+---
+
+## Network Configuration
+
+### Docker Network
+
+The application uses a custom Docker bridge network:
+
+```yaml
+networks:
+  cff_network:
+    driver: bridge
+    name: cff_network
+```
+
+**Benefits:**
+- Isolated network for containers
+- Internal DNS resolution
+- No external exposure except defined ports
+
+### Port Mapping
+
+**Default Port Configuration:**
+- API: `8000` (host) → `8000` (container)
+- PostgreSQL: `5432` (host) → `5432` (container)
+
+**Custom Port Configuration:**
+
+Edit `.env` file:
+```bash
+API_PORT=8080        # Change API port to 8080
+DB_PORT=5433         # Change PostgreSQL port to 5433
+```
+
+### Firewall Configuration (Linux)
+
+**UFW (Ubuntu/Debian):**
+```bash
+# Allow API access
+sudo ufw allow 8000/tcp
+
+# Allow PostgreSQL (only if needed externally)
+sudo ufw allow 5432/tcp
+
+# Enable firewall
+sudo ufw enable
+```
+
+**firewalld (RHEL/CentOS):**
+```bash
+# Allow API access
+sudo firewall-cmd --permanent --add-port=8000/tcp
+
+# Allow PostgreSQL (only if needed externally)
+sudo firewall-cmd --permanent --add-port=5432/tcp
+
+# Reload firewall
+sudo firewall-cmd --reload
+```
+
+### Production Network Recommendations
+
+1. **DO NOT expose PostgreSQL port (5432) to the internet**
+2. **Use a reverse proxy (Nginx, Traefik) for SSL/TLS termination**
+3. **Implement rate limiting at the proxy level**
+4. **Use private networks for multi-server deployments**
+
+---
+
+## Security Considerations
+
+### Critical Security Steps for Production
+
+#### 1. Change Default Passwords
+
+**NEVER use default passwords in production!**
+
+```bash
+# Generate strong password
+openssl rand -base64 32
+
+# Update .env file
+DB_PASSWORD=<generated-strong-password>
+```
+
+#### 2. Restrict Database Access
+
+**Option A**: Do not expose PostgreSQL port externally
+```yaml
+# In docker-compose.yml, remove or comment out:
+ports:
+  # - "5432:5432"  # Do not expose externally
+```
+
+**Option B**: Bind to localhost only
+```yaml
+ports:
+  - "127.0.0.1:5432:5432"  # Only accessible from host
+```
+
+#### 3. Configure CORS Properly
+
+Update `.env` with your specific frontend URLs:
+```bash
+CORS_ORIGINS=["https://your-frontend.com","https://app.your-domain.com"]
+```
+
+#### 4. Use SSL/TLS in Production
+
+**Option A**: Terminate SSL at reverse proxy (recommended)
+```nginx
+# Nginx configuration example
+server {
+    listen 443 ssl;
+    server_name api.your-domain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+**Option B**: Configure PostgreSQL SSL
+```bash
+# Generate certificates
+openssl req -new -x509 -days 365 -nodes -text \
+    -out server.crt -keyout server.key \
+    -subj "/CN=localhost"
+
+# Mount certificates in docker-compose.yml
+volumes:
+  - ./certs/server.crt:/var/lib/postgresql/server.crt:ro
+  - ./certs/server.key:/var/lib/postgresql/server.key:ro
+```
+
+#### 5. File Permissions
+
+Ensure proper file permissions on host storage:
+
+```bash
+# Set ownership (PostgreSQL runs as postgres user, UID 999)
+sudo chown -R 999:999 /var/lib/cff-data/postgres
+
+# Set permissions (owner only)
+sudo chmod -R 700 /var/lib/cff-data/postgres
+```
+
+#### 6. Environment File Security
+
+```bash
+# Restrict access to .env file
+chmod 600 .env
+
+# Never commit .env to version control
+echo ".env" >> .gitignore
+```
+
+#### 7. Docker Socket Security
+
+```bash
+# Restrict Docker socket access
+sudo chmod 660 /var/run/docker.sock
+```
+
+#### 8. Regular Security Updates
+
+```bash
+# Update Docker images regularly
+docker compose pull
+docker compose up -d
+
+# Update base OS
+sudo apt-get update && sudo apt-get upgrade -y  # Ubuntu/Debian
+sudo yum update -y  # RHEL/CentOS
+```
+
+### Security Checklist
+
+- [ ] Changed default database password
+- [ ] PostgreSQL not exposed to internet
+- [ ] CORS configured for specific domains
+- [ ] SSL/TLS enabled (production)
+- [ ] File permissions set correctly
+- [ ] .env file secured (600 permissions)
+- [ ] Firewall configured
+- [ ] Regular security updates scheduled
+- [ ] Backup strategy implemented
+- [ ] Monitoring and alerting configured
+
+---
+
+## Deployment Verification
+
+### Automated Health Checks
+
+The deployment script automatically runs health checks. To manually verify:
+
+```bash
+# Run the health check script
+./scripts/health-check.sh
+```
+
+**Expected Output:**
+```
+======================================================================
+CFF Personnel Planning System - Health Check
+======================================================================
+✓ Docker daemon is running
+✓ Containers are running
+
+Container Status:
+CONTAINER     STATUS
+cff_postgres  Up 2 minutes (healthy)
+cff_api       Up 2 minutes (healthy)
+
+✓ PostgreSQL is healthy
+✓ API is healthy
+
+API Health Check Response:
+{
+  "status": "healthy",
+  "database": "connected",
+  "version": "1.0.0",
+  "timestamp": "2025-11-10T12:34:56.789Z"
+}
+
+======================================================================
+All Systems Operational
+======================================================================
+```
+
+### Manual Verification Steps
+
+#### 1. Check Container Status
+
+```bash
+# List running containers
+docker compose ps
+
+# Expected output:
+# NAME          STATUS
+# cff_api       Up (healthy)
+# cff_postgres  Up (healthy)
+```
+
+#### 2. Check Container Logs
+
+```bash
+# View all logs
+docker compose logs
+
+# View specific service logs
+docker compose logs api
+docker compose logs postgres
+
+# Follow logs in real-time
+docker compose logs -f
+```
+
+#### 3. Test API Health Endpoint
+
+```bash
+# Using curl
+curl http://localhost:8000/health
+
+# Expected response:
+# {
+#   "status": "healthy",
+#   "database": "connected",
+#   "version": "1.0.0",
+#   "timestamp": "2025-11-10T12:34:56.789Z"
+# }
+```
+
+#### 4. Test Database Connection
+
+```bash
+# Connect to PostgreSQL
+docker exec -it cff_postgres psql -U cff_app_user -d cff_planning
+
+# Run a test query
+SELECT COUNT(*) FROM regions;
+
+# Exit
+\q
+```
+
+#### 5. Test API Documentation
+
+Open in browser:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- OpenAPI JSON: `http://localhost:8000/api/v1/openapi.json`
+
+#### 6. Test a Simple API Request
+
+```bash
+# List regions
+curl http://localhost:8000/api/v1/regions?page=1&per_page=10
+
+# Expected: JSON response with regions data
+```
+
+---
+
+## Common Deployment Scenarios
+
+### Scenario 1: Local Development
+
+**Configuration:**
+- Docker volumes for storage
+- All ports exposed locally
+- Debug logging enabled
+
+**Steps:**
+```bash
+# Configure .env for development
+cat > .env << EOF
+DB_NAME=cff_planning
+DB_USER=cff_dev_user
+DB_PASSWORD=dev_password
+DB_PORT=5432
+API_PORT=8000
+LOG_LEVEL=DEBUG
+CORS_ORIGINS=["http://localhost:3000"]
+POSTGRES_DATA_PATH=./data/postgres
+EOF
+
+# Deploy
+./scripts/deploy.sh
+
+# Access services
+# API: http://localhost:8000
+# PostgreSQL: localhost:5432
+```
+
+### Scenario 2: Staging Environment
+
+**Configuration:**
+- Host storage on dedicated path
+- PostgreSQL not exposed externally
+- INFO logging
+- Staging domain CORS
+
+**Steps:**
+```bash
+# Configure .env.staging
+cat > .env.staging << EOF
+DB_NAME=cff_planning
+DB_USER=cff_staging_user
+DB_PASSWORD=$(openssl rand -base64 32)
+DB_PORT=5432
+API_PORT=8000
+LOG_LEVEL=INFO
+CORS_ORIGINS=["https://staging-app.your-domain.com"]
+POSTGRES_DATA_PATH=/opt/cff-staging/data
+EOF
+
+# Secure environment file
+chmod 600 .env.staging
+
+# Deploy with host storage
+./scripts/deploy.sh --env-file .env.staging \
+    --use-host-storage \
+    --storage-path /opt/cff-staging
+
+# Configure reverse proxy (Nginx)
+sudo nano /etc/nginx/sites-available/cff-staging
+```
+
+**Nginx Configuration (staging):**
+```nginx
+server {
+    listen 80;
+    server_name staging-api.your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name staging-api.your-domain.com;
+
+    ssl_certificate /etc/letsencrypt/live/staging-api.your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/staging-api.your-domain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### Scenario 3: Production Environment
+
+**Configuration:**
+- Host storage on dedicated volume/disk
+- PostgreSQL not exposed externally
+- INFO/WARNING logging
+- Production domain CORS
+- SSL/TLS termination at proxy
+- Regular backups
+
+**Steps:**
+```bash
+# Configure .env.production
+cat > .env.production << EOF
+DB_NAME=cff_planning
+DB_USER=cff_prod_user
+DB_PASSWORD=$(openssl rand -base64 32)
+DB_PORT=5432
+DB_POOL_SIZE=50
+DB_MAX_OVERFLOW=20
+DB_POOL_TIMEOUT=30
+API_PORT=8000
+LOG_LEVEL=INFO
+CORS_ORIGINS=["https://app.your-domain.com"]
+POSTGRES_DATA_PATH=/var/lib/cff-production/data
+EOF
+
+# Secure environment file
+chmod 600 .env.production
+
+# Create storage directory
+sudo mkdir -p /var/lib/cff-production/data
+sudo chown -R 999:999 /var/lib/cff-production/data
+sudo chmod -R 700 /var/lib/cff-production/data
+
+# Deploy
+./scripts/deploy.sh --env-file .env.production \
+    --use-host-storage \
+    --storage-path /var/lib/cff-production
+
+# Set up automated backups
+sudo crontab -e
+# Add: 0 2 * * * /path/to/scripts/backup-db.sh
+
+# Configure monitoring
+# (See Monitoring section)
+```
+
+**Production docker-compose.yml modifications:**
+```yaml
+services:
+  postgres:
+    # Remove or comment out external port exposure
+    # ports:
+    #   - "5432:5432"
+    restart: always
+
+  api:
+    restart: always
+```
+
+### Scenario 4: Cloud Deployment (AWS)
+
+**AWS-specific considerations:**
+- Use EBS volumes for persistent storage
+- Security groups for network access
+- Application Load Balancer for SSL/TLS
+- CloudWatch for monitoring
+- RDS as alternative to containerized PostgreSQL
+
+**Steps:**
+```bash
+# Mount EBS volume
+sudo mkfs -t ext4 /dev/xvdf
+sudo mkdir -p /mnt/ebs-cff-data
+sudo mount /dev/xvdf /mnt/ebs-cff-data
+echo "/dev/xvdf /mnt/ebs-cff-data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+
+# Deploy with EBS storage
+./scripts/deploy.sh --env-file .env.production \
+    --use-host-storage \
+    --storage-path /mnt/ebs-cff-data
+```
+
+**AWS Security Group Rules:**
+- Inbound: Allow 8000/tcp from ALB security group only
+- Outbound: Allow all (or specific as needed)
+
+---
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+#### Issue 1: Port Already in Use
+
+**Symptoms:**
+```
+Error starting userland proxy: listen tcp4 0.0.0.0:8000: bind: address already in use
+```
+
+**Solution:**
+```bash
+# Find process using the port
+sudo lsof -i :8000
+# or
+sudo netstat -tlnp | grep :8000
+
+# Kill the process or change the port in .env
+API_PORT=8080
+
+# Redeploy
+./scripts/deploy.sh
+```
+
+#### Issue 2: PostgreSQL Won't Start
+
+**Symptoms:**
+```
+cff_postgres  Exited (1)
+```
+
+**Solution:**
+```bash
+# Check logs
+docker compose logs postgres
+
+# Common causes:
+# 1. Permission issues
+sudo chown -R 999:999 /var/lib/cff-data/postgres
+sudo chmod -R 700 /var/lib/cff-data/postgres
+
+# 2. Corrupted data directory
+# Backup and remove data directory
+sudo mv /var/lib/cff-data/postgres /var/lib/cff-data/postgres.bak
+./scripts/deploy.sh --clean
+
+# 3. Insufficient disk space
+df -h
+# Free up space or use different storage path
+```
+
+#### Issue 3: API Can't Connect to Database
+
+**Symptoms:**
+```
+sqlalchemy.exc.OperationalError: could not connect to server
+```
+
+**Solution:**
+```bash
+# 1. Check if PostgreSQL is healthy
+docker compose ps
+
+# 2. Verify database credentials match in .env
+cat .env
+
+# 3. Check network connectivity
+docker exec cff_api ping postgres
+
+# 4. Check PostgreSQL logs
+docker compose logs postgres
+
+# 5. Restart services
+./scripts/restart.sh
+```
+
+#### Issue 4: Out of Memory
+
+**Symptoms:**
+```
+Killed
+# or
+docker: Error response from daemon: OOM
+```
+
+**Solution:**
+```bash
+# Check available memory
+free -h
+
+# Increase Docker memory limit
+# Edit /etc/docker/daemon.json
+sudo nano /etc/docker/daemon.json
+{
+  "default-runtime": "runc",
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "default-ulimits": {
+    "memlock": {
+      "Name": "memlock",
+      "Hard": -1,
+      "Soft": -1
+    }
+  }
+}
+
+# Restart Docker
+sudo systemctl restart docker
+
+# Reduce connection pool size in .env
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=5
+
+# Redeploy
+./scripts/restart.sh
+```
+
+#### Issue 5: Slow Performance
+
+**Symptoms:**
+- API responses are slow
+- Database queries take long time
+
+**Solution:**
+```bash
+# 1. Check system resources
+htop
+docker stats
+
+# 2. Increase connection pool
+# Edit .env
+DB_POOL_SIZE=50
+DB_MAX_OVERFLOW=20
+
+# 3. Check database indexes
+docker exec -it cff_postgres psql -U cff_app_user -d cff_planning
+EXPLAIN ANALYZE SELECT * FROM resources WHERE type = 'Internal';
+
+# 4. Optimize queries (see Performance Tuning section)
+
+# 5. Check disk I/O
+iostat -x 1 5
+
+# 6. Consider upgrading hardware or using SSD
+```
+
+#### Issue 6: Container Keeps Restarting
+
+**Symptoms:**
+```
+cff_api  Restarting (1) 5 seconds ago
+```
+
+**Solution:**
+```bash
+# Check logs for errors
+docker compose logs --tail=100 api
+
+# Common causes:
+# 1. Application error - fix code
+# 2. Database not ready - wait longer
+# 3. Health check failing
+
+# Temporarily disable health check to debug
+# Edit docker-compose.yml and comment out healthcheck
+
+# Check if container starts without health check
+docker compose up -d api
+docker compose logs -f api
+```
+
+#### Issue 7: CORS Errors
+
+**Symptoms:**
+```
+Access to fetch at 'http://localhost:8000/api/v1/regions' from origin
+'http://localhost:3000' has been blocked by CORS policy
+```
+
+**Solution:**
+```bash
+# Add frontend URL to CORS_ORIGINS in .env
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8080","https://your-frontend.com"]
+
+# Restart API service
+docker compose restart api
+
+# Verify CORS headers
+curl -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: GET" \
+     -H "Access-Control-Request-Headers: Content-Type" \
+     -X OPTIONS \
+     -v http://localhost:8000/api/v1/regions
+```
+
+### Diagnostic Commands
+
+```bash
+# View all containers
+docker ps -a
+
+# View container resource usage
+docker stats
+
+# View container logs
+docker compose logs -f
+
+# Inspect container
+docker inspect cff_api
+
+# View network
+docker network ls
+docker network inspect cff_network
+
+# View volumes
+docker volume ls
+docker volume inspect cff_postgres_data
+
+# Execute command in container
+docker exec -it cff_api bash
+docker exec -it cff_postgres psql -U cff_app_user -d cff_planning
+
+# View disk usage
+docker system df
+
+# Clean up unused resources
+docker system prune -a
+```
+
+---
+
+## Backup and Restore
+
+### Automated Backup Script
+
+The system includes an automated backup script:
+
+```bash
+# Run manual backup
+./scripts/backup-db.sh
+
+# Output: backup-cff_planning-YYYY-MM-DD_HH-MM-SS.sql
+```
+
+### Backup Script Features
+
+- Timestamped backup files
+- Compression (gzip)
+- Custom format (PostgreSQL pg_dump)
+- Automatic cleanup of old backups (optional)
+
+### Manual Backup
+
+```bash
+# Backup to SQL file
+docker exec cff_postgres pg_dump -U cff_app_user cff_planning > backup.sql
+
+# Backup with compression
+docker exec cff_postgres pg_dump -U cff_app_user cff_planning | gzip > backup.sql.gz
+
+# Backup in custom format (recommended for large databases)
+docker exec cff_postgres pg_dump -U cff_app_user -Fc cff_planning > backup.dump
+```
+
+### Restore from Backup
+
+```bash
+# Stop API service
+docker compose stop api
+
+# Restore from SQL file
+cat backup.sql | docker exec -i cff_postgres psql -U cff_app_user -d cff_planning
+
+# Restore from compressed file
+gunzip -c backup.sql.gz | docker exec -i cff_postgres psql -U cff_app_user -d cff_planning
+
+# Restore from custom format
+docker exec -i cff_postgres pg_restore -U cff_app_user -d cff_planning -c < backup.dump
+
+# Start API service
+docker compose start api
+```
+
+### Automated Backup Schedule
+
+Set up automated backups using cron:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add daily backup at 2 AM
+0 2 * * * /path/to/scripts/backup-db.sh
+
+# Add weekly backup at Sunday 3 AM
+0 3 * * 0 /path/to/scripts/backup-db.sh
+
+# Add monthly backup on 1st day at 4 AM
+0 4 1 * * /path/to/scripts/backup-db.sh
+```
+
+### Backup Retention Policy
+
+```bash
+# Keep last 7 daily backups
+find /path/to/backups -name "backup-*.sql.gz" -mtime +7 -delete
+
+# Keep last 4 weekly backups
+find /path/to/backups/weekly -name "backup-*.sql.gz" -mtime +28 -delete
+
+# Keep last 12 monthly backups
+find /path/to/backups/monthly -name "backup-*.sql.gz" -mtime +365 -delete
+```
+
+### Backup to Cloud Storage
+
+**AWS S3:**
+```bash
+# Install AWS CLI
+sudo apt-get install awscli
+
+# Configure credentials
+aws configure
+
+# Backup and upload
+./scripts/backup-db.sh
+aws s3 cp backup-*.sql.gz s3://your-backup-bucket/cff-backups/
+
+# Automated script
+#!/bin/bash
+BACKUP_FILE=$(./scripts/backup-db.sh)
+aws s3 cp $BACKUP_FILE s3://your-backup-bucket/cff-backups/
+echo "Backup uploaded: $BACKUP_FILE"
+```
+
+**Google Cloud Storage:**
+```bash
+# Install gcloud CLI
+# (See Google Cloud documentation)
+
+# Backup and upload
+./scripts/backup-db.sh
+gsutil cp backup-*.sql.gz gs://your-backup-bucket/cff-backups/
+```
+
+---
+
+## Upgrading the System
+
+### Pre-Upgrade Checklist
+
+- [ ] Backup current database
+- [ ] Review release notes
+- [ ] Test upgrade in staging environment
+- [ ] Schedule maintenance window
+- [ ] Notify users of downtime
+
+### Upgrade Procedure
+
+```bash
+# 1. Backup current database
+./scripts/backup-db.sh
+
+# 2. Stop services
+./scripts/stop.sh
+
+# 3. Pull latest code
+git pull origin main
+
+# 4. Rebuild images
+docker compose build
+
+# 5. Start services
+docker compose up -d
+
+# 6. Verify health
+./scripts/health-check.sh
+
+# 7. Check logs for errors
+docker compose logs -f
+```
+
+### Rolling Back an Upgrade
+
+```bash
+# 1. Stop services
+./scripts/stop.sh
+
+# 2. Checkout previous version
+git checkout <previous-version-tag>
+
+# 3. Rebuild images
+docker compose build
+
+# 4. Restore database backup (if schema changed)
+./scripts/restore-db.sh backup-YYYY-MM-DD.sql.gz
+
+# 5. Start services
+docker compose up -d
+
+# 6. Verify health
+./scripts/health-check.sh
+```
+
+### Database Schema Migrations
+
+For schema changes, follow these steps:
+
+```bash
+# 1. Backup database
+./scripts/backup-db.sh
+
+# 2. Apply migration
+docker exec -i cff_postgres psql -U cff_app_user -d cff_planning < migrations/001-add-column.sql
+
+# 3. Verify migration
+docker exec -it cff_postgres psql -U cff_app_user -d cff_planning
+\d table_name
+
+# 4. Test application
+curl http://localhost:8000/health
+```
+
+---
+
+## Monitoring and Logs
+
+### Viewing Logs
+
+```bash
+# View all logs
+docker compose logs
+
+# View logs for specific service
+docker compose logs api
+docker compose logs postgres
+
+# Follow logs in real-time
+docker compose logs -f
+
+# View last N lines
+docker compose logs --tail=100
+
+# View logs since timestamp
+docker compose logs --since 2025-11-10T12:00:00
+
+# View logs with timestamps
+docker compose logs -t
+```
+
+### Log Levels
+
+Configure log level in `.env`:
+
+```bash
+# DEBUG: Very detailed, for development
+LOG_LEVEL=DEBUG
+
+# INFO: General information, default
+LOG_LEVEL=INFO
+
+# WARNING: Warning messages only
+LOG_LEVEL=WARNING
+
+# ERROR: Error messages only
+LOG_LEVEL=ERROR
+```
+
+### Log Rotation
+
+Configure Docker log rotation in `/etc/docker/daemon.json`:
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+```
+
+Restart Docker after changes:
+```bash
+sudo systemctl restart docker
+```
+
+### External Log Management
+
+**Using ELK Stack (Elasticsearch, Logstash, Kibana):**
+
+```yaml
+# Add to docker-compose.yml
+services:
+  api:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=cff-api"
+```
+
+**Using Fluentd:**
+
+```yaml
+services:
+  api:
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: cff.api
+```
+
+### Monitoring Tools
+
+**Docker Stats:**
+```bash
+# View real-time container resource usage
+docker stats
+
+# View specific container
+docker stats cff_api
+```
+
+**Prometheus + Grafana:**
+
+1. Add metrics endpoint to API
+2. Configure Prometheus to scrape metrics
+3. Create Grafana dashboards
+
+**Basic Health Monitoring Script:**
+
+```bash
+#!/bin/bash
+# monitor.sh
+
+while true; do
+    # Check API health
+    if curl -sf http://localhost:8000/health > /dev/null; then
+        echo "$(date): API is healthy"
+    else
+        echo "$(date): API is unhealthy!" | mail -s "CFF API Alert" admin@example.com
+    fi
+
+    # Check database
+    if docker exec cff_postgres pg_isready -U cff_app_user -d cff_planning > /dev/null; then
+        echo "$(date): Database is healthy"
+    else
+        echo "$(date): Database is unhealthy!" | mail -s "CFF DB Alert" admin@example.com
+    fi
+
+    sleep 60
+done
+```
+
+### Alerting
+
+**Using systemd:**
+
+```bash
+# Create monitoring service
+sudo nano /etc/systemd/system/cff-monitor.service
+
+[Unit]
+Description=CFF Health Monitor
+After=docker.service
+
+[Service]
+Type=simple
+ExecStart=/path/to/monitor.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+# Enable and start
+sudo systemctl enable cff-monitor
+sudo systemctl start cff-monitor
+```
+
+---
+
+## Performance Tuning
+
+### Database Optimization
+
+#### Connection Pool Tuning
+
+```bash
+# For high traffic (edit .env)
+DB_POOL_SIZE=50          # Increase pool size
+DB_MAX_OVERFLOW=20       # Allow more overflow connections
+DB_POOL_TIMEOUT=30       # Connection timeout
+
+# For low traffic
+DB_POOL_SIZE=10
+DB_MAX_OVERFLOW=5
+DB_POOL_TIMEOUT=15
+```
+
+#### PostgreSQL Configuration
+
+Create custom PostgreSQL configuration:
+
+```bash
+# Create custom postgresql.conf
+cat > postgresql.conf << EOF
+# Memory settings
+shared_buffers = 256MB
+effective_cache_size = 1GB
+maintenance_work_mem = 64MB
+work_mem = 16MB
+
+# Checkpoint settings
+checkpoint_completion_target = 0.9
+wal_buffers = 16MB
+
+# Query planner
+random_page_cost = 1.1  # For SSD
+effective_io_concurrency = 200  # For SSD
+
+# Logging
+log_min_duration_statement = 1000  # Log slow queries (>1s)
+EOF
+
+# Mount in docker-compose.yml
+volumes:
+  - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+```
+
+#### Index Optimization
+
+```sql
+-- Check missing indexes
+SELECT schemaname, tablename, attname, n_distinct, correlation
+FROM pg_stats
+WHERE schemaname = 'public'
+ORDER BY n_distinct DESC;
+
+-- Analyze query performance
+EXPLAIN ANALYZE SELECT * FROM resources WHERE type = 'Internal';
+
+-- Create indexes for common queries
+CREATE INDEX idx_resources_type ON resources(type);
+CREATE INDEX idx_resources_status ON resources(status);
+CREATE INDEX idx_resources_region_team ON resources(region_id, team_id);
+```
+
+### API Optimization
+
+#### Enable Response Caching
+
+Add caching middleware to FastAPI:
+
+```python
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
+
+@cache(expire=300)  # Cache for 5 minutes
+@router.get("/regions")
+async def list_regions():
+    # ...
+```
+
+#### Rate Limiting
+
+Use Nginx for rate limiting:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+server {
+    location /api/ {
+        limit_req zone=api burst=20;
+        proxy_pass http://localhost:8000;
+    }
+}
+```
+
+### System Optimization
+
+#### Enable Compression
+
+Add compression to Nginx:
+
+```nginx
+gzip on;
+gzip_vary on;
+gzip_types text/plain text/css application/json application/javascript;
+gzip_min_length 1000;
+```
+
+#### Use SSD Storage
+
+For production, always use SSD storage for database:
+
+```bash
+# Check disk type
+lsblk -d -o name,rota
+# rota=0: SSD, rota=1: HDD
+
+# Use SSD-backed storage path
+POSTGRES_DATA_PATH=/mnt/ssd/cff-data
+```
+
+#### Resource Limits
+
+Set Docker resource limits:
+
+```yaml
+services:
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+```
+
+### Performance Testing
+
+```bash
+# Test API performance with Apache Bench
+ab -n 1000 -c 10 http://localhost:8000/api/v1/regions
+
+# Test with wrk
+wrk -t4 -c100 -d30s http://localhost:8000/api/v1/regions
+
+# Monitor during load test
+docker stats
+```
+
+---
+
+## Additional Resources
+
+### Documentation
+
+- API Endpoints: See `API_ENDPOINTS.md`
+- SQL Queries: See `SQL_QUERIES_REFERENCE.md`
+- Integration Guide: See `INTEGRATION_GUIDE.md`
+- FastAPI Documentation: https://fastapi.tiangolo.com/
+- PostgreSQL Documentation: https://www.postgresql.org/docs/
+
+### Support
+
+For issues and questions:
+- Check logs: `docker compose logs`
+- Run health check: `./scripts/health-check.sh`
+- Review troubleshooting section
+- Contact system administrator
+
+### Version Information
+
+- System Version: 2.0
+- PostgreSQL: 14+
+- Python: 3.11+
+- FastAPI: 0.104+
+- Docker: 20.10+
+
+---
+
+**Last Updated**: 2025-11-10
+**Document Version**: 1.0

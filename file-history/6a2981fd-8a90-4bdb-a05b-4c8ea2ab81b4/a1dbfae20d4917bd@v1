@@ -1,0 +1,86 @@
+services:
+  # PostgreSQL Database Service
+  postgres:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres
+    container_name: cff_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cff_planning}
+      POSTGRES_USER: ${DB_USER:-cff_app_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=en_US.UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Data volume - will be set by deployment script
+      - ${POSTGRES_DATA_PATH:-./data/postgres}:/var/lib/postgresql/data
+      # Mount JSON data for migration (packaged copy)
+      - ./core_data:/data/core_data:ro
+    networks:
+      - cff_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cff_app_user} -d ${DB_NAME:-cff_planning}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # FastAPI Application Service
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: cff_api
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-cff_planning}
+      DB_USER: ${DB_USER:-cff_app_user}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:3000","http://localhost:8080"]}'
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cff_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  cff_network:
+    driver: bridge
+    name: cff_network
+
+# Named volumes (optional - use when not using host storage)
+volumes:
+  postgres_data:
+    name: cff_postgres_data

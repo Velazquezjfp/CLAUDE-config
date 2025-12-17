@@ -1,0 +1,8 @@
+"""
+Recommendation Analyzers
+
+Provides actionable recommendations for:
+- Training impact (multi-constraint aware)
+- Hiring needs
+- Resource capacity optimization
+"""

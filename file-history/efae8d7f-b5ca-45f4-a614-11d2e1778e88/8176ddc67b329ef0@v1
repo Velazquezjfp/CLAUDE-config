@@ -1,0 +1,313 @@
+"""
+Main Solution Analyzer Orchestrator
+Coordinates all constraint and objective analyzers to generate comprehensive analysis
+"""
+import sys
+from datetime import datetime
+sys.path.append('..')
+
+from analysis.constraint_analyzers.hc_01_analyzer import HC_01_Analyzer
+from analysis.constraint_analyzers.lc_01_analyzer import LC_01_Analyzer
+from analysis.constraint_analyzers.lc_02_analyzer import LC_02_Analyzer
+from analysis.constraint_analyzers.lc_03_analyzer import LC_03_Analyzer
+from analysis.constraint_analyzers.lc_04_analyzer import LC_04_Analyzer
+from analysis.constraint_analyzers.cp_02_analyzer import CP_02_Analyzer
+from analysis.objective_analyzers.coverage_analyzer import CoverageAnalyzer
+from analysis.objective_analyzers.workload_analyzer import WorkloadAnalyzer
+from config import ENABLED_CONSTRAINTS, ENABLED_OBJECTIVES
+
+
+class SolutionAnalyzer:
+    """
+    Main orchestrator for post-solve analysis
+
+    Coordinates all constraint and objective analyzers to provide:
+    - Detailed violation analysis
+    - Objective performance metrics
+    - Gap analysis
+    - Actionable recommendations
+    """
+
+    def __init__(self, solution, data, constraints):
+        """
+        Initialize analyzer with solution data
+
+        Args:
+            solution: Solver solution with assignments and violation_metadata
+            data: PreprocessedData object with requests/resources
+            constraints: ConstraintValues object with limits
+        """
+        self.solution = solution
+        self.data = data
+        self.constraints = constraints
+
+        # Initialize constraint analyzers
+        self.constraint_analyzers = {
+            'LC_01_max_weekly_hours': LC_01_Analyzer(),
+            'LC_02_max_daily_hours_14h_span': LC_02_Analyzer(),
+            'LC_03_max_absolute_daily_hours': LC_03_Analyzer(),
+            'LC_04_max_continuous_work': LC_04_Analyzer(),
+            'CP_02_qualification_matching': CP_02_Analyzer(),
+        }
+
+        # Initialize objective analyzers
+        self.objective_analyzers = {
+            'maximize_coverage': CoverageAnalyzer(),
+            'balance_workload': WorkloadAnalyzer(),
+        }
+
+    def analyze(self):
+        """
+        Generate comprehensive analysis report
+
+        Returns:
+            Dict with complete analysis including:
+            - metadata (status, solve time, etc.)
+            - constraint_violations (detailed per constraint)
+            - objective_performance (achievement rates, gaps)
+            - recommendations (actionable insights)
+            - summary (executive overview)
+        """
+        report = {
+            'metadata': self._generate_metadata(),
+            'constraint_violations': self._analyze_constraints(),
+            'objective_performance': self._analyze_objectives(),
+            'summary': {}  # Will be generated after other sections
+        }
+
+        # Generate summary based on analysis results
+        report['summary'] = self._generate_summary(report)
+
+        return report
+
+    def _generate_metadata(self):
+        """Generate report metadata"""
+        from ortools.sat.python import cp_model
+
+        status_names = {
+            4: "OPTIMAL",
+            2: "FEASIBLE",
+            3: "INFEASIBLE",
+            0: "UNKNOWN"
+        }
+
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(self.solution, 'solution_assignments', getattr(self.solution, 'assignments', []))
+
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'status': status_names.get(self.solution.status, "UNKNOWN"),
+            'status_code': self.solution.status,
+            'objective_value': getattr(self.solution, 'objective_value', None),
+            'solve_time_seconds': getattr(self.solution, 'solve_time', None),
+            'total_assignments': len(assignments),
+            'total_requests': len(self.data.request_ids),
+            'total_resources': len(self.data.resource_ids),
+            'enabled_constraints': ENABLED_CONSTRAINTS,
+            'enabled_objectives': ENABLED_OBJECTIVES
+        }
+
+    def _analyze_constraints(self):
+        """
+        Analyze all enabled constraints
+
+        Returns:
+            Dict mapping constraint_name -> analysis results
+        """
+        results = {}
+
+        for constraint_name in ENABLED_CONSTRAINTS:
+            if constraint_name in self.constraint_analyzers:
+                analyzer = self.constraint_analyzers[constraint_name]
+
+                # Get violation metadata from solution
+                violation_metadata = getattr(self.solution, 'violation_metadata', [])
+
+                results[constraint_name] = analyzer.analyze_violations(
+                    self.solution,
+                    self.data,
+                    self.constraints,
+                    violation_metadata
+                )
+
+        return results
+
+    def _analyze_objectives(self):
+        """
+        Analyze all enabled objectives
+
+        Returns:
+            Dict mapping objective_name -> performance analysis
+        """
+        results = {}
+
+        for objective_name in ENABLED_OBJECTIVES:
+            if objective_name in self.objective_analyzers:
+                analyzer = self.objective_analyzers[objective_name]
+                results[objective_name] = analyzer.analyze_performance(
+                    self.solution,
+                    self.data,
+                    self.constraints
+                )
+
+        return results
+
+    def _generate_summary(self, report):
+        """
+        Generate executive summary
+
+        Args:
+            report: Full analysis report
+
+        Returns:
+            Dict with key metrics and overall assessment
+        """
+        # Coverage metrics
+        coverage_rate = 0
+        if 'maximize_coverage' in report['objective_performance']:
+            coverage_rate = report['objective_performance']['maximize_coverage']['achievement_rate']
+
+        # Workload balance metrics
+        workload_variance = 0
+        workload_rate = 0
+        if 'balance_workload' in report['objective_performance']:
+            workload_metrics = report['objective_performance']['balance_workload']
+            workload_rate = workload_metrics['achievement_rate']
+            workload_variance = workload_metrics['metrics'].get('variance', 0)
+
+        # Violation metrics
+        total_violations = sum(
+            result.get('total_violations', 0)
+            for result in report['constraint_violations'].values()
+        )
+
+        total_violation_amount = sum(
+            result.get('total_violation_amount', 0)
+            for result in report['constraint_violations'].values()
+        )
+
+        # Constraint-specific metrics
+        affected_resources = set()
+        for result in report['constraint_violations'].values():
+            if 'detailed_violations' in result:
+                for detail in result['detailed_violations']:
+                    affected_resources.add(detail['resource_id'])
+
+        # Overall status assessment
+        status = self._classify_overall_status(
+            coverage_rate,
+            workload_rate,
+            total_violations,
+            total_violation_amount
+        )
+
+        return {
+            'overall_status': status,
+            'coverage': {
+                'rate': round(coverage_rate, 2),
+                'category': self._classify_rate(coverage_rate),
+                'requests_covered': report['metadata']['total_assignments'],
+                'requests_total': report['metadata']['total_requests'],
+                'requests_uncovered': report['metadata']['total_requests'] - report['metadata']['total_assignments']
+            },
+            'workload_balance': {
+                'rate': round(workload_rate, 2),
+                'category': self._classify_rate(workload_rate),
+                'variance_hours': round(workload_variance, 2)
+            },
+            'violations': {
+                'total_count': total_violations,
+                'total_amount_hours': round(total_violation_amount, 2),
+                'affected_resources': len(affected_resources),
+                'severity': self._classify_violation_severity(total_violations, total_violation_amount)
+            },
+            'key_insights': self._generate_key_insights(report),
+            'top_recommendations': self._generate_top_recommendations(report)
+        }
+
+    def _classify_overall_status(self, coverage_rate, workload_rate, total_viols, total_viol_amount):
+        """Classify overall solution status"""
+        if coverage_rate >= 95 and workload_rate >= 90 and total_viol_amount < 50:
+            return "EXCELLENT"
+        elif coverage_rate >= 80 and workload_rate >= 70 and total_viol_amount < 150:
+            return "GOOD"
+        elif coverage_rate >= 60 or workload_rate >= 50:
+            return "ACCEPTABLE"
+        else:
+            return "NEEDS IMPROVEMENT"
+
+    def _classify_rate(self, rate):
+        """Classify achievement rate"""
+        if rate >= 95:
+            return "EXCELLENT"
+        elif rate >= 80:
+            return "GOOD"
+        elif rate >= 60:
+            return "FAIR"
+        else:
+            return "POOR"
+
+    def _classify_violation_severity(self, count, amount):
+        """Classify violation severity"""
+        if count == 0 and amount == 0:
+            return "NONE"
+        elif count < 20 and amount < 30:
+            return "LOW"
+        elif count < 50 and amount < 100:
+            return "MEDIUM"
+        else:
+            return "HIGH"
+
+    def _generate_key_insights(self, report):
+        """Generate key insights from analysis"""
+        insights = []
+
+        # Coverage insights
+        if 'maximize_coverage' in report['objective_performance']:
+            cov = report['objective_performance']['maximize_coverage']
+            if cov['metrics']['uncovered_requests'] > 0:
+                insights.append(
+                    f"{cov['metrics']['uncovered_requests']} requests uncovered - "
+                    f"check qualification gaps and capacity constraints"
+                )
+
+        # Workload insights
+        if 'balance_workload' in report['objective_performance']:
+            wl = report['objective_performance']['balance_workload']
+            idle = wl['metrics'].get('idle_resources', 0)
+            if idle > 0:
+                insights.append(f"{idle} resources idle - potential capacity underutilization")
+
+        # Violation insights
+        for constraint_name, result in report['constraint_violations'].items():
+            if result.get('total_violations', 0) > 0:
+                insights.append(
+                    f"{constraint_name}: {result['total_violations']} violations "
+                    f"({result.get('total_violation_amount', 0):.1f}h over limits)"
+                )
+
+        return insights[:5]  # Top 5 insights
+
+    def _generate_top_recommendations(self, report):
+        """Generate top recommendations"""
+        recommendations = []
+
+        # Coverage recommendations from CP_02
+        if 'CP_02_qualification_matching' in report['constraint_violations']:
+            cp02 = report['constraint_violations']['CP_02_qualification_matching']
+            if 'recommendations' in cp02 and cp02['recommendations']:
+                recommendations.extend(cp02['recommendations'][:2])
+
+        # Workload recommendations
+        if 'balance_workload' in report['objective_performance']:
+            wl = report['objective_performance']['balance_workload']
+            if wl['gaps']:
+                for gap in wl['gaps'][:1]:  # Top gap
+                    if gap.get('recommendations'):
+                        recommendations.append({
+                            'type': 'WORKLOAD_BALANCE',
+                            'priority': gap.get('severity', 'MEDIUM'),
+                            'action': gap['recommendations'][0]
+                        })
+
+        return recommendations[:5]  # Top 5 recommendations

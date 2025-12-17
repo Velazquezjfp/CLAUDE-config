@@ -1,0 +1,282 @@
+"""
+LC_03: Maximum Absolute Daily Hours Analyzer
+Analyzes violations of daily hour limits (legal 12.5h, company 10h)
+"""
+from .base_analyzer import ConstraintAnalyzer
+import sys
+sys.path.append('../..')
+from config import SCALING_FACTOR
+
+
+class LC_03_Analyzer(ConstraintAnalyzer):
+    """Analyzer for LC_03 (maximum absolute daily hours)"""
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='LC_03',
+            constraint_name='max_absolute_daily_hours'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze absolute daily hours violations
+
+        Returns detailed breakdown of violations by resource and day
+        """
+        # Filter metadata for this constraint
+        my_violations = [
+            v for v in violation_metadata
+            if v['constraint_id'] == 'LC_03'
+        ]
+
+        if not my_violations:
+            return {
+                "constraint_id": "LC_03",
+                "constraint_name": "max_absolute_daily_hours",
+                "total_violations": 0,
+                "total_violation_amount": 0.0,
+                "affected_resources": 0,
+                "severity_breakdown": {"LOW": 0, "MEDIUM": 0, "HIGH": 0},
+                "detailed_violations": [],
+                "message": "No violations detected"
+            }
+
+        # Group by resource
+        violations_by_resource = {}
+        total_violation_amount = 0.0
+
+        for viol_meta in my_violations:
+            resource_id = viol_meta['resource_id']
+            day_idx = viol_meta['day_idx']
+            day = viol_meta['day']
+
+            # Calculate actual hours for this resource on this day
+            actual_hours = self._calculate_actual_hours(
+                solution, data, resource_id, day_idx
+            )
+
+            # Only process if there's an actual violation
+            company_limit = viol_meta['company_limit']
+            if actual_hours <= company_limit:
+                continue  # No violation
+
+            violation_amount = actual_hours - company_limit
+            total_violation_amount += violation_amount
+
+            if resource_id not in violations_by_resource:
+                violations_by_resource[resource_id] = []
+
+            severity = self.classify_severity(
+                violation_amount,
+                viol_meta['legal_limit'],
+                viol_meta['company_limit']
+            )
+
+            violations_by_resource[resource_id].append({
+                'context': {
+                    'day': day,
+                    'day_idx': day_idx
+                },
+                'legal_limit': viol_meta['legal_limit'],
+                'company_limit': viol_meta['company_limit'],
+                'actual_value': actual_hours,
+                'violation_amount': violation_amount,
+                'severity': severity,
+                'affected_assignments': viol_meta['assignments_in_day'],
+                'how_to_fix': self._generate_fix_suggestions(
+                    viol_meta, actual_hours, violation_amount, data
+                )
+            })
+
+        # Build severity breakdown
+        severity_breakdown = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+        for resource_viols in violations_by_resource.values():
+            for v in resource_viols:
+                severity_breakdown[v['severity']] += 1
+
+        # Format detailed violations
+        detailed_violations = [
+            {
+                'resource_id': resource_id,
+                'total_violations': len(viols),
+                'total_violation_amount': sum(v['violation_amount'] for v in viols),
+                'violations': viols
+            }
+            for resource_id, viols in violations_by_resource.items()
+        ]
+
+        return {
+            "constraint_id": "LC_03",
+            "constraint_name": "max_absolute_daily_hours",
+            "total_violations": sum(len(v) for v in violations_by_resource.values()),
+            "total_violation_amount": round(total_violation_amount, 2),
+            "affected_resources": len(violations_by_resource),
+            "severity_breakdown": severity_breakdown,
+            "detailed_violations": detailed_violations
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check if adding this assignment would violate daily hour limits
+        """
+        MAX_HOURS_LEGAL = constraints.get_legal_value('max_hours_per_day')
+        MAX_HOURS_COMPANY = constraints.get_company_value('max_hours_per_day')
+
+        from datetime import datetime
+
+        sim_start = datetime.fromisoformat(simulated_assignment['start'])
+        sim_end = datetime.fromisoformat(simulated_assignment['end'])
+        sim_duration = simulated_assignment['duration_hours']
+
+        # Check all days that the assignment spans
+        violations = []
+
+        for day_idx, day_info in enumerate(data.days):
+            day_start = day_info['start']
+            day_end = day_info['end']
+
+            # Check if assignment overlaps this day
+            if not (sim_end <= day_start or sim_start >= day_end):
+                # Calculate hours in this day
+                overlap_start = max(sim_start, day_start)
+                overlap_end = min(sim_end, day_end)
+                overlap_duration = (overlap_end - overlap_start).total_seconds() / 3600
+
+                total_hours = overlap_duration
+
+                # Add existing assignments in this day
+                for existing in existing_assignments:
+                    exist_start = datetime.fromisoformat(existing['start'])
+                    exist_end = datetime.fromisoformat(existing['end'])
+
+                    # Check if existing assignment overlaps this day
+                    if not (exist_end <= day_start or exist_start >= day_end):
+                        exist_overlap_start = max(exist_start, day_start)
+                        exist_overlap_end = min(exist_end, day_end)
+                        exist_overlap = (exist_overlap_end - exist_overlap_start).total_seconds() / 3600
+                        total_hours += exist_overlap
+
+                # Check against limits
+                if total_hours > MAX_HOURS_LEGAL:
+                    return {
+                        "would_violate": True,
+                        "violation_type": "legal",
+                        "violation_amount": total_hours - MAX_HOURS_LEGAL,
+                        "reason": f"Would exceed legal daily limit: {total_hours:.1f}h > {MAX_HOURS_LEGAL}h",
+                        "details": {
+                            "day_idx": day_idx,
+                            "day": str(day_info),
+                            "total_hours": total_hours,
+                            "legal_limit": MAX_HOURS_LEGAL
+                        }
+                    }
+                elif total_hours > MAX_HOURS_COMPANY:
+                    violations.append({
+                        "would_violate": True,
+                        "violation_type": "company",
+                        "violation_amount": total_hours - MAX_HOURS_COMPANY,
+                        "reason": f"Would exceed company daily limit: {total_hours:.1f}h > {MAX_HOURS_COMPANY}h",
+                        "details": {
+                            "day_idx": day_idx,
+                            "day": str(day_info),
+                            "total_hours": total_hours,
+                            "company_limit": MAX_HOURS_COMPANY
+                        }
+                    })
+
+        # Return worst violation if any
+        if violations:
+            return violations[0]  # Return first company violation
+
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "violation_amount": 0,
+            "reason": "Within daily hour limits"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """Suggest weight adjustments based on daily hours violations"""
+        total_viols = violations.get('total_violations', 0)
+        total_amount = violations.get('total_violation_amount', 0)
+
+        if total_viols == 0:
+            return {
+                "constraint_id": "LC_03",
+                "current_weight": 1000,
+                "suggested_adjustments": []
+            }
+
+        suggestions = []
+
+        if total_viols > 75:
+            suggestions.append({
+                "new_weight": 1500,
+                "expected_impact": "Stronger enforcement of daily hour limits",
+                "trade_offs": "May reduce coverage by 3-5% as daily scheduling becomes more constrained"
+            })
+
+        if total_amount > 150:
+            suggestions.append({
+                "new_weight": 2000,
+                "expected_impact": "Very strong enforcement - minimize daily overwork",
+                "trade_offs": "Could significantly reduce coverage, may need to split long requests"
+            })
+
+        if total_viols < 30 and total_amount < 75:
+            suggestions.append({
+                "new_weight": 700,
+                "expected_impact": "More flexibility with daily hour limits",
+                "trade_offs": "May increase coverage by 2-3% but increases daily fatigue risk"
+            })
+
+        return {
+            "constraint_id": "LC_03",
+            "current_weight": 1000,
+            "suggested_adjustments": suggestions
+        }
+
+    def _calculate_actual_hours(self, solution, data, resource_id, day_idx):
+        """Calculate actual hours worked on a day"""
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        total_hours = 0.0
+        for assignment in assignments:
+            if assignment['resource_id'] == resource_id:
+                req_id = assignment['request_id']
+                hours_in_day = data.get_task_hours_in_day(req_id, day_idx)
+                total_hours += hours_in_day
+        return total_hours
+
+    def _generate_fix_suggestions(self, viol_meta, actual_hours, violation_amount, data):
+        """Generate specific fix suggestions"""
+        suggestions = []
+        resource_id = viol_meta['resource_id']
+        day = viol_meta['day']
+        assignments = viol_meta['assignments_in_day']
+
+        # Suggestion 1: Split long assignments
+        if assignments:
+            suggestions.append(
+                f"Split assignment {assignments[0]} across multiple days to reduce daily hours"
+            )
+
+        # Suggestion 2: Reassign to other resources
+        suggestions.append(
+            f"Reassign some work on {day} to underutilized resources"
+        )
+
+        # Suggestion 3: Move to different day
+        suggestions.append(
+            f"Shift assignments to adjacent days with lower workload"
+        )
+
+        # Suggestion 4: Accept violation if minor
+        if violation_amount < 2.0:
+            suggestions.append(
+                f"Accept violation ({violation_amount:.1f}h over) - within operational tolerance"
+            )
+
+        return suggestions

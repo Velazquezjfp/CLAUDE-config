@@ -1,0 +1,95 @@
+"""
+Configuration settings for CFF Planning API
+
+This API uses a split database architecture:
+- Internal DB: User-modifiable parameters (constraints, weights, preferences)
+- External DB: Hard data (resources, demands, assignments, etc.)
+"""
+from pydantic_settings import BaseSettings
+from typing import Optional
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+
+    # API Settings
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "CFF Personnel Planning API"
+    VERSION: str = "2.1.0"
+    DESCRIPTION: str = "REST API for CFF Personnel Planning and Resource Management System"
+
+    # =========================================================================
+    # Internal Database Settings (Parameters - same server)
+    # Tables: legal_constraints, company_policy_constraints, operational_preferences,
+    #         objective_weights, utilization_targets, audit_log
+    # =========================================================================
+    INTERNAL_DB_HOST: str = "postgres"
+    INTERNAL_DB_PORT: int = 5432
+    INTERNAL_DB_NAME: str = "cff_planning"
+    INTERNAL_DB_USER: str = "cff_app_user"
+    INTERNAL_DB_PASSWORD: str = "changeme"
+
+    # =========================================================================
+    # External Database Settings (Data - external server or internal docker)
+    # Tables: resources, demands, assignments, absences, regions, teams, groups,
+    #         locations, qualifications, divisions, demands_list, etc.
+    # =========================================================================
+    EXTERNAL_DB_HOST: str = "150.241.245.65"
+    EXTERNAL_DB_PORT: int = 5432
+    EXTERNAL_DB_NAME: str = "cff"
+    EXTERNAL_DB_USER: str = "cffdev"
+    EXTERNAL_DB_PASSWORD: str = "cffdev"
+
+    # Connection Pool Settings (shared for both databases)
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+
+    # CORS Settings
+    CORS_ORIGINS: list = ["*"]
+
+    # Pagination Defaults
+    DEFAULT_PAGE_SIZE: int = 50
+    MAX_PAGE_SIZE: int = 200
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
+    @property
+    def INTERNAL_DATABASE_URL(self) -> str:
+        """Construct internal database URL (parameters)"""
+        return f"postgresql+asyncpg://{self.INTERNAL_DB_USER}:{self.INTERNAL_DB_PASSWORD}@{self.INTERNAL_DB_HOST}:{self.INTERNAL_DB_PORT}/{self.INTERNAL_DB_NAME}"
+
+    @property
+    def EXTERNAL_DATABASE_URL(self) -> str:
+        """Construct external database URL (data)"""
+        return f"postgresql+asyncpg://{self.EXTERNAL_DB_USER}:{self.EXTERNAL_DB_PASSWORD}@{self.EXTERNAL_DB_HOST}:{self.EXTERNAL_DB_PORT}/{self.EXTERNAL_DB_NAME}"
+
+    @property
+    def SYNC_INTERNAL_DATABASE_URL(self) -> str:
+        """Construct sync internal database URL (for migrations)"""
+        return f"postgresql://{self.INTERNAL_DB_USER}:{self.INTERNAL_DB_PASSWORD}@{self.INTERNAL_DB_HOST}:{self.INTERNAL_DB_PORT}/{self.INTERNAL_DB_NAME}"
+
+    @property
+    def SYNC_EXTERNAL_DATABASE_URL(self) -> str:
+        """Construct sync external database URL (for migrations)"""
+        return f"postgresql://{self.EXTERNAL_DB_USER}:{self.EXTERNAL_DB_PASSWORD}@{self.EXTERNAL_DB_HOST}:{self.EXTERNAL_DB_PORT}/{self.EXTERNAL_DB_NAME}"
+
+    # Backward compatibility aliases
+    @property
+    def DATABASE_URL(self) -> str:
+        """Backward compatibility - returns internal DB URL"""
+        return self.INTERNAL_DATABASE_URL
+
+    @property
+    def SYNC_DATABASE_URL(self) -> str:
+        """Backward compatibility - returns sync internal DB URL"""
+        return self.SYNC_INTERNAL_DATABASE_URL
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+# Global settings instance
+settings = Settings()

@@ -1,0 +1,273 @@
+"""
+Groups router - Full CRUD for groups table
+Connects to EXTERNAL database (data tables)
+Note: This table was previously called 'sub_groups' - renamed to 'groups' in v2
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+
+from database import get_external_db
+
+
+router = APIRouter(prefix="/groups", tags=["Groups"])
+
+
+@router.get("/")
+async def list_groups(
+    team_id: Optional[int] = Query(None, description="Filter by team ID"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all groups with optional team filter.
+    Data comes from external database.
+    """
+    try:
+        where_clause = "WHERE team_id = :team_id" if team_id else ""
+        params = {"team_id": team_id} if team_id else {}
+
+        query = text(f"""
+            SELECT group_id, group_name, team_id, color_code,
+                   created_at, created_by, updated_at, updated_by
+            FROM groups
+            {where_clause}
+            ORDER BY group_name
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching groups: {str(e)}",
+        )
+
+
+@router.get("/{group_id}")
+async def get_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single group by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT group_id, group_name, team_id, color_code,
+                   created_at, created_by, updated_at, updated_by
+            FROM groups
+            WHERE group_id = :group_id
+        """)
+
+        result = await db.execute(query, {"group_id": group_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group with ID {group_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching group: {str(e)}",
+        )
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_group(
+    group: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new group in external database.
+    Required fields: group_name, team_id
+    """
+    try:
+        # Validate required fields
+        if "group_name" not in group or not group["group_name"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: group_name",
+            )
+
+        if "team_id" not in group or not group["team_id"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: team_id",
+            )
+
+        # Verify team exists
+        team_check = text("SELECT team_id FROM teams WHERE team_id = :team_id")
+        team_result = await db.execute(team_check, {"team_id": group["team_id"]})
+        if not team_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Team with ID {group['team_id']} not found",
+            )
+
+        # Check if group_name already exists for this team
+        check_query = text("""
+            SELECT group_id FROM groups
+            WHERE group_name = :group_name AND team_id = :team_id
+        """)
+        check_result = await db.execute(
+            check_query,
+            {"group_name": group["group_name"], "team_id": group["team_id"]},
+        )
+        if check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Group with name {group['group_name']} already exists for this team",
+            )
+
+        insert_query = text("""
+            INSERT INTO groups (group_name, team_id, color_code, created_by)
+            VALUES (:group_name, :team_id, :color_code, :created_by)
+            RETURNING group_id, group_name, team_id, color_code,
+                      created_at, created_by, updated_at, updated_by
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "group_name": group.get("group_name"),
+                "team_id": group.get("team_id"),
+                "color_code": group.get("color_code"),
+                "created_by": group.get("created_by", "api"),
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating group: {str(e)}",
+        )
+
+
+@router.put("/{group_id}")
+async def update_group(
+    group_id: int,
+    group: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing group in external database.
+    """
+    try:
+        # Check if group exists
+        check_query = text("SELECT group_id FROM groups WHERE group_id = :group_id")
+        check_result = await db.execute(check_query, {"group_id": group_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group with ID {group_id} not found",
+            )
+
+        # Build UPDATE clause dynamically
+        update_fields = []
+        params = {"group_id": group_id}
+
+        if "group_name" in group and group["group_name"] is not None:
+            update_fields.append("group_name = :group_name")
+            params["group_name"] = group["group_name"]
+
+        if "team_id" in group and group["team_id"] is not None:
+            # Verify team exists
+            team_check = text("SELECT team_id FROM teams WHERE team_id = :team_id")
+            team_result = await db.execute(team_check, {"team_id": group["team_id"]})
+            if not team_result.fetchone():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Team with ID {group['team_id']} not found",
+                )
+            update_fields.append("team_id = :team_id")
+            params["team_id"] = group["team_id"]
+
+        if "color_code" in group and group["color_code"] is not None:
+            update_fields.append("color_code = :color_code")
+            params["color_code"] = group["color_code"]
+
+        # Add updated_by
+        update_fields.append("updated_by = :updated_by")
+        params["updated_by"] = group.get("updated_by", "api")
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE groups
+            SET {', '.join(update_fields)}
+            WHERE group_id = :group_id
+            RETURNING group_id, group_name, team_id, color_code,
+                      created_at, created_by, updated_at, updated_by
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating group: {str(e)}",
+        )
+
+
+@router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_group(
+    group_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete a group from external database.
+    """
+    try:
+        # Check if group exists
+        check_query = text("SELECT group_id FROM groups WHERE group_id = :group_id")
+        check_result = await db.execute(check_query, {"group_id": group_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Group with ID {group_id} not found",
+            )
+
+        delete_query = text("DELETE FROM groups WHERE group_id = :group_id")
+        await db.execute(delete_query, {"group_id": group_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting group: {str(e)}",
+        )

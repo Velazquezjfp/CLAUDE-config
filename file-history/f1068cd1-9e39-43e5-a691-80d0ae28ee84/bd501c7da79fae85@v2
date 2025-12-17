@@ -1,0 +1,577 @@
+# CFF Personnel Planning System - Database Application v2.1
+
+A complete dockerized FastAPI REST API for the CFF (Swiss Federal Railways) Personnel Planning and Resource Management System.
+
+## What's New in v2.1 (December 2025)
+
+### Dual Database Architecture
+The API now uses a **split database architecture**:
+- **Internal Database** (local PostgreSQL container): User-modifiable parameters only (constraints, policies, weights)
+- **External Database** (150.241.245.65:5432/cff): Production data (resources, demands, assignments, etc.)
+
+### Breaking Changes from v2.0
+| Change | v2.0 | v2.1 |
+|--------|------|------|
+| Database | Single internal DB | Dual DB (internal + external) |
+| `requests` table | Local table | Renamed to `demands` (external DB) |
+| `sub_groups` table | Local table | Renamed to `groups` (external DB) |
+| Data tables | All local | Moved to external DB |
+| Parameter tables | Mixed | Internal DB only |
+
+### New Endpoints
+- `GET/POST/PUT/DELETE /api/v1/divisions` - New organizational level
+- `GET /api/v1/demands-list` - Historical BSA demand records (25,577 records)
+
+### Removed Endpoints
+- `/api/v1/location-distances` - Table not in external DB
+- `/api/v1/calendars` - Table not in external DB
+- `/api/v1/shift-templates` - Table not in external DB
+
+### Renamed Endpoints
+- `/api/v1/requests` → `/api/v1/demands`
+- `/api/v1/sub-groups` → `/api/v1/groups`
+
+### Data Statistics (External DB - Live Data)
+| Table | Records |
+|-------|---------|
+| resources | 374 |
+| demands | 50,896 |
+| assignments | 106,038 |
+| absences | 6,190 |
+| regions | 3 |
+| teams | 56 |
+| groups | 47 |
+| divisions | 6 |
+| qualifications | 101 |
+| demands_list | 25,577 |
+
+## 🚀 Quick Start
+
+```bash
+# Deploy the system
+cd database_application_v2
+docker-compose up --build -d
+
+# Access the API
+open http://localhost:8002/docs
+```
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+
+## 🎯 Overview
+
+This application provides a complete API solution for managing CFF personnel planning data across two databases:
+
+### External Database (Production Data)
+- **Resources** (374 personnel: internal and external)
+- **Organizational Hierarchy** (3 regions → 56 teams → 47 groups → 6 divisions)
+- **Absences** (6,190 records with multiple types)
+- **Demands** (50,896 maintenance demands - formerly "requests")
+- **Assignments** (106,038 confirmed assignments)
+- **Locations** (36 Swiss railway locations)
+- **Qualifications** (101 skills and certifications)
+- **Demands List** (25,577 historical BSA records)
+
+### Internal Database (Parameters - User Modifiable)
+- **Legal Constraints** (Swiss LDT compliance - read-only)
+- **Company Policy Constraints** (Configurable within legal bounds)
+- **Objective Weights** (Multi-objective optimization weights)
+- **Utilization Targets** (Resource efficiency targets)
+
+## ✨ Features
+
+### Dual Database Architecture
+- **Internal PostgreSQL**: Local container for parameter tables only
+- **External PostgreSQL**: Remote database (150.241.245.65) for production data
+- **Separate connection pools**: `get_internal_db()` and `get_external_db()`
+- **Environment-based configuration**: Supports different dev/prod settings
+
+### API
+- **FastAPI** with async support
+- **70+ REST endpoints** (full CRUD where applicable)
+- **Auto-generated OpenAPI documentation** at `/docs`
+- **Pagination** on large tables (default 50, max 200 items/page)
+- **Advanced filtering** (status, type, date ranges, location, etc.)
+- **Read-only enforcement** for legal constraints (Swiss LDT)
+- **Dual connection pooling** for performance
+- **Comprehensive error handling**
+
+### Deployment
+- **Fully dockerized** (PostgreSQL + FastAPI)
+- **Automated deployment** with scripts
+- **Persistent storage** (docker volumes or host storage)
+- **Health checks** automated monitoring
+- **Backup/restore** capabilities
+- **Clean and restart** scripts
+
+### Testing
+- **79 comprehensive tests** using pytest
+- **Test categories**: Connection, CRUD, Pagination, Read-only, Data Integrity
+- **Automated test runner** with summary reports
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Client Application                    │
+│             (Frontend, External Systems)                 │
+└───────────────────────┬─────────────────────────────────┘
+                        │ HTTP/REST (port 8002)
+┌───────────────────────▼─────────────────────────────────┐
+│                   FastAPI Application                    │
+│   ┌─────────────────────────────────────────────────┐   │
+│   │  70+ REST Endpoints (Auto-documented)           │   │
+│   │  - Full CRUD operations                         │   │
+│   │  - Pagination & Filtering                       │   │
+│   │  - Data validation                              │   │
+│   └─────────────────────┬───────────────────────────┘   │
+│                         │ AsyncPG (Dual Connections)     │
+└────────────┬────────────┴────────────┬───────────────────┘
+             │                          │
+             │ get_internal_db()        │ get_external_db()
+             │                          │
+             ▼                          ▼
+┌────────────────────────┐   ┌────────────────────────────────┐
+│  Internal PostgreSQL   │   │    External PostgreSQL         │
+│  (Docker Container)    │   │    (150.241.245.65:5432/cff)   │
+├────────────────────────┤   ├────────────────────────────────┤
+│  Parameter Tables:     │   │  Production Data Tables:       │
+│  - legal_constraints   │   │  - resources (374)             │
+│  - company_policy_...  │   │  - demands (50,896)            │
+│  - objective_weights   │   │  - assignments (106,038)       │
+│  - utilization_targets │   │  - absences (6,190)            │
+│  - audit_log           │   │  - regions, teams, groups      │
+│                        │   │  - divisions, locations        │
+│                        │   │  - qualifications              │
+│                        │   │  - demands_list (25,577)       │
+└────────────────────────┘   └────────────────────────────────┘
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker 20.10+
+- Docker Compose 2.0+
+- 2 GB RAM minimum
+- 5 GB disk space
+
+### Basic Deployment
+
+```bash
+# 1. Navigate to the application directory
+cd database_application_v2
+
+# 2. Build and start containers
+docker-compose up --build -d
+
+# 3. Wait for services to start (~30 seconds)
+
+# 4. Access the API documentation
+open http://localhost:8002/docs
+```
+
+### Environment Variables
+
+The application uses dual database connections configured via environment variables:
+
+```bash
+# Internal DB (parameters - local postgres container)
+INTERNAL_DB_HOST=postgres
+INTERNAL_DB_PORT=5432
+INTERNAL_DB_NAME=cff_planning
+INTERNAL_DB_USER=cff_app_user
+INTERNAL_DB_PASSWORD=changeme
+
+# External DB (data - remote database)
+EXTERNAL_DB_HOST=150.241.245.65
+EXTERNAL_DB_PORT=5432
+EXTERNAL_DB_NAME=cff
+EXTERNAL_DB_USER=cffdev
+EXTERNAL_DB_PASSWORD=cffdev
+```
+
+### Advanced Deployment Options
+
+```bash
+# Use custom storage path
+./scripts/deploy.sh --storage-path /var/lib/cff-data
+
+# Use host storage instead of docker volume
+./scripts/deploy.sh --use-host-storage --storage-path /mnt/persistent
+
+# Clean deployment (removes existing data)
+./scripts/deploy.sh --clean
+
+# Skip data migration (use existing database)
+./scripts/deploy.sh --no-migrate
+```
+
+## 📡 API Documentation
+
+### Interactive Documentation
+- **Swagger UI**: http://localhost:8002/docs (recommended)
+- **ReDoc**: http://localhost:8002/redoc
+- **OpenAPI JSON**: http://localhost:8002/api/v1/openapi.json
+
+### Quick Examples
+
+#### Get All Resources (Paginated)
+```bash
+curl http://localhost:8002/api/v1/resources/?page=1&per_page=10
+```
+
+#### Get Demands (formerly requests)
+```bash
+curl http://localhost:8002/api/v1/demands/?page=1&per_page=10
+```
+
+#### Get Groups (formerly sub-groups)
+```bash
+curl http://localhost:8002/api/v1/groups/
+```
+
+#### Get Divisions (new endpoint)
+```bash
+curl http://localhost:8002/api/v1/divisions/
+```
+
+#### Get Historical Demands List
+```bash
+curl "http://localhost:8002/api/v1/demands-list/?page=1&per_page=10"
+```
+
+#### Get Legal Constraints (Read-Only - Internal DB)
+```bash
+curl http://localhost:8002/api/v1/legal-constraints/
+```
+
+**Note:** All collection endpoints require a trailing slash (`/`).
+
+## 🧪 Testing
+
+### Run All Tests
+```bash
+cd tests
+python run_all_tests.py
+```
+
+### Run Individual Test Suites
+```bash
+# Connection tests
+pytest test_connection.py -v
+
+# CRUD operations
+pytest test_crud_operations.py -v
+
+# Pagination tests
+pytest test_pagination.py -v
+
+# Read-only enforcement
+pytest test_readonly_constraints.py -v
+
+# Data integrity
+pytest test_data_integrity.py -v
+```
+
+### Test Coverage
+- **79 test cases** covering all endpoints
+- **Connection tests**: 8 tests
+- **CRUD operations**: 12+ test suites
+- **Pagination**: 20 tests
+- **Read-only enforcement**: 18 tests
+- **Data integrity**: 21 tests
+
+## 📚 Documentation
+
+All documentation is located in the `docs/` directory:
+
+### For Developers
+- **[API_ENDPOINTS.md](docs/API_ENDPOINTS.md)** - Complete API reference with 66 endpoints
+- **[SQL_QUERIES_REFERENCE.md](docs/SQL_QUERIES_REFERENCE.md)** - 150+ SQL query examples
+- **[INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md)** - Client integration guide with code examples
+
+### For DevOps
+- **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment instructions
+- **[TROUBLESHOOTING.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting)** - Common issues and solutions
+
+### For Testers
+- **[tests/README.md](tests/README.md)** - Testing documentation
+- **[tests/QUICKSTART.md](tests/QUICKSTART.md)** - Quick start testing guide
+
+## 📁 Project Structure
+
+```
+database_application_v2/
+├── api/                        # FastAPI application
+│   ├── main.py                 # Application entry point
+│   ├── config.py               # Configuration settings
+│   ├── database.py             # Database connection
+│   ├── models.py               # Pydantic models
+│   ├── routers/                # API endpoints
+│   │   ├── resources.py        # Resources endpoints
+│   │   ├── absences.py         # Absences endpoints
+│   │   ├── requests.py         # Requests endpoints
+│   │   ├── assignments.py      # Assignments endpoints
+│   │   └── ...                 # Other routers
+│   └── requirements.txt        # Python dependencies
+├── database/                   # Database files
+│   ├── schema.sql              # PostgreSQL schema
+│   ├── constraints_seed_data.sql # Seed data
+│   ├── migrate_json_to_sql_v2.py # Migration script
+│   └── init-db.sh              # Initialization script
+├── docker/                     # Docker configuration
+│   ├── Dockerfile.postgres     # PostgreSQL image
+│   ├── Dockerfile.api          # API image
+│   └── docker-compose.yml      # Services orchestration
+├── scripts/                    # Deployment scripts
+│   ├── deploy.sh               # Main deployment script
+│   ├── health-check.sh         # Health check script
+│   ├── backup-db.sh            # Backup script
+│   ├── stop.sh                 # Stop services
+│   └── restart.sh              # Restart services
+├── tests/                      # Test suite
+│   ├── test_connection.py      # Connection tests
+│   ├── test_crud_operations.py # CRUD tests
+│   ├── test_pagination.py      # Pagination tests
+│   ├── test_readonly_constraints.py # Read-only tests
+│   ├── test_data_integrity.py  # Data integrity tests
+│   └── run_all_tests.py        # Test orchestrator
+├── docs/                       # Documentation
+│   ├── API_ENDPOINTS.md        # API reference
+│   ├── SQL_QUERIES_REFERENCE.md # SQL reference
+│   ├── DEPLOYMENT_GUIDE.md     # Deployment guide
+│   └── INTEGRATION_GUIDE.md    # Integration guide
+├── .env.example                # Environment template
+└── README.md                   # This file
+```
+
+## 🔧 Management Commands
+
+### Service Management
+```bash
+# Stop services
+./scripts/stop.sh
+
+# Restart services
+./scripts/restart.sh
+
+# Check health
+./scripts/health-check.sh
+
+# View logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f postgres
+docker-compose logs -f api
+```
+
+### Database Management
+```bash
+# Backup database
+./scripts/backup-db.sh
+
+# Restore database
+gunzip -c backups/cff_planning_backup_20251110_120000.sql.gz | \
+  docker-compose exec -T postgres psql -U cff_app_user -d cff_planning
+
+# Access PostgreSQL shell
+docker-compose exec postgres psql -U cff_app_user -d cff_planning
+
+# Run SQL query
+docker-compose exec postgres psql -U cff_app_user -d cff_planning \
+  -c "SELECT COUNT(*) FROM resources;"
+```
+
+## 🐛 Troubleshooting
+
+### Services Won't Start
+```bash
+# Check Docker is running
+docker ps
+
+# Check logs
+docker-compose logs
+
+# Clean and rebuild
+./scripts/deploy.sh --clean
+```
+
+### Database Connection Issues
+```bash
+# Check PostgreSQL is healthy
+docker-compose ps postgres
+
+# Verify database exists
+docker-compose exec postgres psql -U cff_app_user -l
+```
+
+### API Not Responding
+```bash
+# Check API logs
+docker-compose logs api
+
+# Restart API service
+docker-compose restart api
+
+# Run health check
+./scripts/health-check.sh
+```
+
+### Port Already in Use
+```bash
+# Change ports in .env file
+API_PORT=8001
+DB_PORT=5433
+
+# Redeploy
+./scripts/deploy.sh
+```
+
+For more detailed troubleshooting, see [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting).
+
+## 📊 Database Statistics
+
+### External Database (Production Data - 150.241.245.65)
+| Table | Records | Notes |
+|-------|---------|-------|
+| resources | 374 | Personnel (internal + external) |
+| demands | 50,896 | Renamed from `requests` |
+| assignments | 106,038 | Coverage mappings |
+| absences | 6,190 | Resource absences |
+| regions | 3 | Regional hierarchy |
+| teams | 56 | Team units |
+| groups | 47 | Renamed from `sub_groups` |
+| divisions | 6 | New organizational level |
+| locations | 36 | Swiss railway locations |
+| qualifications | 101 | Skills and certifications |
+| demands_list | 25,577 | Historical BSA records |
+
+### Internal Database (Parameters - Local Container)
+| Table | Purpose |
+|-------|---------|
+| legal_constraints | Swiss LDT - Read-only |
+| company_policy_constraints | CFF policies |
+| objective_weights | Optimization weights |
+| utilization_targets | Efficiency targets |
+| audit_log | Activity logging |
+
+## 🔐 Security
+
+### Default Credentials (Change in Production!)
+
+**Internal Database (Local Container)**
+- **Database**: cff_planning
+- **User**: cff_app_user
+- **Password**: changeme
+
+**External Database (Development)**
+- **Host**: 150.241.245.65
+- **Database**: cff
+- **User**: cffdev
+- **Password**: cffdev
+
+### Security Recommendations
+1. Change default passwords in `.env`
+2. Use environment variables for secrets
+3. Enable HTTPS in production
+4. Configure firewall rules
+5. Implement authentication/authorization
+6. Use read-only database users for reporting
+
+See [DEPLOYMENT_GUIDE.md - Security](docs/DEPLOYMENT_GUIDE.md#security-considerations) for details.
+
+## 📈 Performance
+
+### Database
+- Connection pool: 20 connections (configurable)
+- Max overflow: 10 additional connections
+- Pool timeout: 30 seconds
+- 11 optimized indexes
+
+### API
+- Async FastAPI with uvicorn
+- Default pagination: 50 items
+- Maximum pagination: 200 items
+- Response time: <100ms for simple queries
+
+## 🤝 Contributing
+
+This is an internal CFF project. For questions or issues, contact the development team.
+
+## 📝 License
+
+Copyright © 2025 CFF (Swiss Federal Railways). All rights reserved.
+
+## 🆘 Support
+
+For technical support:
+1. Check [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting)
+2. Review logs: `docker-compose logs`
+3. Run health check: `./scripts/health-check.sh`
+4. Contact: [your-support-email@cff.ch]
+
+---
+
+## 📝 Changelog
+
+### v2.1.0 (December 2025)
+**Major: Dual Database Architecture**
+
+**Database Changes:**
+- Migrated to split internal/external database architecture
+- Internal DB: Parameter tables only (constraints, policies, weights)
+- External DB: All production data (150.241.245.65:5432/cff)
+
+**API Changes:**
+- Renamed `/api/v1/requests` → `/api/v1/demands`
+- Renamed `/api/v1/sub-groups` → `/api/v1/groups`
+- Added `/api/v1/divisions` (new organizational level)
+- Added `/api/v1/demands-list` (historical BSA records)
+- Removed `/api/v1/location-distances` (not in external DB)
+
+**Router Modifications:**
+- `api/routers/demands.py` - Updated columns for external DB schema
+- `api/routers/groups.py` - Renamed from sub_groups.py, updated schema
+- `api/routers/resources.py` - Updated for external DB columns
+- `api/routers/assignments.py` - Updated for external DB columns
+- `api/routers/absences.py` - Updated for external DB columns
+- `api/routers/regions.py` - Simplified to use dict instead of Pydantic models
+- `api/routers/teams.py` - Simplified to use dict instead of Pydantic models
+- `api/routers/locations.py` - Simplified to use dict instead of Pydantic models
+- `api/routers/qualifications.py` - Simplified to use dict instead of Pydantic models
+- `api/routers/divisions.py` - New router for divisions table
+- `api/routers/demands_list.py` - New router for historical BSA data
+
+**Configuration Changes:**
+- `api/config.py` - Added dual database configuration
+- `api/database.py` - Added `get_external_db()` connection pool
+- `docker-compose.yml` - Added external DB environment variables
+
+**Files Removed:**
+- `api/routers/location_distances.py`
+- `api/routers/sub_groups.py` (renamed to groups.py)
+- `api/routers/requests.py` (renamed to demands.py)
+
+### v2.0.0 (November 2025)
+- Initial dockerized PostgreSQL + FastAPI deployment
+- 66 REST endpoints with full CRUD
+- Comprehensive test suite (79 tests)
+- Complete documentation
+
+---
+
+**Version**: 2.1.0
+**Last Updated**: December 2025
+**Status**: Production Ready

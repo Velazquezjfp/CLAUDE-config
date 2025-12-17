@@ -1,0 +1,172 @@
+"""
+CP_02: Resource-Demand Qualification Matching (HARD CONSTRAINT)
+Company Policy: Resources MUST have all required qualifications
+
+Based on: ../../constraints_v2/CP_02_qualification_matching.yaml
+
+This is a HARD constraint - resources without required qualifications
+are BLOCKED from assignment. No penalties, no compromises.
+
+Note: Phase 1 - Qualification matching only
+      Category matching (resource.resource_category) not yet implemented (missing database field)
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR
+
+
+def add_qualification_matching_constraints(model: cp_model.CpModel,
+                                            x_vars: dict,
+                                            data,
+                                            constraints) -> list:
+    """
+    Add HARD qualification matching constraints to the model
+
+    Resources MUST have ALL required qualifications for assigned requests.
+    If qualifications don't match, assignment is BLOCKED.
+    If request.required_qualifications is empty, no check needed (automatic match).
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with resources and requests
+        constraints: ConstraintValues object (not used - this is hard constraint)
+
+    Returns:
+        Empty list (no violations - this is a hard constraint)
+    """
+    print(f"\n[CP_02] Adding HARD qualification matching constraints...")
+    print(f"  Mode: HARD CONSTRAINT (blocks unqualified assignments)")
+
+    # Preprocess: Build qualification match matrix
+    match_matrix = {}
+    blocked_count = 0
+    requests_with_quals = []
+
+    for resource in data.resources:
+        res_id = resource['resource_id']
+        res_quals = set(resource.get('qualifications', []))
+
+        for request in data.requests:
+            req_id = request['request_id']
+            req_quals = set(request.get('required_qualifications', []))
+
+            # Empty required_qualifications = automatic match
+            if not req_quals:
+                match_matrix[(res_id, req_id)] = True
+                continue
+
+            # Track requests that actually require qualifications
+            if req_id not in requests_with_quals:
+                requests_with_quals.append(req_id)
+
+            # Check for missing qualifications
+            missing = req_quals - res_quals
+            has_all = len(missing) == 0
+
+            match_matrix[(res_id, req_id)] = has_all
+
+    print(f"  Requests requiring qualifications: {len(requests_with_quals)}")
+    print(f"  Total resource-request pairs evaluated: {len(match_matrix)}")
+
+    # Add HARD constraints - block assignments where qualifications don't match
+    for resource in data.resources:
+        res_id = resource['resource_id']
+
+        for request in data.requests:
+            req_id = request['request_id']
+
+            # Get precomputed match info
+            has_all_quals = match_matrix.get((res_id, req_id), True)
+
+            # HARD CONSTRAINT: If qualifications don't match, BLOCK assignment
+            if not has_all_quals:
+                x_var = x_vars[(res_id, req_id)]
+
+                # Force this assignment to 0 (impossible)
+                model.Add(x_var == 0)
+                blocked_count += 1
+
+    print(f"  Blocked assignments (qualification mismatch): {blocked_count}")
+    print(f"  Allowed assignments (qualifications match): {len(match_matrix) - blocked_count}")
+
+    if blocked_count > 0:
+        print(f"  ⚠️  Some requests may not be coverable due to qualification requirements")
+    else:
+        print(f"  ✓ All resources have required qualifications for all requests!")
+
+    # Return empty list - this is a HARD constraint, no violations tracked
+    return []
+
+
+def get_qualification_metrics(data, x_solution):
+    """
+    Generate detailed qualification metrics for AI agent
+
+    Args:
+        data: PreprocessedData object
+        x_solution: Dict of {(resource_id, request_id): 0 or 1} from solver
+
+    Returns:
+        Dict with detailed qualification metrics
+    """
+    metrics = {
+        "total_requests": len(data.requests),
+        "requests_requiring_qualifications": 0,
+        "requests_covered": 0,
+        "requests_uncovered": 0,
+        "uncovered_requests": [],
+        "near_matches": []
+    }
+
+    requests_with_quals = []
+
+    # Analyze each request
+    for request in data.requests:
+        req_id = request['request_id']
+        req_quals = set(request.get('required_qualifications', []))
+
+        if req_quals:
+            requests_with_quals.append(req_id)
+
+        # Check if this request was covered
+        is_covered = any(
+            x_solution.get((res['resource_id'], req_id), 0) == 1
+            for res in data.resources
+        )
+
+        if is_covered:
+            metrics["requests_covered"] += 1
+        else:
+            metrics["requests_uncovered"] += 1
+
+            # If uncovered and requires qualifications, find near matches
+            if req_quals:
+                near_matches = []
+                for resource in data.resources:
+                    res_id = resource['resource_id']
+                    res_quals = set(resource.get('qualifications', []))
+
+                    missing = req_quals - res_quals
+                    if 0 < len(missing) <= 2:  # Close matches (1-2 qualifications missing)
+                        near_matches.append({
+                            "resource_id": res_id,
+                            "missing_qualifications": list(missing),
+                            "missing_count": len(missing)
+                        })
+
+                if near_matches or req_quals:
+                    metrics["uncovered_requests"].append({
+                        "request_id": req_id,
+                        "required_qualifications": list(req_quals),
+                        "near_matches": near_matches[:3]  # Top 3 near matches
+                    })
+
+    metrics["requests_requiring_qualifications"] = len(requests_with_quals)
+    metrics["coverage_percentage"] = (
+        100.0 * metrics["requests_covered"] / metrics["total_requests"]
+        if metrics["total_requests"] > 0 else 0.0
+    )
+
+    return metrics

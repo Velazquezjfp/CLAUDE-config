@@ -864,3 +864,1613 @@
 [DEBUG] Applied original permissions to temp file
 [DEBUG] Renaming /home/javiervel/.claude.json.tmp.110880.1761910480580 to /home/javiervel/.claude.json
 [DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.2601.1761922489564
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66844 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.2601.1761922489564 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: npm-global, using native: false
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.2601.1761922489587
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66844 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.2601.1761922489587 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: npm-global
+[DEBUG] AutoUpdater: Using global update method
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.2601.1761922492125
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66844 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.2601.1761922492125 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionEnd with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761917345692-yryq0i.sh
+[DEBUG] MCP server "knowledge-graph": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": Sending SIGINT to MCP server process
+[DEBUG] MCP server "context7": Sending SIGINT to MCP server process
+[DEBUG] MCP server "knowledge-graph": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph-custom-path": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "context7": SIGINT failed, sending SIGTERM to MCP server process
+[DEBUG] MCP server "knowledge-graph": MCP server process exited cleanly
+[DEBUG] MCP server "knowledge-graph-custom-path": MCP server process exited cleanly
+[DEBUG] MCP server "context7": MCP server process exited cleanly
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 2,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter shutdown complete
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.2601.1761922496523
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 67227 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.2601.1761922496523 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6566.1761923050714
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66736 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.6566.1761923050714 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] FileHistory: Making snapshot for message 4a5597b6-2911-476a-8c0e-01cf3a283350
+[DEBUG] FileHistory: Added snapshot for 4a5597b6-2911-476a-8c0e-01cf3a283350, tracking 0 files
+[DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+[DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923084652
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923084652 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923084656
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1058 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923084656 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 8ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] No hook environment files found
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923115841
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923115841 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923115848
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1062 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923115848 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+[DEBUG] MCP server "ide": Calling MCP tool: openDiff
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (28s elapsed)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (57s elapsed)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (86s elapsed)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (115s elapsed)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (145s elapsed)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (174s elapsed)
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 208ms
+[DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 3m 5s
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 8ms
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/utility/locations_processing/extract_locations.py
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 7ms
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/utility/locations_processing/extract_locations.py.tmp.6566.1761923312839
+[DEBUG] Temp file written successfully, size: 2324 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/utility/locations_processing/extract_locations.py.tmp.6566.1761923312839 to /home/javiervel/clients/CFF/utility/locations_processing/extract_locations.py
+[DEBUG] File /home/javiervel/clients/CFF/utility/locations_processing/extract_locations.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923330692
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923330692 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923330698
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1066 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923330698 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Metrics opt-out API response: enabled=true
+[DEBUG] Stream started - received first chunk
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 23,
+  "rejected_count": 0
+}
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+[DEBUG] MCP server "ide": Calling MCP tool: openDiff
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 145ms
+[DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 6s
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 7ms
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/utility/locations_processing/generate_distance_matrix.py
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/utility/locations_processing/generate_distance_matrix.py.tmp.6566.1761923355275
+[DEBUG] Temp file written successfully, size: 3778 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/utility/locations_processing/generate_distance_matrix.py.tmp.6566.1761923355275 to /home/javiervel/clients/CFF/utility/locations_processing/generate_distance_matrix.py
+[DEBUG] File /home/javiervel/clients/CFF/utility/locations_processing/generate_distance_matrix.py written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 46ms
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923367738
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923367738 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923367744
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 1070 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923367744 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+[DEBUG] MCP server "ide": Calling MCP tool: openDiff
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] MCP server "ide": Tool 'openDiff' still running (28s elapsed)
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 189ms
+[DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 37s
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 8ms
+[DEBUG] MCP server "ide": Calling MCP tool: close_tab
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/utility/locations_processing/README.md
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/utility/locations_processing/README.md.tmp.6566.1761923424458
+[DEBUG] Temp file written successfully, size: 3175 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/utility/locations_processing/README.md.tmp.6566.1761923424458 to /home/javiervel/clients/CFF/utility/locations_processing/README.md
+[DEBUG] File /home/javiervel/clients/CFF/utility/locations_processing/README.md written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 63ms
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 17ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923438280
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761923438280 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923438287
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761923438287 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: 
+    at wD (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1178:4413)
+    at file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1178:4141
+    at Array.map (<anonymous>)
+    at yF (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1178:4132)
+    at kjQ (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1800:6521)
+    at yw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:73:19414)
+    at co (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:42806)
+    at v9 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38347)
+    at dc (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38275)
+    at dw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38129)
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 10,
+  "rejected_count": 0
+}
+[DEBUG] Writing to temp file: /home/javiervel/.claude/settings.json.tmp.6566.1761923965933
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 37 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/settings.json.tmp.6566.1761923965933 to /home/javiervel/.claude/settings.json
+[DEBUG] File /home/javiervel/.claude/settings.json written atomically
+[DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6566.1761923967990
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66736 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.6566.1761923967990 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Applying permission update: Setting mode to 'plan'
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] Applying permission update: Setting mode to 'default'
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Writing to temp file: /home/javiervel/.claude/settings.json.tmp.6566.1761926456989
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 56 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/settings.json.tmp.6566.1761926456989 to /home/javiervel/.claude/settings.json
+[DEBUG] File /home/javiervel/.claude/settings.json written atomically
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] FileHistory: Making snapshot for message d8a136ff-8c0d-48ef-9788-853bdb00c8d4
+[DEBUG] FileHistory: Added snapshot for d8a136ff-8c0d-48ef-9788-853bdb00c8d4, tracking 3 files
+[DEBUG] Rendering user message with 1 content blocks
+[DEBUG] Block 0: <command-name>/model</command-name>
+            <command-message>model</command-message>
+           ...
+[DEBUG] UserCommandMessage rendering: "model" (args: "none")
+[DEBUG] isSkillFormat: false, prefix: "/"
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 2,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6566.1761926976095
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66736 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.6566.1761926976095 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Applying permission update: Setting mode to 'plan'
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] Metrics opt-out API response: enabled=true
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 38ms
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] FileHistory: Making snapshot for message 95f4ba13-d5f7-4131-8688-2eb363499381
+[DEBUG] FileHistory: Added snapshot for 95f4ba13-d5f7-4131-8688-2eb363499381, tracking 3 files
+[DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+[DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[ERROR] Error streaming, falling back to non-streaming mode: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbsxpkxG1bu8i4DHvNM"}
+[ERROR] Error in non-streaming fallback: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbsyuVbmXnGuHgo3Gmq"}
+[ERROR] Error: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbsyuVbmXnGuHgo3Gmq"}
+    at M4.generate (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:204:83066)
+    at Jk.makeStatusError (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:2117)
+    at Jk.makeRequest (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Gd2.geA.model (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14755)
+    at async geA (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:2741:39781)
+    at async Gd2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14909)
+    at async file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8646
+    at async _e1 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:1970)
+    at async j8A (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8616)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[ERROR] Error streaming, falling back to non-streaming mode: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbudJoTdC69fubdLXrJ"}
+[ERROR] Error in non-streaming fallback: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbufKr5LmaFwRTYqCu3"}
+[ERROR] Error: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbufKr5LmaFwRTYqCu3"}
+    at M4.generate (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:204:83066)
+    at Jk.makeStatusError (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:2117)
+    at Jk.makeRequest (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Gd2.geA.model (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14755)
+    at async geA (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:2741:39781)
+    at async Gd2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14909)
+    at async file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8646
+    at async _e1 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:1970)
+    at async j8A (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8616)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[ERROR] Error streaming, falling back to non-streaming mode: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbw7yFw4SZdsgbJwyzp"}
+[ERROR] Error in non-streaming fallback: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbw9SZU1ygheiQmvvAA"}
+[ERROR] Error: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbw9SZU1ygheiQmvvAA"}
+    at M4.generate (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:204:83066)
+    at Jk.makeStatusError (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:2117)
+    at Jk.makeRequest (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Gd2.geA.model (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14755)
+    at async geA (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:2741:39781)
+    at async Gd2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14909)
+    at async file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8646
+    at async _e1 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:1970)
+    at async j8A (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8616)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[ERROR] Error streaming, falling back to non-streaming mode: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbxwBBC2y22TBT3q6VK"}
+[ERROR] Error in non-streaming fallback: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbxxa1oBbLPCQmtYX6Q"}
+[ERROR] Error: Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"tools: Tool names must be unique."},"request_id":"req_011CUfbxxa1oBbLPCQmtYX6Q"}
+    at M4.generate (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:204:83066)
+    at Jk.makeStatusError (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:2117)
+    at Jk.makeRequest (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:358:5330)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Gd2.geA.model (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14755)
+    at async geA (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:2741:39781)
+    at async Gd2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:14909)
+    at async file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8646
+    at async _e1 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:1970)
+    at async j8A (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:3389:8616)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "pandoc:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761928809232
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 200 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761928809232 to /home/javiervel/clients/CFF/.claude/settings.local.json
+[DEBUG] File /home/javiervel/clients/CFF/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(pandoc:*)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 7,
+  "rejected_count": 0
+}
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Glob
+[DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Read
+[DEBUG] Getting matching hook commands for PreToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Read
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: WebSearch
+[DEBUG] Getting matching hook commands for PreToolUse with query: WebSearch
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "WebSearch" (0 before deduplication)
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 6,
+  "rejected_count": 0
+}
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761929198515
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 219 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761929198515 to /home/javiervel/clients/CFF/.claude/settings.local.json
+[DEBUG] File /home/javiervel/clients/CFF/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["WebSearch"]
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for PostToolUse with query: WebSearch
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "WebSearch" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: ExitPlanMode
+[DEBUG] Getting matching hook commands for PreToolUse with query: ExitPlanMode
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "ExitPlanMode" (0 before deduplication)
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 6,
+  "rejected_count": 0
+}
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 2,
+  "rejected_count": 0
+}
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 8ms
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] FileHistory: Making snapshot for message d9264015-79b8-4c82-82b7-f8a62a761698
+[DEBUG] FileHistory: Added snapshot for d9264015-79b8-4c82-82b7-f8a62a761698, tracking 3 files
+[DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+[DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930066485
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930066485 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930066492
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 700 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930066492 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Applying permission update: Setting mode to 'default'
+[DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/.claude/PROJECT_CONTEXT.md
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/.claude/PROJECT_CONTEXT.md.tmp.6566.1761930120501
+[DEBUG] Temp file written successfully, size: 5861 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/.claude/PROJECT_CONTEXT.md.tmp.6566.1761930120501 to /home/javiervel/clients/CFF/.claude/PROJECT_CONTEXT.md
+[DEBUG] File /home/javiervel/clients/CFF/.claude/PROJECT_CONTEXT.md written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930128152
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930128152 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930128158
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 702 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930128158 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 12ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/proposal.md
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/proposal.md.tmp.6566.1761930238787
+[DEBUG] Temp file written successfully, size: 13503 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/proposal.md.tmp.6566.1761930238787 to /home/javiervel/clients/CFF/mock_data_v1/proposal.md
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/proposal.md written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930245062
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930245062 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930245068
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 704 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930245068 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 9ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 10,
+  "rejected_count": 0
+}
+[DEBUG] executePreToolHooks called for tool: Task
+[DEBUG] Getting matching hook commands for PreToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: WebFetch
+[DEBUG] Getting matching hook commands for PreToolUse with query: WebFetch
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "WebFetch" (0 before deduplication)
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}
+[DEBUG] Persisting permission update: addRules to source 'localSettings'
+[DEBUG] Persisting 1 allow rule(s) to localSettings
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761930781372
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 260 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/clients/CFF/.claude/settings.local.json.tmp.6566.1761930781372 to /home/javiervel/clients/CFF/.claude/settings.local.json
+[DEBUG] File /home/javiervel/clients/CFF/.claude/settings.local.json written atomically
+[DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["WebFetch(domain:mermaid.js.org)"]
+[DEBUG] AutoUpdaterWrapper: Installation type: unknown, using native: false
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for PostToolUse with query: WebFetch
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "WebFetch" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930813556
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930813556 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930813565
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 704 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930813565 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930813571
+[DEBUG] Temp file written successfully, size: 363 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930813571 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Grep
+[DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930833539
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930833539 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930833544
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 704 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930833544 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930833549
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930833549 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Stream started - received first chunk
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 5,
+  "rejected_count": 0
+}
+[DEBUG] Metrics opt-out API response: enabled=true
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Task
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/database_schema.mermaid
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/database_schema.mermaid.tmp.6566.1761930882660
+[DEBUG] Temp file written successfully, size: 4220 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/database_schema.mermaid.tmp.6566.1761930882660 to /home/javiervel/clients/CFF/mock_data_v1/database_schema.mermaid
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/database_schema.mermaid written atomically
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: mermaid
+    at file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1422:190
+    at Object.useMemo (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:73:25927)
+    at EB9.useMemo (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:11:7686)
+    at tq (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1422:81)
+    at yw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:73:19414)
+    at co (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:42806)
+    at v9 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38347)
+    at dc (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38275)
+    at dw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38129)
+    at VU (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:35208)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[ERROR] Error: Error: Language not supported while highlighting code, falling back to markdown: mermaid
+    at file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1422:190
+    at Object.useMemo (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:73:25927)
+    at EB9.useMemo (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:11:7686)
+    at tq (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1422:81)
+    at yw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:73:19414)
+    at co (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:42806)
+    at v9 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38347)
+    at dc (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38275)
+    at dw (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:38129)
+    at VU (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:75:35208)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930891126
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761930891126 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930891130
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 706 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761930891130 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930891135
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761930891135 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Bash
+[DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 16ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/core_data/resources.json
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/core_data/resources.json.tmp.6566.1761930969807
+[DEBUG] Temp file written successfully, size: 14342 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/core_data/resources.json.tmp.6566.1761930969807 to /home/javiervel/clients/CFF/mock_data_v1/core_data/resources.json
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/core_data/resources.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/core_data/requests.json
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/core_data/requests.json.tmp.6566.1761931061243
+[DEBUG] Temp file written successfully, size: 15632 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/core_data/requests.json.tmp.6566.1761931061243 to /home/javiervel/clients/CFF/mock_data_v1/core_data/requests.json
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/core_data/requests.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/core_data/constraints_config.json
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/core_data/constraints_config.json.tmp.6566.1761931103023
+[DEBUG] Temp file written successfully, size: 4433 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/core_data/constraints_config.json.tmp.6566.1761931103023 to /home/javiervel/clients/CFF/mock_data_v1/core_data/constraints_config.json
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/core_data/constraints_config.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/core_data/shift_assignments.json
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/core_data/shift_assignments.json.tmp.6566.1761931124431
+[DEBUG] Temp file written successfully, size: 2647 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/core_data/shift_assignments.json.tmp.6566.1761931124431 to /home/javiervel/clients/CFF/mock_data_v1/core_data/shift_assignments.json
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/core_data/shift_assignments.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 19ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 15,
+  "rejected_count": 0
+}
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761931131663
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761931131663 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761931131669
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 708 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761931131669 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761931131673
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761931131673 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: Write
+[DEBUG] Getting matching hook commands for PreToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+[DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/CFF/mock_data_v1/test_scenarios.md
+[DEBUG] Writing to temp file: /home/javiervel/clients/CFF/mock_data_v1/test_scenarios.md.tmp.6566.1761931220112
+[DEBUG] Temp file written successfully, size: 10808 bytes
+[DEBUG] Renaming /home/javiervel/clients/CFF/mock_data_v1/test_scenarios.md.tmp.6566.1761931220112 to /home/javiervel/clients/CFF/mock_data_v1/test_scenarios.md
+[DEBUG] File /home/javiervel/clients/CFF/mock_data_v1/test_scenarios.md written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: Write
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] executePreToolHooks called for tool: TodoWrite
+[DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761931228635
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json.tmp.6566.1761931228635 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-b8071166-a03b-4525-807b-cf2d9dde7e7b.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761931228642
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json.tmp.6566.1761931228642 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-1e308cf3-5666-4073-b58a-8896fa126456.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761931228649
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json.tmp.6566.1761931228649 to /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json
+[DEBUG] File /home/javiervel/.claude/todos/1e308cf3-5666-4073-b58a-8896fa126456-agent-2a4e7421.json written atomically
+[DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 15ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for Notification with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6566.1761931351664
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66736 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.6566.1761931351664 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Applying permission update: Setting mode to 'plan'
+[DEBUG] Applying permission update: Setting mode to 'default'
+[DEBUG] BigQuery metrics exported successfully
+[DEBUG] API Response: {
+  "accepted_count": 10,
+  "rejected_count": 0
+}
+[DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+[DEBUG] Hooks: getAsyncHookResponseAttachments called
+[DEBUG] Hooks: checkForNewResponses called
+[DEBUG] Hooks: Found 0 total hooks in registry
+[DEBUG] Hooks: checkForNewResponses returning 0 responses
+[DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+[DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] FileHistory: Making snapshot for message 052f6db8-501b-42c3-9e49-05603eca336e
+[DEBUG] FileHistory: Added snapshot for 052f6db8-501b-42c3-9e49-05603eca336e, tracking 11 files
+[DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+[DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 14ms
+[DEBUG] Skills and commands included in Skill tool:
+[DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+[DEBUG] Stream started - received first chunk
+[DEBUG] Stream started - received first chunk
+[DEBUG] Getting matching hook commands for Stop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)

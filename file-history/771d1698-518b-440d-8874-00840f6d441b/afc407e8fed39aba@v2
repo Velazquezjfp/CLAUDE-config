@@ -1,0 +1,207 @@
+"""
+Database connection and session management
+
+This module provides dual database connections:
+- Internal DB: For parameter tables (constraints, weights, preferences)
+- External DB: For data tables (resources, demands, assignments, etc.)
+"""
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool
+from sqlalchemy import text
+from typing import AsyncGenerator
+from config import settings
+
+
+# =============================================================================
+# Internal Database Engine (Parameters)
+# Tables: legal_constraints, company_policy_constraints, operational_preferences,
+#         objective_weights, utilization_targets, audit_log
+# =============================================================================
+internal_engine = create_async_engine(
+    settings.INTERNAL_DATABASE_URL,
+    echo=False,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    pool_pre_ping=True,
+)
+
+internal_session_maker = async_sessionmaker(
+    internal_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+# =============================================================================
+# External Database Engine (Data)
+# Tables: resources, demands, assignments, absences, regions, teams, groups,
+#         locations, qualifications, divisions, demands_list, etc.
+# =============================================================================
+external_engine = create_async_engine(
+    settings.EXTERNAL_DATABASE_URL,
+    echo=False,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    pool_pre_ping=True,
+)
+
+external_session_maker = async_sessionmaker(
+    external_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+# Base class for SQLAlchemy models (not used for now since we use raw SQL)
+Base = declarative_base()
+
+# Backward compatibility aliases
+engine = internal_engine
+async_session_maker = internal_session_maker
+
+
+# =============================================================================
+# Dependency Functions for FastAPI
+# =============================================================================
+
+async def get_internal_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency function to get internal database session (parameters).
+    Use for: constraints, company_policies, objective_weights, utilization_targets
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(db: AsyncSession = Depends(get_internal_db)):
+            ...
+    """
+    async with internal_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def get_external_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency function to get external database session (data).
+    Use for: resources, demands, assignments, absences, regions, teams, groups,
+             locations, qualifications, divisions, demands_list
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(db: AsyncSession = Depends(get_external_db)):
+            ...
+    """
+    async with external_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Backward compatibility - returns internal database session.
+    New code should use get_internal_db() or get_external_db() explicitly.
+    """
+    async for session in get_internal_db():
+        yield session
+
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
+
+async def execute_query(query: str, params: dict = None):
+    """
+    Execute a raw SQL query on internal database.
+    Returns: Result proxy
+    """
+    async with internal_session_maker() as session:
+        result = await session.execute(query, params or {})
+        await session.commit()
+        return result
+
+
+async def fetch_one(query: str, params: dict = None):
+    """
+    Fetch one row from internal database query.
+    Returns: Dict or None
+    """
+    async with internal_session_maker() as session:
+        result = await session.execute(query, params or {})
+        row = result.fetchone()
+        if row:
+            return dict(row._mapping)
+        return None
+
+
+async def fetch_all(query: str, params: dict = None):
+    """
+    Fetch all rows from internal database query.
+    Returns: List of dicts
+    """
+    async with internal_session_maker() as session:
+        result = await session.execute(query, params or {})
+        rows = result.fetchall()
+        return [dict(row._mapping) for row in rows]
+
+
+async def check_db_connection() -> bool:
+    """
+    Check if both database connections are healthy.
+    Returns True only if BOTH connections are working.
+    """
+    internal_ok = False
+    external_ok = False
+
+    try:
+        async with internal_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+            internal_ok = True
+    except Exception as e:
+        print(f"Internal database connection error: {e}")
+
+    try:
+        async with external_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+            external_ok = True
+    except Exception as e:
+        print(f"External database connection error: {e}")
+
+    return internal_ok and external_ok
+
+
+async def check_internal_db_connection() -> bool:
+    """Check if internal database connection is healthy."""
+    try:
+        async with internal_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+            return True
+    except Exception as e:
+        print(f"Internal database connection error: {e}")
+        return False
+
+
+async def check_external_db_connection() -> bool:
+    """Check if external database connection is healthy."""
+    try:
+        async with external_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+            return True
+    except Exception as e:
+        print(f"External database connection error: {e}")
+        return False

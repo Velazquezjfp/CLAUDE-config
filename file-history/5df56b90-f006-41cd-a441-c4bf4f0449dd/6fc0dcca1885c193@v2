@@ -1,0 +1,207 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 01: Maximum Weekly Working Hours (Database-Aligned Version)
+# Swiss LDT Art. 9
+
+constraint_metadata:
+  name: "max_weekly_hours"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 50 hours in any calendar week"
+  legal_reference: "Swiss LDT Art. 9"
+  modifiable: false
+
+constraint_parameters:
+  - name: "max_hours_per_week"
+    description: "Maximum allowed working hours per week"
+    type: "integer"
+    unit: "hours"
+    default_value: 50
+    min_value: 0
+    max_value: 168
+    source: "legal_constraints.max_weekly_hours"
+
+data_inputs_from_database:
+  - name: "requests"
+    description: "Task/request data from database"
+    source_table: "requests"
+    required_fields:
+      - "request_id"                       # Unique task identifier
+      - "start_datetime"                   # ISO format timestamp
+      - "end_datetime"                     # ISO format timestamp
+      - "resource_category"                # For matching
+      - "people_needed"                    # Number of resources needed
+
+preprocessed_data:
+  - name: "hours_in_week"
+    description: "Hours of each task that fall within each week (scaled by 100)"
+    type: "integer"
+    dimensions: "[tasks, weeks]"
+    calculation: |
+      # Preprocessing step (Python)
+      def calculate_hours_in_week(request, week_start, week_end):
+          task_start = datetime.fromisoformat(request['start_datetime'])
+          task_end = datetime.fromisoformat(request['end_datetime'])
+
+          # Calculate overlap between task and week
+          overlap_start = max(task_start, week_start)
+          overlap_end = min(task_end, week_end)
+
+          if overlap_start >= overlap_end:
+              return 0  # No overlap
+
+          hours = (overlap_end - overlap_start).total_seconds() / 3600
+          return int(hours * 100)  # Scale by 100
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req_id] = 1 if resource r assigned to request req_id"
+    type: "boolean"
+    dimensions: "[resources, request_ids]"
+    domain: "[0, 1]"
+
+  - name: "work_hours_weekly"
+    description: "Total hours worked by resource r in week w (scaled by 100)"
+    type: "integer"
+    dimensions: "[resources, weeks]"
+    domain: "[0, 5000]"
+
+mathematical_formulation:
+  equation: |
+    Preprocessing (before solver):
+    For each request req and week w:
+        hours_in_week[req][w] = calculate_overlap(
+            req.start_datetime,
+            req.end_datetime,
+            week_w_start,
+            week_w_end
+        ) * 100
+
+    Constraint formulation:
+    For each resource r and week w:
+        work_hours_weekly[r][w] = Σ(x[r][req] × hours_in_week[req][w])
+                                   for all requests req
+
+        work_hours_weekly[r][w] ≤ max_hours_per_week × 100
+
+  explanation: |
+    This constraint ensures weekly hours limit is respected by:
+    1. Preprocessing: Calculate how many hours of each task fall in each week
+    2. Assignment: Binary variables determine which resources work which tasks
+    3. Aggregation: Sum hours for each resource-week combination
+    4. Validation: Ensure sum doesn't exceed 50 hours (5000 scaled)
+
+    Handles edge cases:
+    - Tasks spanning multiple days (night shifts)
+    - Tasks crossing week boundaries
+    - Tasks with varying durations
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Step 1: Preprocessing (before creating model)
+    def preprocess_requests(requests, planning_weeks):
+        hours_in_week = {}
+
+        for req in requests:
+            req_id = req['request_id']
+            start = datetime.fromisoformat(req['start_datetime'])
+            end = datetime.fromisoformat(req['end_datetime'])
+
+            for week_idx, (week_start, week_end) in enumerate(planning_weeks):
+                overlap_hours = calculate_overlap_hours(start, end, week_start, week_end)
+                hours_in_week[(req_id, week_idx)] = int(overlap_hours * 100)
+
+        return hours_in_week
+
+    # Step 2: Create variables and constraints
+    MAX_WEEKLY_HOURS = 50
+    SCALING_FACTOR = 100
+
+    # Preprocess data
+    hours_in_week = preprocess_requests(requests_from_db, planning_weeks)
+
+    # Create assignment variables
+    x = {}
+    for r in resources:
+        for req_id in request_ids:
+            x[(r, req_id)] = model.NewBoolVar(f'assign_r{r}_req{req_id}')
+
+    # Create weekly hours variables and constraints
+    for r in resources:
+        for w_idx, week in enumerate(planning_weeks):
+            # Calculate total hours for this resource-week
+            weekly_sum = sum(
+                x[(r, req_id)] * hours_in_week.get((req_id, w_idx), 0)
+                for req_id in request_ids
+            )
+
+            # Add constraint
+            model.Add(weekly_sum <= MAX_WEEKLY_HOURS * SCALING_FACTOR)
+
+validation_rules:
+  - rule: "All datetime fields must be valid ISO format"
+    condition: "datetime.fromisoformat(start_datetime) succeeds"
+  - rule: "End time must be after start time"
+    condition: "end_datetime > start_datetime"
+  - rule: "Duration cannot exceed 24 hours for a single task"
+    condition: "(end_datetime - start_datetime) <= 24 hours"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_daily_hours_14h_span"
+    relationship: "Daily constraints are checked separately but must sum to respect weekly"
+  - related_constraint: "min_weekly_rest"
+    relationship: "Work hours + required rest (35h) must fit in 168h week"
+  - related_constraint: "resource_demand_matching"
+    relationship: "Only valid assignments (matching categories) count toward hours"
+
+examples:
+  - scenario: "Night shift crossing week boundary"
+    input:
+      resource: "RES-001"
+      week: "2025-W48"  # Dec 2-8, 2025
+      assigned_requests:
+        - request_id: "REQ-001"
+          start_datetime: "2025-12-07T22:00:00Z"  # Sunday 22:00
+          end_datetime: "2025-12-08T06:00:00Z"    # Monday 06:00
+    calculation:
+      hours_in_week_48: 2                         # Sunday 22:00-24:00
+      hours_in_week_49: 6                         # Monday 00:00-06:00
+    output:
+      work_hours_week_48: 200                     # 2 hours * 100
+      work_hours_week_49: 600                     # 6 hours * 100
+      constraint_satisfied: true
+
+  - scenario: "Multiple shifts in one week"
+    input:
+      resource: "RES-002"
+      week: "2025-W48"
+      assigned_requests:
+        - request_id: "REQ-828796-41"
+          start_datetime: "2025-12-02T21:00:00Z"
+          end_datetime: "2025-12-03T06:00:00Z"    # 9 hours
+        - request_id: "REQ-828796-42"
+          start_datetime: "2025-12-03T08:00:00Z"
+          end_datetime: "2025-12-03T17:00:00Z"    # 9 hours
+        - request_id: "REQ-828796-43"
+          start_datetime: "2025-12-04T08:00:00Z"
+          end_datetime: "2025-12-04T17:00:00Z"    # 9 hours
+        - request_id: "REQ-828796-44"
+          start_datetime: "2025-12-05T08:00:00Z"
+          end_datetime: "2025-12-05T17:00:00Z"    # 9 hours
+        - request_id: "REQ-828796-45"
+          start_datetime: "2025-12-06T08:00:00Z"
+          end_datetime: "2025-12-06T17:00:00Z"    # 9 hours
+    output:
+      total_hours: 45
+      work_hours_weekly: 4500                     # 45 * 100
+      constraint_satisfied: true
+      margin: 500                                 # 5 hours below limit
+
+notes:
+  - "Week boundaries: Monday 00:00:00 to Sunday 23:59:59 (ISO 8601)"
+  - "All times in database are UTC - consider timezone conversions"
+  - "Preprocessing step is crucial for performance - done once before solver"
+  - "Database connection required to fetch current request data"
+  - "Consider caching preprocessed data if requests don't change frequently"

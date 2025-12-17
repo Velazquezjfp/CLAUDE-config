@@ -1,0 +1,7 @@
+# CFF Personnel Planning MCP Server Configuration
+
+# Port for the MCP server (default: 8080)
+PORT=8080
+
+# Base URL for the CFF API
+CFF_API_BASE_URL=http://150.241.245.65:8002

@@ -1,0 +1,366 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 04: Maximum Continuous Work Without Break (Database-Aligned Version)
+# Swiss LDT Art. 15
+
+constraint_metadata:
+  name: "max_continuous_work"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 5.5 hours continuously without a break"
+  legal_reference: "Swiss LDT Art. 15"
+  modifiable: false
+  constraint_id: 4                          # From database
+
+constraint_parameters:
+  - name: "max_hours_continuous"
+    description: "Maximum continuous work without break - LEGAL LIMIT (FIXED)"
+    type: "float"
+    unit: "hours"
+    default_value: 5.5                      # From legal_constraints API
+    min_value: 0
+    max_value: 24
+    source: "legal_constraints.constraint_id=4"
+    api_endpoint: "GET /api/v1/legal-constraints/?constraint_name=max_continuous_work"
+    dynamic: false                          # Legal limit - NEVER changes
+
+  - name: "min_break_duration"
+    description: "Minimum break duration after continuous work - LEGAL (FIXED)"
+    type: "integer"
+    unit: "minutes"
+    default_value: 15                       # From constraint_id=8
+    source: "legal_constraints.constraint_id=8"
+    api_endpoint: "GET /api/v1/legal-constraints/?constraint_name=min_break_after_continuous"
+    dynamic: false
+
+  - name: "max_continuous_company"
+    description: "Company preferred maximum continuous work - DYNAMIC"
+    type: "float"
+    unit: "hours"
+    default_value: 5.0                      # Current value from API (DYNAMIC!)
+    min_value: 0
+    max_value: 5.5                         # Cannot exceed legal limit
+    source: "company_policy_constraints.constraint_id=4"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=Preferred%20Max%20Continuous%20Work"
+    dynamic: true                           # Changes based on context
+    notes: |
+      DYNAMIC value that can vary based on:
+      - Planning mode (Conservative: 4.5h, Balanced: 5h, Aggressive: 5.5h)
+      - Work type (safety-critical tasks may have lower limits)
+      - Time of day (night work may have stricter limits)
+      - Fetched at runtime from database
+
+data_inputs_from_database:
+  - name: "requests"
+    description: "Task/request data from database"
+    source_table: "requests"
+    api_endpoint: "GET /api/v1/requests/"
+    required_fields:
+      - "request_id"
+      - "start_datetime"
+      - "end_datetime"
+      - "allows_break"                     # Some tasks may not allow interruption
+      - "task_type"                        # Safety-critical, routine, etc.
+
+  - name: "resources"
+    description: "Resource data"
+    source_table: "resources"
+    api_endpoint: "GET /api/v1/resources/"
+    required_fields:
+      - "resource_id"
+      - "type"
+      - "shift_pref"
+
+  - name: "break_opportunities"
+    description: "Potential break windows between tasks"
+    derived: true
+    calculation: "Gap between end of task N and start of task N+1"
+
+preprocessed_data:
+  - name: "continuous_work_segments"
+    description: "Identify continuous work periods without sufficient breaks"
+    type: "list[work_segment]"
+    calculation: |
+      def identify_continuous_segments(resource_tasks):
+          """Find continuous work segments for each resource"""
+          segments = []
+          current_segment = []
+
+          for i, task in enumerate(sorted_tasks):
+              if i == 0:
+                  current_segment = [task]
+              else:
+                  prev_end = datetime.fromisoformat(sorted_tasks[i-1]['end_datetime'])
+                  curr_start = datetime.fromisoformat(task['start_datetime'])
+                  break_duration = (curr_start - prev_end).total_seconds() / 60
+
+                  if break_duration >= 15:  # Sufficient break
+                      # Close current segment
+                      segments.append(current_segment)
+                      current_segment = [task]
+                  else:
+                      # Continue segment
+                      current_segment.append(task)
+
+          if current_segment:
+              segments.append(current_segment)
+
+          return segments
+
+  - name: "segment_durations"
+    description: "Calculate duration of each continuous segment"
+    type: "dict[segment_id, float]"
+    calculation: |
+      def calculate_segment_duration(segment):
+          """Total duration from start of first task to end of last task"""
+          if not segment:
+              return 0
+
+          first_start = datetime.fromisoformat(segment[0]['start_datetime'])
+          last_end = datetime.fromisoformat(segment[-1]['end_datetime'])
+          duration_hours = (last_end - first_start).total_seconds() / 3600
+
+          return duration_hours
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req] = 1 if resource r assigned to request req"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "break_after"
+    description: "Binary: break_after[r][req] = 1 if break scheduled after request"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "continuous_duration"
+    description: "Duration of continuous work at each point (scaled by 100)"
+    type: "integer"
+    dimensions: "[resources, time_points]"
+    domain: "[0, 550]"                     # Max 5.5 hours * 100
+
+  - name: "violation_continuous"
+    description: "Soft violation for company policy"
+    type: "integer"
+    dimensions: "[resources, segments]"
+    domain: "[0, 50]"                      # Max 0.5 hour violation * 100
+
+mathematical_formulation:
+  equation: |
+    Preprocessing:
+    1. Sort tasks by start time for each resource
+    2. Identify potential continuous work segments
+    3. Calculate segment durations
+
+    For each resource r and continuous segment s:
+        segment_duration[r][s] = end_time(last_task_in_s) - start_time(first_task_in_s)
+
+    Hard Constraint (Legal - 5.5h):
+    For all segments s of resource r:
+        If no break >= 15 min within segment:
+            segment_duration[r][s] <= max_hours_continuous × 100
+
+    Break Enforcement:
+    If segment_duration[r][s] >= max_hours_continuous × 100:
+        Must have break_after[r][some_task_in_s] = 1
+        Where break_duration >= min_break_duration
+
+    Soft Constraint (Company - 5h or DYNAMIC):
+    For all segments s:
+        segment_duration[r][s] <= max_continuous_company × 100 + violation_continuous[r][s]
+
+  explanation: |
+    This constraint prevents fatigue by limiting continuous work periods.
+
+    Key concepts:
+    1. **Continuous work**: No break >= 15 minutes
+    2. **Break definition**: Gap >= 15 minutes between tasks
+    3. **Segment tracking**: Tasks grouped into continuous segments
+    4. **Dynamic limits**: Company policy varies by context
+
+    Example:
+    - Tasks: 08:00-11:00 (3h) + 11:10-14:00 (2.83h)
+    - Break: 10 minutes (insufficient)
+    - Continuous duration: 6 hours
+    - Violation: Exceeds 5.5h legal limit
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Step 1: Fetch DYNAMIC constraint values
+    async def fetch_continuous_work_constraints(planning_mode=None, work_context=None):
+        async with httpx.AsyncClient() as client:
+            # Legal constraint (FIXED)
+            legal_response = await client.get(
+                f"{API_URL}/legal-constraints/?constraint_name=max_continuous_work"
+            )
+            legal = legal_response.json()[0]
+
+            # Break requirement (FIXED)
+            break_response = await client.get(
+                f"{API_URL}/legal-constraints/?constraint_name=min_break_after_continuous"
+            )
+            break_req = break_response.json()[0]
+
+            # Company policy (DYNAMIC!)
+            params = {"policy_name": "Preferred Max Continuous Work"}
+            if planning_mode:
+                params["planning_mode"] = planning_mode
+            if work_context == "night":
+                params["shift_type"] = "night"  # May have stricter limits
+
+            company_response = await client.get(
+                f"{API_URL}/company-policy-constraints/",
+                params=params
+            )
+            company = company_response.json()[0]
+
+            return legal, break_req, company
+
+    # Step 2: Model continuous segments
+    def add_continuous_work_constraints(model, x, resources, requests,
+                                         legal_limit, break_min, company_limit):
+
+        # DYNAMIC values from API
+        MAX_CONTINUOUS_LEGAL = legal_limit['parameter_value']['value']    # 5.5 (FIXED)
+        MIN_BREAK_MINUTES = break_min['parameter_value']['value']         # 15 (FIXED)
+        MAX_CONTINUOUS_COMPANY = company_limit['parameter_value']['value'] # 5.0 (DYNAMIC!)
+
+        for r in resources:
+            # Group tasks into potential segments
+            resource_tasks = get_assigned_tasks(model, x, r)
+
+            for segment in identify_segments(resource_tasks):
+                segment_start = segment[0]['start']
+                segment_end = segment[-1]['end']
+                duration = calculate_duration(segment_start, segment_end)
+
+                # Hard constraint (legal)
+                model.Add(duration <= MAX_CONTINUOUS_LEGAL * 100)
+
+                # If approaching limit, force a break
+                if len(segment) > 1:
+                    for i in range(len(segment) - 1):
+                        gap = segment[i+1]['start'] - segment[i]['end']
+                        if duration > MAX_CONTINUOUS_LEGAL * 100:
+                            # Must have sufficient break
+                            model.Add(gap >= MIN_BREAK_MINUTES)
+
+                # Soft constraint (company)
+                if USE_SOFT_CONSTRAINTS:
+                    violation = model.NewIntVar(0, 50, f'viol_cont_{r}_{segment_id}')
+                    model.Add(duration <= MAX_CONTINUOUS_COMPANY * 100 + violation)
+
+    # Step 3: Handle break scheduling
+    def ensure_break_opportunities(model, x, break_after):
+        """Ensure breaks are properly scheduled"""
+        for r in resources:
+            for req in requests:
+                # If break_after[r][req] = 1, next task must start >= 15 min later
+                if break_after[(r, req)]:
+                    next_task = get_next_task(r, req)
+                    if next_task:
+                        gap = next_task['start'] - req['end']
+                        model.Add(gap >= 15)
+
+validation_rules:
+  - rule: "Break must be at least 15 minutes"
+    condition: "break_duration >= min_break_duration"
+  - rule: "Company limit cannot exceed legal limit"
+    condition: "max_continuous_company <= max_hours_continuous"
+  - rule: "Segments properly identified"
+    condition: "No gaps < 15 min within segment"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_daily_hours_14h_span"
+    relationship: "Continuous work limits fit within daily limits"
+  - related_constraint: "max_absolute_daily_hours"
+    relationship: "Multiple 5.5h segments possible if breaks taken"
+  - related_constraint: "min_daily_rest"
+    relationship: "Rest periods reset continuous work tracking"
+
+dynamic_value_examples:
+  - planning_mode: "Conservative"
+    max_continuous_company: 4.5            # Stricter for safety
+    break_preference: 20                   # Prefer longer breaks
+    notes: "More frequent breaks for well-being"
+
+  - planning_mode: "Balanced"
+    max_continuous_company: 5.0            # Standard preference
+    break_preference: 15                   # Minimum legal
+
+  - planning_mode: "Aggressive"
+    max_continuous_company: 5.5            # Use legal maximum
+    break_preference: 15
+    notes: "Maximum utilization within legal limits"
+
+  - context: "Night Shift"
+    max_continuous_company: 4.0            # Even stricter at night
+    notes: "Reduced continuous work during night hours for safety"
+
+  - context: "Safety Critical Tasks"
+    max_continuous_company: 3.5            # Very strict for critical work
+    break_preference: 30                   # Longer breaks
+    notes: "Enhanced safety measures for critical operations"
+
+penalty_configuration:
+  applicable: true
+  penalty_weight: 100                      # High penalty - fatigue risk
+  penalty_calculation: "progressive"       # Increases with violation amount
+  notes: |
+    - Legal limit (5.5h) is ALWAYS hard
+    - Company limit (DYNAMIC) can be soft
+    - Higher penalties for safety-critical tasks
+
+examples:
+  - scenario: "Standard day with proper breaks"
+    input:
+      resource: "RES-INT-0001"
+      tasks:
+        - "08:00-11:00"                    # 3 hours
+        - "11:15-14:00"                    # 2.75 hours (15 min break)
+        - "14:30-17:00"                    # 2.5 hours (30 min break)
+    output:
+      segments:
+        - segment_1: 3.0h                  # First segment
+        - segment_2: 2.75h                 # After break
+        - segment_3: 2.5h                  # After break
+      max_continuous: 3.0
+      constraints_satisfied: true
+
+  - scenario: "Violation - insufficient break"
+    input:
+      resource: "RES-INT-0002"
+      company_limit: 5.0                   # DYNAMIC from API
+      tasks:
+        - "08:00-11:30"                    # 3.5 hours
+        - "11:35-14:30"                    # 2.92 hours (only 5 min gap!)
+    output:
+      continuous_duration: 6.42            # Full period (insufficient break)
+      legal_constraint_satisfied: false    # Exceeds 5.5h
+      company_constraint_satisfied: false  # Exceeds 5.0h
+      required_action: "Insert 15+ minute break"
+
+  - scenario: "Night shift with stricter limits"
+    input:
+      resource: "RES-INT-0003"
+      context: "night"
+      company_limit: 4.0                   # DYNAMIC - stricter at night
+      tasks:
+        - "22:00-02:30"                    # 4.5 hours continuous
+    output:
+      continuous_duration: 4.5
+      legal_constraint_satisfied: true     # Below 5.5h
+      company_constraint_satisfied: false  # Exceeds 4.0h night limit
+      violation_amount: 50                 # 0.5h over company limit
+
+notes:
+  - "Break definition crucial: >= 15 minutes required"
+  - "Travel time between locations may count as break"
+  - "Meal breaks reset continuous work counter"
+  - "DYNAMIC limits allow context-sensitive safety measures"
+  - "Night work often has stricter continuous limits"
+  - "Critical tasks may trigger even lower limits"

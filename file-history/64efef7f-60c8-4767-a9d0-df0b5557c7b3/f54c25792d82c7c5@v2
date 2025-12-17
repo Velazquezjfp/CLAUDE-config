@@ -1,0 +1,125 @@
+"""
+CP_02: Resource-Demand Qualification Matching
+Company Policy: Resources must have required qualifications (soft constraint)
+
+Based on: ../../constraints_v2/CP_02_qualification_matching.yaml
+
+Note: This is Phase 1 - Qualification matching only
+      Category matching (resource.resource_category) not yet implemented (missing database field)
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_qualification_matching_constraints(model: cp_model.CpModel,
+                                            x_vars: dict,
+                                            data,
+                                            constraints) -> list:
+    """
+    Add qualification matching constraints to the model
+
+    Ensures resources have all required qualifications for assigned requests.
+    If request.required_qualifications is empty, no check needed (automatic match).
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with resources and requests
+        constraints: ConstraintValues object (not used yet - using default penalty)
+
+    Returns:
+        List of violation variables (for soft constraints)
+    """
+    violations = []
+
+    # TODO: Fetch penalty weight from database when API endpoints are available
+    # For now, use hardcoded default value
+    QUALIFICATION_MISMATCH_PENALTY = 100  # Per missing qualification
+
+    print(f"\n[CP_02] Adding qualification matching constraints...")
+    print(f"  Penalty per missing qualification: {QUALIFICATION_MISMATCH_PENALTY}")
+
+    # Preprocess: Build qualification match matrix
+    match_matrix = {}
+    missing_details = {}
+    requests_with_quals = []
+
+    for resource in data.resources:
+        res_id = resource['resource_id']
+        res_quals = set(resource.get('qualifications', []))
+
+        for request in data.requests:
+            req_id = request['request_id']
+            req_quals = set(request.get('required_qualifications', []))
+
+            # Empty required_qualifications = automatic match
+            if not req_quals:
+                match_matrix[(res_id, req_id)] = (True, 0)
+                continue
+
+            # Track requests that actually require qualifications
+            if req_id not in requests_with_quals:
+                requests_with_quals.append(req_id)
+
+            # Check for missing qualifications
+            missing = req_quals - res_quals
+            has_all = len(missing) == 0
+
+            match_matrix[(res_id, req_id)] = (has_all, len(missing))
+            if missing:
+                missing_details[(res_id, req_id)] = list(missing)
+
+    print(f"  Requests requiring qualifications: {len(requests_with_quals)}")
+    print(f"  Total resource-request pairs: {len(match_matrix)}")
+
+    # Add constraints
+    mismatch_count = 0
+
+    for resource in data.resources:
+        res_id = resource['resource_id']
+
+        for request in data.requests:
+            req_id = request['request_id']
+
+            # Get precomputed match info
+            has_all_quals, missing_count = match_matrix.get(
+                (res_id, req_id), (True, 0)
+            )
+
+            # Only add constraint if qualifications don't match
+            if not has_all_quals and missing_count > 0:
+                x_var = x_vars[(res_id, req_id)]
+
+                # Create violation variable for missing qualifications
+                if USE_SOFT_CONSTRAINTS:
+                    # Violation equals missing_count * penalty IF assigned
+                    violation = model.NewIntVar(
+                        0, missing_count * QUALIFICATION_MISMATCH_PENALTY,
+                        f'qual_viol_{res_id}_{req_id}'
+                    )
+
+                    # If assigned (x=1), violation = missing_count * penalty
+                    # If not assigned (x=0), violation = 0
+                    model.Add(
+                        violation == missing_count * QUALIFICATION_MISMATCH_PENALTY
+                    ).OnlyEnforceIf(x_var)
+                    model.Add(violation == 0).OnlyEnforceIf(x_var.Not())
+
+                    violations.append(violation)
+                    mismatch_count += 1
+
+                    # Log warning for debugging
+                    if req_id in missing_details.get((res_id, req_id), [])[:1]:  # Log first mismatch
+                        missing_quals = missing_details.get((res_id, req_id), [])
+                        print(f"    WARNING: {res_id} missing {missing_count} quals for {req_id}")
+                        print(f"             Missing: {', '.join(missing_quals[:2])}{'...' if len(missing_quals) > 2 else ''}")
+
+    print(f"  Resource-request pairs with qualification mismatches: {mismatch_count}")
+    print(f"  Soft violations tracked: {len(violations)}")
+
+    if len(violations) == 0:
+        print(f"  ✓ All resources have required qualifications!")
+
+    return violations

@@ -1,0 +1,352 @@
+"""
+CFF Personnel Planning MCP Server
+
+This MCP server provides access to the CFF Personnel Planning database API,
+enabling AI assistants to query and manage resources, requests, and assignments.
+"""
+
+import os
+import asyncio
+import json
+from typing import Any
+import httpx
+from fastmcp import FastMCP
+
+# Initialize FastMCP server
+mcp = FastMCP("CFF Personnel Planning MCP Server")
+
+# Base URL for the CFF API
+API_BASE_URL = os.getenv("CFF_API_BASE_URL", "http://150.241.245.65:8002")
+
+
+async def fetch_all_pages(endpoint: str) -> list[dict[str, Any]]:
+    """
+    Fetch all pages from a paginated endpoint.
+
+    Args:
+        endpoint: API endpoint path
+
+    Returns:
+        List of all data items across all pages
+    """
+    all_data = []
+    page = 1
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        while True:
+            response = await client.get(f"{API_BASE_URL}{endpoint}", params={"page": page})
+            response.raise_for_status()
+            data = response.json()
+
+            all_data.extend(data.get("data", []))
+
+            if page >= data.get("total_pages", 1):
+                break
+
+            page += 1
+
+    return all_data
+
+
+def format_output(data: Any, count: int, entity_type: str) -> str:
+    """Format output for better readability."""
+    return f"Retrieved {count} {entity_type}:\n\n{json.dumps(data, indent=2, ensure_ascii=False, default=str)}"
+
+
+@mcp.tool()
+async def get_resources() -> str:
+    """
+    Retrieves a complete list of resources from the database.
+
+    Resources are employees with qualifications, teams, and assigned regions.
+    This information helps explore available personnel for assignment planning.
+
+    Returns:
+        JSON string containing all resources with their details
+    """
+    data = await fetch_all_pages("/api/v1/resources/")
+    return format_output(data, len(data), "resources")
+
+
+@mcp.tool()
+async def get_requests() -> str:
+    """
+    Retrieves requests (also known as demands) from the database.
+
+    Requests contain job specifications including regions and qualifications needed.
+    This information is necessary to match with available resources.
+
+    Returns:
+        JSON string containing all requests with their specifications
+    """
+    data = await fetch_all_pages("/api/v1/requests/")
+    return format_output(data, len(data), "requests")
+
+
+@mcp.tool()
+async def get_assignments() -> str:
+    """
+    Retrieves already assigned requests with resource details.
+
+    Shows which resources are assigned to which requests, including resource IDs
+    and assignment details.
+
+    Returns:
+        JSON string containing all assignments with details
+    """
+    data = await fetch_all_pages("/api/v1/assignments/")
+    return format_output(data, len(data), "assignments")
+
+
+@mcp.tool()
+async def create_resource(
+    type: str,
+    first_name: str,
+    last_name: str,
+    email: str = None,
+    phone: str = None,
+    region_id: int = None,
+    team_id: int = None,
+    sub_group_id: int = None,
+    home_location: str = None,
+    contract: str = None,
+    weekly_hours: int = None,
+    cost_per_hour: float = None,
+    qualifications: list[str] = None,
+    hire_date: str = None,
+    status: str = None,
+) -> str:
+    """
+    Creates a new resource (employee) in the database.
+
+    This may be needed to complete planning or assist in creating a new resource.
+
+    Args:
+        type: Resource type (e.g., 'Interne', 'Externe')
+        first_name: First name of the resource
+        last_name: Last name of the resource
+        email: Email address (optional)
+        phone: Phone number (optional)
+        region_id: Region ID (optional)
+        team_id: Team ID (optional)
+        sub_group_id: Sub-group ID (optional)
+        home_location: Home location (optional)
+        contract: Contract type (optional)
+        weekly_hours: Weekly working hours (optional)
+        cost_per_hour: Cost per hour in CHF (optional)
+        qualifications: List of qualifications (optional)
+        hire_date: Hire date in YYYY-MM-DD format (optional)
+        status: Resource status (optional, default: 'Actif')
+
+    Returns:
+        JSON string with the created resource details
+    """
+    payload = {
+        "type": type,
+        "first_name": first_name,
+        "last_name": last_name,
+    }
+
+    if email:
+        payload["email"] = email
+    if phone:
+        payload["phone"] = phone
+    if region_id is not None:
+        payload["region_id"] = region_id
+    if team_id is not None:
+        payload["team_id"] = team_id
+    if sub_group_id is not None:
+        payload["sub_group_id"] = sub_group_id
+    if home_location:
+        payload["home_location"] = home_location
+    if contract:
+        payload["contract"] = contract
+    if weekly_hours is not None:
+        payload["weekly_hours"] = weekly_hours
+    if cost_per_hour is not None:
+        payload["cost_per_hour"] = cost_per_hour
+    if qualifications:
+        payload["qualifications"] = qualifications
+    if hire_date:
+        payload["hire_date"] = hire_date
+    if status:
+        payload["status"] = status
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(f"{API_BASE_URL}/api/v1/resources/", json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    return f"Successfully created resource:\n\n{json.dumps(data, indent=2, ensure_ascii=False, default=str)}"
+
+
+@mcp.tool()
+async def create_request(
+    bsa_id: str,
+    task_name: str = None,
+    status: str = None,
+    resource_category: str = None,
+    technical_service: str = None,
+    branch: str = None,
+    start_datetime: str = None,
+    end_datetime: str = None,
+    shift: str = None,
+    start_location: str = None,
+    end_location: str = None,
+    people_needed: int = None,
+    required_qualifications: list[str] = None,
+    work_type: str = None,
+    responsible_person: str = None,
+    priority: str = None,
+) -> str:
+    """
+    Creates a new request (demand) in the database.
+
+    Requests specify job requirements including qualifications, regions, and timeframes.
+
+    Args:
+        bsa_id: BSA ID (required)
+        task_name: Task name (optional)
+        status: Request status (optional, default: 'pending')
+        resource_category: Resource category needed (optional)
+        technical_service: Technical service (optional)
+        branch: Branch (optional)
+        start_datetime: Start date/time in ISO format (optional)
+        end_datetime: End date/time in ISO format (optional)
+        shift: Shift type (optional)
+        start_location: Start location (optional)
+        end_location: End location (optional)
+        people_needed: Number of people needed (optional, default: 1)
+        required_qualifications: List of required qualifications (optional)
+        work_type: Type of work (optional)
+        responsible_person: Responsible person (optional)
+        priority: Priority level: 'low', 'medium', 'high' (optional)
+
+    Returns:
+        JSON string with the created request details
+    """
+    payload = {"bsa_id": bsa_id}
+
+    if task_name:
+        payload["task_name"] = task_name
+    if status:
+        payload["status"] = status
+    if resource_category:
+        payload["resource_category"] = resource_category
+    if technical_service:
+        payload["technical_service"] = technical_service
+    if branch:
+        payload["branch"] = branch
+    if start_datetime:
+        payload["start_datetime"] = start_datetime
+    if end_datetime:
+        payload["end_datetime"] = end_datetime
+    if shift:
+        payload["shift"] = shift
+    if start_location:
+        payload["start_location"] = start_location
+    if end_location:
+        payload["end_location"] = end_location
+    if people_needed is not None:
+        payload["people_needed"] = people_needed
+    if required_qualifications:
+        payload["required_qualifications"] = required_qualifications
+    if work_type:
+        payload["work_type"] = work_type
+    if responsible_person:
+        payload["responsible_person"] = responsible_person
+    if priority:
+        payload["priority"] = priority
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(f"{API_BASE_URL}/api/v1/requests/", json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    return f"Successfully created request:\n\n{json.dumps(data, indent=2, ensure_ascii=False, default=str)}"
+
+
+@mcp.tool()
+async def create_assignment(
+    resource_id: str,
+    assignment_id: str,
+    request_id: str = None,
+    type: str = None,
+    status: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    notes: str = None,
+) -> str:
+    """
+    Creates an assignment linking a resource to a request.
+
+    This assigns an employee to a specific job.
+
+    Args:
+        resource_id: Resource ID to assign (required)
+        assignment_id: Unique assignment ID (required)
+        request_id: Request ID to assign to (optional)
+        type: Assignment type (optional)
+        status: Assignment status (optional, default: 'Provisoire')
+        start_date: Start date in YYYY-MM-DD format (optional)
+        end_date: End date in YYYY-MM-DD format (optional)
+        notes: Additional notes (optional)
+
+    Returns:
+        JSON string with the created assignment details
+    """
+    payload = {
+        "resource_id": resource_id,
+        "assignment_id": assignment_id,
+    }
+
+    if request_id:
+        payload["request_id"] = request_id
+    if type:
+        payload["type"] = type
+    if status:
+        payload["status"] = status
+    if start_date:
+        payload["start_date"] = start_date
+    if end_date:
+        payload["end_date"] = end_date
+    if notes:
+        payload["notes"] = notes
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(f"{API_BASE_URL}/api/v1/assignments/", json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    return f"Successfully created assignment:\n\n{json.dumps(data, indent=2, ensure_ascii=False, default=str)}"
+
+
+@mcp.tool()
+async def delete_assignment(assignment_id: str) -> str:
+    """
+    Deletes a specific assignment by its assignment_id.
+
+    This removes the link between a resource and a request.
+
+    Args:
+        assignment_id: The assignment ID to delete
+
+    Returns:
+        Success message
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.delete(f"{API_BASE_URL}/api/v1/assignments/{assignment_id}")
+        response.raise_for_status()
+
+    return f"Successfully deleted assignment: {assignment_id}"
+
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "8080"))
+    asyncio.run(
+        mcp.run_async(
+            transport="http",
+            host="0.0.0.0",
+            port=port,
+        )
+    )

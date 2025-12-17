@@ -1,0 +1,23 @@
+# CFF Personnel Planning API - Environment Configuration
+
+# Database Configuration
+DB_NAME=cff_planning
+DB_USER=cff_app_user
+DB_PASSWORD=changeme
+DB_PORT=5432
+
+# Database Connection Pool
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=10
+DB_POOL_TIMEOUT=30
+
+# API Configuration
+API_PORT=8000
+LOG_LEVEL=INFO
+
+# CORS Origins (JSON array as string)
+CORS_ORIGINS='["http://localhost:3000","http://localhost:8080"]'
+
+# Storage Configuration
+# Set to host path for persistent storage, or leave as default for docker volume
+POSTGRES_DATA_PATH=./data/postgres

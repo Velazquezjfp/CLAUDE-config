@@ -1,0 +1,426 @@
+# CFF Workforce Planning System - Absence Blocking Constraint
+# Constraint ID: HC_01
+# Version: 1.0
+# Created: 2025-12-12
+# Purpose: Prevent assignment of resources during their absence periods
+
+constraint_metadata:
+  name: "absence_blocking"
+  constraint_id: "HC_01"
+  category: "Hard Constraint"
+  layer: 0  # Layer 0: Fundamental availability (before legal constraints)
+  type: "hard_constraint"
+  description: |
+    Resources cannot be assigned to demands during their registered absence periods.
+    This is a fundamental availability constraint that must be satisfied before any
+    other constraint is evaluated. Absences include vacations, sick leave, training,
+    and other blocked time periods.
+  legal_reference: "N/A - Operational constraint"
+  modifiable: false
+
+# =============================================================================
+# DATA SOURCE: Absences API
+# =============================================================================
+data_source:
+  api_endpoint: "GET /api/v1/absences/"
+  base_url: "http://150.241.245.65:8002"
+
+  # Pagination support
+  pagination:
+    supported: true
+    default_per_page: 50
+    max_per_page: 50
+
+  # Query parameters
+  query_parameters:
+    - name: "resource_id"
+      type: "string"
+      description: "Filter absences by specific resource"
+      required: false
+    - name: "page"
+      type: "integer"
+      description: "Page number for pagination"
+      required: false
+    - name: "per_page"
+      type: "integer"
+      description: "Number of records per page"
+      required: false
+
+  # Response structure (verified 2025-12-12)
+  response_structure:
+    total: "integer"           # Total number of absence records
+    page: "integer"            # Current page number
+    per_page: "integer"        # Records per page
+    total_pages: "integer"     # Total number of pages
+    data: "array"              # Array of absence objects
+
+  # Absence record fields (verified from live API)
+  record_fields:
+    - name: "absence_id"
+      type: "integer"
+      description: "Unique identifier for the absence record"
+      example: 6187
+
+    - name: "resource_id"
+      type: "string"
+      description: "Identifier of the resource with this absence"
+      example: "17"
+
+    - name: "family_name"
+      type: "string"
+      description: "Full name of the resource (for display)"
+      example: "Zanoni Akira Marco"
+
+    - name: "type"
+      type: "string"
+      description: "Type of absence"
+      example: "Vacances"
+      possible_values:
+        - "Vacances"       # Vacation
+        - "Maladie"        # Sick leave (expected)
+        - "Formation"      # Training (expected)
+        - "Congé"          # Leave (expected)
+        - "Autre"          # Other (expected)
+
+    - name: "start_date"
+      type: "datetime"
+      format: "ISO 8601"
+      description: "Start date/time of the absence"
+      example: "2026-12-31T00:00:00"
+      note: "May not include timezone - treat as UTC"
+
+    - name: "end_date"
+      type: "datetime"
+      format: "ISO 8601"
+      description: "End date/time of the absence"
+      example: "2027-01-01T00:00:00"
+      note: "May not include timezone - treat as UTC"
+
+    - name: "number_of_days"
+      type: "integer"
+      description: "Number of days of absence"
+      nullable: true
+      example: null
+
+    - name: "status"
+      type: "string"
+      description: "Approval status of the absence"
+      example: "Approuvé"
+      possible_values:
+        - "Approuvé"       # Approved - MUST block assignment
+        - "En attente"     # Pending (expected) - configurable
+        - "Refusé"         # Rejected (expected) - do NOT block
+
+    - name: "notes"
+      type: "string"
+      description: "Additional notes about the absence"
+      nullable: true
+      example: null
+
+    - name: "created_at"
+      type: "datetime"
+      description: "Record creation timestamp"
+      example: "2025-12-09T14:21:27.792824"
+
+    - name: "created_by"
+      type: "string"
+      description: "User who created the record"
+      example: "admin"
+
+    - name: "updated_at"
+      type: "datetime"
+      description: "Last update timestamp"
+      nullable: true
+
+    - name: "updated_by"
+      type: "string"
+      description: "User who last updated the record"
+      nullable: true
+
+# =============================================================================
+# CONSTRAINT PARAMETERS
+# =============================================================================
+constraint_parameters:
+  - name: "enforce_absence_blocking"
+    description: "Master switch to enable/disable absence blocking"
+    type: "boolean"
+    default_value: true
+    source: "config.py"
+    modifiable: true
+
+  - name: "approved_statuses"
+    description: "List of absence statuses that should block assignments"
+    type: "list[string]"
+    default_value: ["Approuvé"]
+    source: "config.py"
+    modifiable: true
+    note: "Only absences with these statuses will block assignments"
+
+  - name: "blocked_absence_types"
+    description: "List of absence types that should block assignments"
+    type: "list[string]"
+    default_value: null  # null = all types block
+    source: "config.py"
+    modifiable: true
+    note: "If null or empty, all absence types block. If specified, only listed types block."
+
+# =============================================================================
+# DECISION VARIABLES
+# =============================================================================
+decision_variables:
+  - name: "x_assignment"
+    description: "Binary assignment variable: 1 if resource assigned to demand"
+    type: "boolean"
+    dimensions: "[resources, demands]"
+    domain: "[0, 1]"
+
+# =============================================================================
+# MATHEMATICAL FORMULATION
+# =============================================================================
+mathematical_formulation:
+  equation: |
+    For each resource r and demand d:
+      If exists absence A for resource r where:
+        - A.status in approved_statuses AND
+        - (blocked_absence_types is null OR A.type in blocked_absence_types) AND
+        - time_overlap(d.start_datetime, d.end_datetime, A.start_date, A.end_date):
+      Then:
+        x[r, d] = 0  (assignment is BLOCKED)
+
+  time_overlap_definition: |
+    time_overlap(demand_start, demand_end, absence_start, absence_end) =
+      NOT (demand_end <= absence_start OR demand_start >= absence_end)
+
+    # Two periods overlap unless one ends before the other starts
+
+  explanation: |
+    This is a HARD constraint that prevents any assignment of a resource to a
+    demand if the resource has an approved absence that overlaps with the
+    demand's time period. The constraint is applied during model building by
+    setting the assignment variable to 0, making it impossible for the solver
+    to assign that resource to that demand.
+
+# =============================================================================
+# PREPROCESSING REQUIREMENTS
+# =============================================================================
+preprocessing:
+  required_data:
+    - demands:
+        source: "GET /api/v1/demands/"
+        fields: ["id", "shift_start_time", "shift_finish_time"]
+    - resources:
+        source: "GET /api/v1/resources/"
+        fields: ["resource_id"]
+    - absences:
+        source: "GET /api/v1/absences/"
+        fields: ["resource_id", "start_date", "end_date", "type", "status"]
+
+  preprocessing_steps:
+    1_fetch_absences: |
+      # Fetch all absences with pagination (50 per page default)
+      all_absences = []
+      page = 1
+      while True:
+          response = api.get("/absences/", params={"page": page, "per_page": 50})
+          all_absences.extend(response["data"])
+          if page >= response["total_pages"]:
+              break
+          page += 1
+
+    2_filter_absences: |
+      # Filter absences by status and type (configurable)
+      filtered_absences = [
+          a for a in all_absences
+          if a["status"] in approved_statuses
+          and (blocked_absence_types is None or a["type"] in blocked_absence_types)
+      ]
+
+    3_index_by_resource: |
+      # Build index: {resource_id: [(start, end), ...]}
+      resource_absences = {}
+      for absence in filtered_absences:
+          res_id = absence["resource_id"]
+          start = parse_datetime(absence["start_date"])
+          end = parse_datetime(absence["end_date"])
+
+          if res_id not in resource_absences:
+              resource_absences[res_id] = []
+          resource_absences[res_id].append((start, end))
+
+    4_datetime_handling: |
+      # Handle datetime format variations
+      def parse_datetime(dt_string):
+          if dt_string is None:
+              return None
+
+          # Add timezone if missing
+          if 'T' not in dt_string:
+              dt_string = dt_string + 'T00:00:00Z'
+          elif not dt_string.endswith('Z') and '+' not in dt_string:
+              dt_string = dt_string + 'Z'
+
+          # Parse and ensure UTC
+          dt = datetime.fromisoformat(dt_string.replace('Z', '+00:00'))
+          if dt.tzinfo is None:
+              dt = dt.replace(tzinfo=timezone.utc)
+          return dt
+
+# =============================================================================
+# CP-SAT IMPLEMENTATION
+# =============================================================================
+cp_sat_implementation:
+  constraint_type: "hard"  # No violations allowed
+
+  implementation_pattern: |
+    def add_absence_blocking_constraints(model, x_vars, data, constraints):
+        """
+        Add HARD absence blocking constraints
+        Resources cannot be assigned to demands during absence periods
+
+        Returns:
+            tuple: (violations=[], metadata=[]) - Empty since hard constraint
+        """
+        blocked_count = 0
+
+        for resource_id in data.resource_ids:
+            # Get absences for this resource
+            absences = data.resource_absences.get(resource_id, [])
+
+            for request in data.requests:
+                req_id = request['id']
+                req_start = parse_datetime(request['shift_start_time'])
+                req_end = parse_datetime(request['shift_finish_time'])
+
+                # Check each absence period
+                for absence_start, absence_end in absences:
+                    # Check for time overlap
+                    if time_overlaps(req_start, req_end, absence_start, absence_end):
+                        # BLOCK this assignment
+                        x_var = x_vars[(resource_id, req_id)]
+                        model.Add(x_var == 0)
+                        blocked_count += 1
+                        break  # Once blocked, no need to check more absences
+
+        print(f"  Blocked {blocked_count} assignments due to absence conflicts")
+        return [], []  # No violations for hard constraints
+
+    def time_overlaps(start1, end1, start2, end2):
+        """Check if two time periods overlap"""
+        return not (end1 <= start2 or start1 >= end2)
+
+# =============================================================================
+# VALIDATION RULES
+# =============================================================================
+validation_rules:
+  - rule: "Absences must have valid resource_id"
+    condition: "absence.resource_id is not null and exists in resources"
+
+  - rule: "Absences must have valid date range"
+    condition: "absence.start_date <= absence.end_date"
+
+  - rule: "Absences must have parseable datetime format"
+    condition: "datetime.fromisoformat(absence.start_date) succeeds"
+
+# =============================================================================
+# INTERACTION WITH OTHER CONSTRAINTS
+# =============================================================================
+interaction_with_other_constraints:
+  - related_constraint: "CP_02_qualification_matching"
+    relationship: |
+      Both constraints can independently block an assignment.
+      If a resource is on absence OR lacks qualifications, assignment is blocked.
+
+  - related_constraint: "LC_01 through LC_04"
+    relationship: |
+      Absence blocking is evaluated FIRST. If blocked, the resource-demand pair
+      is never considered for legal constraint checking.
+
+  order_of_evaluation: |
+    1. HC_01 Absence Blocking (filter out unavailable assignments)
+    2. CP_02 Qualification Matching (filter out unqualified assignments)
+    3. LC_* Legal Constraints (enforce work time limits)
+    4. Objectives (optimize among feasible assignments)
+
+# =============================================================================
+# PENALTY CONFIGURATION
+# =============================================================================
+penalty_configuration:
+  applicable: false  # Hard constraint - no penalties
+  note: |
+    Absence blocking is a HARD constraint. There is no option to violate it
+    with a penalty. If a resource is on absence during a demand period, they
+    simply cannot be assigned.
+
+# =============================================================================
+# EXAMPLES
+# =============================================================================
+examples:
+  - scenario: "Resource on vacation during demand"
+    input:
+      resource: "RES-001"
+      demand_period: "2025-12-20 08:00 to 2025-12-20 16:00"
+      absence:
+        type: "Vacances"
+        status: "Approuvé"
+        period: "2025-12-15 to 2025-12-25"
+    output:
+      assignment_allowed: false
+      reason: "Demand period overlaps with approved vacation"
+
+  - scenario: "Resource available (no absence)"
+    input:
+      resource: "RES-002"
+      demand_period: "2025-12-20 08:00 to 2025-12-20 16:00"
+      absences: []
+    output:
+      assignment_allowed: true
+      reason: "No absences for this resource"
+
+  - scenario: "Absence with pending status (not blocking)"
+    input:
+      resource: "RES-003"
+      demand_period: "2025-12-20 08:00 to 2025-12-20 16:00"
+      absence:
+        type: "Vacances"
+        status: "En attente"  # Pending
+        period: "2025-12-18 to 2025-12-22"
+    output:
+      assignment_allowed: true  # If "En attente" not in approved_statuses
+      reason: "Absence not in approved status"
+
+  - scenario: "Partial overlap (still blocks)"
+    input:
+      resource: "RES-004"
+      demand_period: "2025-12-24 20:00 to 2025-12-25 06:00"  # Night shift
+      absence:
+        type: "Vacances"
+        status: "Approuvé"
+        period: "2025-12-25 to 2025-12-31"
+    output:
+      assignment_allowed: false
+      reason: "Demand end (06:00 on 25th) overlaps absence start (25th)"
+
+# =============================================================================
+# NOTES
+# =============================================================================
+notes:
+  - "This constraint is fundamental and should be processed before other constraints"
+  - "Datetime handling must be robust to various format variations"
+  - "Consider caching absence data to avoid repeated API calls"
+  - "Future enhancement: Support partial-day absences with time granularity"
+  - "Future enhancement: Allow assignment during 'tentative' absences with warning"
+
+# =============================================================================
+# ANALYSIS AND REPORTING
+# =============================================================================
+analysis_requirements:
+  metrics_to_track:
+    - "Total absences in planning period"
+    - "Absences per resource"
+    - "Blocked assignments count"
+    - "Demands that became uncoverable due to absence blocking"
+
+  reporting:
+    - "List of demands that could not be covered due to all qualified resources being on absence"
+    - "Resources with high absence rates in planning period"
+    - "Time periods with highest absence concentration"

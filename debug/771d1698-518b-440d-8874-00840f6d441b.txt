@@ -1,0 +1,200 @@
+2025-12-09T12:45:20.153Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/CFF/mock_data_v2/database_application_v2/.claude/settings.local.json...
+2025-12-09T12:45:20.181Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-09T12:45:20.181Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-09T12:45:20.181Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-09T12:45:20.182Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-12-09T12:45:20.182Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-12-09T12:45:20.194Z [DEBUG] Applying permission update: Adding 5 allow rule(s) to destination 'localSettings': ["Bash(python explore_db.py:*)","Bash(docker-compose logs:*)","Bash(curl:*)","Bash(python3:*)","Bash(docker-compose up:*)"]
+2025-12-09T12:45:20.195Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-09T12:45:20.195Z [DEBUG] Total LSP servers loaded: 0
+2025-12-09T12:45:20.235Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-12-09T12:45:20.236Z [DEBUG] LSP manager initialized with 0 servers
+2025-12-09T12:45:20.279Z [DEBUG] LSP server manager initialized successfully
+2025-12-09T12:45:20.279Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-09T12:45:20.318Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/CFF/mock_data_v2/database_application_v2/.claude/skills
+2025-12-09T12:45:20.318Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-12-09T12:45:20.371Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-12-09T12:45:20.371Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-12-09T12:45:20.372Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-12-09T12:45:20.372Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765284320372-vc6lrs.sh
+2025-12-09T12:45:20.372Z [DEBUG] Shell binary exists: true
+2025-12-09T12:45:20.372Z [DEBUG] Execution timeout: 10000ms
+2025-12-09T12:45:20.375Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/771d1698-518b-440d-8874-00840f6d441b-agent-771d1698-518b-440d-8874-00840f6d441b.json.tmp.10942.1765284320375
+2025-12-09T12:45:20.381Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-09T12:45:20.381Z [DEBUG] Renaming /home/javiervel/.claude/todos/771d1698-518b-440d-8874-00840f6d441b-agent-771d1698-518b-440d-8874-00840f6d441b.json.tmp.10942.1765284320375 to /home/javiervel/.claude/todos/771d1698-518b-440d-8874-00840f6d441b-agent-771d1698-518b-440d-8874-00840f6d441b.json
+2025-12-09T12:45:20.382Z [DEBUG] File /home/javiervel/.claude/todos/771d1698-518b-440d-8874-00840f6d441b-agent-771d1698-518b-440d-8874-00840f6d441b.json written atomically
+2025-12-09T12:45:20.390Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-09T12:45:20.390Z [DEBUG] Total plugin skills loaded: 0
+2025-12-09T12:45:20.390Z [DEBUG] Total plugin commands loaded: 0
+2025-12-09T12:45:20.390Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-09T12:45:20.393Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-09T12:45:20.394Z [DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+2025-12-09T12:45:20.448Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-12-09T12:45:20.449Z [DEBUG] Shell snapshot created successfully (4750 bytes)
+2025-12-09T12:45:20.453Z [DEBUG] Total plugin agents loaded: 0
+2025-12-09T12:45:20.479Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284320479
+2025-12-09T12:45:20.479Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:20.488Z [DEBUG] Temp file written successfully, size: 80698 bytes
+2025-12-09T12:45:20.488Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:20.488Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284320479 to /home/javiervel/.claude.json
+2025-12-09T12:45:20.488Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:20.494Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-12-09T12:45:20.494Z [DEBUG] Found 0 hook matchers in settings
+2025-12-09T12:45:20.494Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-12-09T12:45:20.562Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284320562
+2025-12-09T12:45:20.562Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:20.569Z [DEBUG] Temp file written successfully, size: 80593 bytes
+2025-12-09T12:45:20.569Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:20.569Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284320562 to /home/javiervel/.claude.json
+2025-12-09T12:45:20.569Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:20.571Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284320571
+2025-12-09T12:45:20.571Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:20.578Z [DEBUG] Temp file written successfully, size: 80593 bytes
+2025-12-09T12:45:20.578Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:20.578Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284320571 to /home/javiervel/.claude.json
+2025-12-09T12:45:20.578Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:20.580Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284320580
+2025-12-09T12:45:20.580Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:20.587Z [DEBUG] Temp file written successfully, size: 80593 bytes
+2025-12-09T12:45:20.587Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:20.587Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284320580 to /home/javiervel/.claude.json
+2025-12-09T12:45:20.587Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:20.591Z [DEBUG] performStartupChecks called
+2025-12-09T12:45:20.591Z [DEBUG] Starting background plugin installations
+2025-12-09T12:45:20.592Z [DEBUG] performBackgroundPluginInstallations called
+2025-12-09T12:45:21.292Z [DEBUG] AutoUpdaterWrapper: Installation type: npm-global
+2025-12-09T12:45:21.293Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-09T12:45:21.294Z [DEBUG] Slash commands included in SlashCommand tool: /kg-infra, /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-12-09T12:45:21.573Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-12-09T12:45:21.578Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-12-09T12:45:21.596Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-09T12:45:21.634Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 50ms
+2025-12-09T12:45:21.634Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.61"}}
+2025-12-09T12:45:21.666Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321666
+2025-12-09T12:45:21.667Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.678Z [DEBUG] Temp file written successfully, size: 81265 bytes
+2025-12-09T12:45:21.678Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.678Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321666 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.678Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:21.693Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321693
+2025-12-09T12:45:21.693Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.701Z [DEBUG] Temp file written successfully, size: 81265 bytes
+2025-12-09T12:45:21.701Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.701Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321693 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.701Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:21.735Z [DEBUG] Summarizing last 156 of 174 messages (~134520 tokens)
+2025-12-09T12:45:21.747Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321747
+2025-12-09T12:45:21.747Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.755Z [DEBUG] Temp file written successfully, size: 81265 bytes
+2025-12-09T12:45:21.755Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.755Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321747 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.755Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:21.757Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321757
+2025-12-09T12:45:21.757Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.765Z [DEBUG] Temp file written successfully, size: 81265 bytes
+2025-12-09T12:45:21.765Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.765Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321757 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.765Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:21.771Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321771
+2025-12-09T12:45:21.771Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.778Z [DEBUG] Temp file written successfully, size: 81370 bytes
+2025-12-09T12:45:21.778Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.778Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321771 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.778Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:21.817Z [ERROR] AxiosError: AxiosError: Request failed with status code 401
+    at RT (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:62:1137)
+    at IncomingMessage.<anonymous> (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:67:9854)
+    at IncomingMessage.emit (node:events:536:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at rZA.request (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:69:2130)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async de2 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3857:34116)
+2025-12-09T12:45:21.948Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284321948
+2025-12-09T12:45:21.948Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:21.955Z [DEBUG] Temp file written successfully, size: 81370 bytes
+2025-12-09T12:45:21.955Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:21.955Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284321948 to /home/javiervel/.claude.json
+2025-12-09T12:45:21.955Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:22.367Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284322367
+2025-12-09T12:45:22.367Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:22.374Z [DEBUG] Temp file written successfully, size: 81424 bytes
+2025-12-09T12:45:22.374Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:22.374Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284322367 to /home/javiervel/.claude.json
+2025-12-09T12:45:22.374Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:22.962Z [DEBUG] AutoUpdaterWrapper: Installation type: npm-global
+2025-12-09T12:45:23.428Z [DEBUG] AutoUpdater: Detected installation type: npm-global
+2025-12-09T12:45:23.428Z [DEBUG] AutoUpdater: Using global update method
+2025-12-09T12:45:23.908Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:24.190Z [DEBUG] Summarizing all 218 messages (~101468 tokens)
+2025-12-09T12:45:24.626Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:25.302Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:25.496Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:25.632Z [DEBUG] Summarizing all 190 messages (~122732 tokens)
+2025-12-09T12:45:26.222Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:26.663Z [DEBUG] Summarizing all 383 messages (~141656 tokens)
+2025-12-09T12:45:26.759Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-09T12:45:26.759Z [DEBUG] Found 0 hook matchers in settings
+2025-12-09T12:45:26.759Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-09T12:45:27.170Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-09T12:45:27.170Z [DEBUG] Found 0 hook matchers in settings
+2025-12-09T12:45:27.170Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-09T12:45:27.395Z [DEBUG] AutoUpdaterWrapper: Installation type: npm-global
+2025-12-09T12:45:27.412Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284327412
+2025-12-09T12:45:27.412Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:27.420Z [DEBUG] Temp file written successfully, size: 81424 bytes
+2025-12-09T12:45:27.420Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:27.420Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284327412 to /home/javiervel/.claude.json
+2025-12-09T12:45:27.420Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-09T12:45:27.491Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:27.900Z [DEBUG] Summarizing all 182 messages (~100372 tokens)
+2025-12-09T12:45:29.632Z [DEBUG] Stream started - received first chunk
+2025-12-09T12:45:43.611Z [DEBUG] Getting matching hook commands for SessionStart with query: resume
+2025-12-09T12:45:43.611Z [DEBUG] Found 0 hook matchers in settings
+2025-12-09T12:45:43.611Z [DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup f648139939b95ae0@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 9b316dba6b4b021a@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup afc407e8fed39aba@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup e9ea750dfb65f16e@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup dd523ff7fcacf40c@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup ceae1dbf5da23835@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 43b0902c00f65384@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 1b5838b0270b11ca@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup f222f8a9af93c94d@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 7b371121155dbadd@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 81a7081a9939a51a@v4 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup a6502a89d37f6979@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 2fda9f1c7ae4d93b@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 355d5e6786dd57cc@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup f478bbaef2268338@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup d5c6647a07dc7800@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup 5f6a8798b346c0a4@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.615Z [DEBUG] FileHistory: Copied backup a1dbfae20d4917bd@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup bd501c7da79fae85@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup c374bb9ea33ef9a0@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup e983d0f59bdcf886@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup 6ed5b8df5959b6d5@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup 14015fbe3e3e4011@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup c1932fc85b832fd4@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup c95ac353a0a13b07@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup b2f5823f5df441db@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup 12080beab4b09e3e@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.616Z [DEBUG] FileHistory: Copied backup bfb8dc3522a4949b@v3 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup ec64672d7279e36f@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup 9c69c5155c245d4e@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup 782b7846b13dfae6@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup dd523ff7fcacf40c@v4 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup f478bbaef2268338@v4 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup c95ac353a0a13b07@v2 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup bfb8dc3522a4949b@v4 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup bd501c7da79fae85@v4 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup 6f114a00f68ba3be@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup 8f77f93f7eebd54c@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.617Z [DEBUG] FileHistory: Copied backup 629d7d8f6ed6b353@v1 from session 6a2981fd-8a90-4bdb-a05b-4c8ea2ab81b4 to 771d1698-518b-440d-8874-00840f6d441b
+2025-12-09T12:45:43.645Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.10942.1765284343645
+2025-12-09T12:45:43.645Z [DEBUG] Preserving file permissions: 100644
+2025-12-09T12:45:43.651Z [DEBUG] Temp file written successfully, size: 81319 bytes
+2025-12-09T12:45:43.652Z [DEBUG] Applied original permissions to temp file
+2025-12-09T12:45:43.652Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.10942.1765284343645 to /home/javiervel/.claude.json
+2025-12-09T12:45:43.652Z [DEBUG] File /home/javiervel/.claude.json written atomically

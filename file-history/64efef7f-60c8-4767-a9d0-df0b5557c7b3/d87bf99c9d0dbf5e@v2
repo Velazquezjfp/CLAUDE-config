@@ -1,0 +1,11 @@
+"""
+Objective Analyzers
+
+Each objective has its own analyzer that provides:
+- Performance metrics
+- Gap analysis
+- Achievement recommendations
+"""
+from .base_analyzer import ObjectiveAnalyzer
+
+__all__ = ['ObjectiveAnalyzer']

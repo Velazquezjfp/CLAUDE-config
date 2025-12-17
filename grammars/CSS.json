@@ -1,7 +1,8 @@
 {
   "language": "css",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "2.0",
+  "last_updated": "2025-12-16",
+  "description": "CSS grammar patterns including Tailwind CSS support",
   "patterns": {
     "classes": [
       "\\.(\\w+(?:-\\w+)*)\\s*\\{"
@@ -22,6 +23,27 @@
     ],
     "media_queries": [
       "@media\\s+([^{]+)\\s*\\{"
+    ],
+    "tailwind_directives": [
+      "@tailwind\\s+(base|components|utilities)",
+      "@layer\\s+(base|components|utilities)\\s*\\{",
+      "@apply\\s+([^;]+);"
+    ],
+    "tailwind_theme": [
+      "--([a-zA-Z-]+):\\s*([^;]+);",
+      "hsl\\(var\\(--([^)]+)\\)\\)"
+    ],
+    "custom_components": [
+      "\\.(pane|tree-item|chat-bubble|slash-command|command-button|tab-button|metadata-row)(?:[^{]*)?\\s*\\{"
+    ],
+    "pseudo_classes": [
+      ":root\\s*\\{",
+      "\\.dark\\s*\\{",
+      "(hover|focus|active|disabled)\\s*\\{",
+      ":(hover|focus|active|disabled|first-child|last-child)\\s*\\{"
+    ],
+    "keyframes": [
+      "@keyframes\\s+(\\w+)\\s*\\{"
     ]
   }
 }

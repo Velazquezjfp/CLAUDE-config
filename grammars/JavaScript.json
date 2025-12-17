@@ -1,33 +1,43 @@
 {
   "language": "javascript",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "2.0",
+  "last_updated": "2025-12-16",
+  "description": "JavaScript grammar patterns for code graph extraction",
   "patterns": {
     "imports": [
       "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
       "^\\s*import\\s+['\"]([^'\"]+)['\"]",
       "^\\s*(?:const|let|var)\\s+.*=\\s*require\\(['\"]([^'\"]+)['\"]\\)",
-      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)"
+      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)",
+      "^\\s*export\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]"
     ],
     "exports": [
-      "^\\s*export\\s+(?:default\\s+)?(?:class|function|const|let|var)\\s+(\\w+)",
+      "^\\s*export\\s+default\\s+(function|const|class)\\s+(\\w+)",
+      "^\\s*export\\s+default\\s+(\\w+)",
+      "^\\s*export\\s+(function|const|let|var|class)\\s+(\\w+)",
+      "^\\s*export\\s+\\{([^}]+)\\}",
       "^\\s*module\\.exports\\s*=",
       "^\\s*exports\\.(\\w+)\\s*="
     ],
     "functions": [
       "function\\s+(\\w+)\\s*\\(",
-      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
-      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>",
+      "(?:export\\s+)?(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
+      "(?:export\\s+)?(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>",
       "(\\w+)\\s*:\\s*(?:async\\s+)?function\\s*\\(",
       "async\\s+function\\s+(\\w+)\\s*\\("
     ],
     "classes": [
       "class\\s+(\\w+)(?:\\s+extends\\s+\\w+)?\\s*\\{"
     ],
+    "constants": [
+      "(?:export\\s+)?const\\s+(\\w+)\\s*="
+    ],
     "api_endpoints": [
-      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\(['\"]([^'\"]+)['\"]",
+      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\s*\\(['\"]([^'\"]+)['\"]",
       "\\.route\\(['\"]([^'\"]+)['\"]\\)",
-      "app\\.use\\(['\"]([^'\"]+)['\"]"
+      "app\\.use\\(['\"]([^'\"]+)['\"]",
+      "fetch\\(['\"]([^'\"]+)['\"]",
+      "axios\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]"
     ],
     "database_queries": [
       "\\.find\\(\\{",
@@ -48,8 +58,19 @@
       "collection\\(['\"]([^'\"]+)['\"]\\)"
     ],
     "react_components": [
-      "(?:function|const)\\s+(\\w+)\\s*=?\\s*\\([^)]*\\)\\s*(?::|=>)\\s*(?:\\{[^}]*return\\s*\\(|\\()",
+      "(?:export\\s+)?(?:default\\s+)?function\\s+(\\w+)\\s*\\([^)]*\\)\\s*\\{",
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>",
       "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)"
+    ],
+    "hooks": [
+      "useState\\(",
+      "useEffect\\(",
+      "useContext\\(",
+      "useReducer\\(",
+      "useCallback\\(",
+      "useMemo\\(",
+      "useRef\\(",
+      "use(\\w+)\\("
     ]
   }
 }

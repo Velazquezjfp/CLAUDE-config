@@ -1,0 +1,331 @@
+"""
+Absences router - Full CRUD for absences table with pagination
+Connects to EXTERNAL database (data tables)
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional
+from datetime import date
+import math
+
+from database import get_external_db
+from models import PaginatedResponse
+from config import settings
+
+
+router = APIRouter(prefix="/absences", tags=["Absences"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_absences(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    type_filter: Optional[str] = Query(None, description="Filter by absence type"),
+    status_filter: Optional[str] = Query(None, description="Filter by status"),
+    start_date: Optional[date] = Query(None, description="Filter by start date (from)"),
+    end_date: Optional[date] = Query(None, description="Filter by end date (to)"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all absences with pagination and optional filters.
+    Data comes from external database.
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause dynamically
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if resource_id:
+            where_clauses.append("resource_id = :resource_id")
+            params["resource_id"] = resource_id
+
+        if type_filter:
+            where_clauses.append("type = :type_filter")
+            params["type_filter"] = type_filter
+
+        if status_filter:
+            where_clauses.append("status = :status_filter")
+            params["status_filter"] = status_filter
+
+        if start_date:
+            where_clauses.append("start_date >= :start_date")
+            params["start_date"] = start_date
+
+        if end_date:
+            where_clauses.append("end_date <= :end_date")
+            params["end_date"] = end_date
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM absences {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch absences - updated columns for external DB
+        query = text(f"""
+            SELECT
+                absence_id, resource_id, family_name, type,
+                start_date, end_date, number_of_days, status, notes,
+                created_at, created_by, updated_at, updated_by
+            FROM absences
+            {where_sql}
+            ORDER BY start_date DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        absences = [dict(row._mapping) for row in rows]
+
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=absences,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching absences: {str(e)}",
+        )
+
+
+@router.get("/{absence_id}")
+async def get_absence(
+    absence_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single absence by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                absence_id, resource_id, family_name, type,
+                start_date, end_date, number_of_days, status, notes,
+                created_at, created_by, updated_at, updated_by
+            FROM absences
+            WHERE absence_id = :absence_id
+        """)
+
+        result = await db.execute(query, {"absence_id": absence_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Absence with ID {absence_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching absence: {str(e)}",
+        )
+
+
+@router.get("/resource/{resource_id}")
+async def get_absences_by_resource(
+    resource_id: str,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get all absences for a specific resource.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                absence_id, resource_id, family_name, type,
+                start_date, end_date, number_of_days, status, notes,
+                created_at, created_by, updated_at, updated_by
+            FROM absences
+            WHERE resource_id = :resource_id
+            ORDER BY start_date DESC
+        """)
+
+        result = await db.execute(query, {"resource_id": resource_id})
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching absences by resource: {str(e)}",
+        )
+
+
+@router.post("/", status_code=201)
+async def create_absence(
+    absence: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new absence in external database.
+    Required fields: resource_id, family_name, type, start_date, end_date
+    """
+    try:
+        # Validate required fields
+        required_fields = ["resource_id", "family_name", "type", "start_date", "end_date"]
+        for field in required_fields:
+            if field not in absence or absence[field] is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required field: {field}",
+                )
+
+        insert_query = text("""
+            INSERT INTO absences (
+                resource_id, family_name, type, start_date, end_date,
+                number_of_days, status, notes, created_by
+            ) VALUES (
+                :resource_id, :family_name, :type, :start_date, :end_date,
+                :number_of_days, :status, :notes, :created_by
+            )
+            RETURNING *
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "resource_id": absence.get("resource_id"),
+                "family_name": absence.get("family_name"),
+                "type": absence.get("type"),
+                "start_date": absence.get("start_date"),
+                "end_date": absence.get("end_date"),
+                "number_of_days": absence.get("number_of_days"),
+                "status": absence.get("status"),
+                "notes": absence.get("notes"),
+                "created_by": absence.get("created_by", "api"),
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating absence: {str(e)}",
+        )
+
+
+@router.put("/{absence_id}")
+async def update_absence(
+    absence_id: int,
+    absence: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing absence in external database.
+    """
+    try:
+        # Check if absence exists
+        check_query = text("SELECT absence_id FROM absences WHERE absence_id = :absence_id")
+        check_result = await db.execute(check_query, {"absence_id": absence_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Absence with ID {absence_id} not found",
+            )
+
+        # Build UPDATE clause dynamically
+        update_fields = []
+        params = {"absence_id": absence_id}
+
+        # Simple fields
+        simple_fields = [
+            "resource_id", "family_name", "type", "start_date", "end_date",
+            "number_of_days", "status", "notes"
+        ]
+
+        for field in simple_fields:
+            if field in absence and absence[field] is not None:
+                update_fields.append(f"{field} = :{field}")
+                params[field] = absence[field]
+
+        # Add updated_by
+        update_fields.append("updated_by = :updated_by")
+        params["updated_by"] = absence.get("updated_by", "api")
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE absences
+            SET {', '.join(update_fields)}
+            WHERE absence_id = :absence_id
+            RETURNING *
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating absence: {str(e)}",
+        )
+
+
+@router.delete("/{absence_id}", status_code=204)
+async def delete_absence(
+    absence_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete an absence from external database.
+    """
+    try:
+        # Check if absence exists
+        check_query = text("SELECT absence_id FROM absences WHERE absence_id = :absence_id")
+        check_result = await db.execute(check_query, {"absence_id": absence_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Absence with ID {absence_id} not found",
+            )
+
+        delete_query = text("DELETE FROM absences WHERE absence_id = :absence_id")
+        await db.execute(delete_query, {"absence_id": absence_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting absence: {str(e)}",
+        )

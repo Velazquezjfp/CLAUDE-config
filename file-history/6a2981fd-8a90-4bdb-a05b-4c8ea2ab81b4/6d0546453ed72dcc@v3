@@ -1,0 +1,280 @@
+"""
+API Client for fetching data from CFF Database
+All data is fetched from the live database at runtime
+"""
+import httpx
+from typing import Dict, List, Optional
+import sys
+sys.path.append('..')
+from config import API_BASE_URL
+
+
+class CFFApiClient:
+    """Client for interacting with CFF Database API"""
+
+    def __init__(self, base_url: str = API_BASE_URL):
+        self.base_url = base_url
+        self.client = httpx.Client(timeout=30.0)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
+
+    # ==================== Demands (formerly Requests) ====================
+
+    def get_demands(self, limit: Optional[int] = None,
+                    status: Optional[str] = None) -> Dict:
+        """
+        Fetch demands/tasks from database
+        Handles pagination automatically to fetch ALL demands
+        """
+        params = {
+            'per_page': 200  # Fetch 200 items per page for efficiency
+        }
+        if status:
+            params['assignment_status'] = status
+
+        all_demands = []
+        page = 1
+        total_pages = 1
+
+        # Fetch all pages
+        while page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/demands/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            # Update total_pages from first response
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+                print(f"  Fetching {data.get('total', 0)} demands across {total_pages} pages...")
+
+            # Parse qualification strings into arrays for solver
+            for demand in data['data']:
+                # Parse comma-separated qualification string into array
+                req_quals = demand.get('required_qualifications', '')
+                if req_quals and isinstance(req_quals, str):
+                    demand['required_qualifications'] = [q.strip() for q in req_quals.split(',') if q.strip()]
+                elif not req_quals:
+                    demand['required_qualifications'] = []
+
+            all_demands.extend(data['data'])
+            print(f"  Page {page}/{total_pages} fetched ({len(all_demands)} demands so far)")
+            page += 1
+
+        # If limit specified, slice results
+        if limit:
+            all_demands = all_demands[:limit]
+
+        # Return in same format as API
+        return {
+            'data': all_demands,
+            'total': len(all_demands),
+            'page': 1,
+            'per_page': len(all_demands)
+        }
+
+    def get_demand_by_id(self, demand_id: str) -> Dict:
+        """Fetch specific demand by ID"""
+        response = self.client.get(f"{self.base_url}/demands/{demand_id}")
+        response.raise_for_status()
+        demand = response.json()
+
+        # MAP FIELDS
+        demand['request_id'] = demand['id']
+        demand['start_datetime'] = demand['shift_start_time']
+        demand['end_datetime'] = demand['shift_finish_time']
+
+        return demand
+
+    # Legacy method names for backward compatibility
+    def get_requests(self, limit: Optional[int] = None,
+                     status: Optional[str] = None) -> Dict:
+        """Legacy method - redirects to get_demands()"""
+        return self.get_demands(limit, status)
+
+    def get_request_by_id(self, request_id: str) -> Dict:
+        """Legacy method - redirects to get_demand_by_id()"""
+        return self.get_demand_by_id(request_id)
+
+    # ==================== Resources ====================
+
+    def get_resources(self, limit: Optional[int] = None,
+                      resource_type: Optional[str] = None) -> Dict:
+        """
+        Fetch resources from database
+        Handles pagination automatically to fetch ALL resources
+        """
+        params = {
+            'per_page': 200  # Fetch 200 items per page for efficiency
+        }
+        if resource_type:
+            params['type'] = resource_type
+
+        all_resources = []
+        page = 1
+        total_pages = 1
+
+        # Fetch all pages
+        while page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/resources/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            # Update total_pages from first response
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+                print(f"  Fetching {data.get('total', 0)} resources across {total_pages} pages...")
+
+            all_resources.extend(data['data'])
+            print(f"  Page {page}/{total_pages} fetched ({len(all_resources)} resources so far)")
+            page += 1
+
+        # If limit specified, slice results
+        if limit:
+            all_resources = all_resources[:limit]
+
+        # Return in same format as API
+        return {
+            'data': all_resources,
+            'total': len(all_resources),
+            'page': 1,
+            'per_page': len(all_resources)
+        }
+
+    def get_resource_by_id(self, resource_id: str) -> Dict:
+        """Fetch specific resource by ID"""
+        response = self.client.get(f"{self.base_url}/resources/{resource_id}")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Absences ====================
+
+    def get_absences(self, resource_id: Optional[str] = None) -> Dict:
+        """Fetch absences from database"""
+        params = {}
+        if resource_id:
+            params['resource_id'] = resource_id
+
+        response = self.client.get(f"{self.base_url}/absences/", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Assignments ====================
+
+    def get_assignments(self, status: Optional[str] = None) -> Dict:
+        """Fetch existing assignments"""
+        params = {}
+        if status:
+            params['status'] = status
+
+        response = self.client.get(f"{self.base_url}/assignments/", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Legal Constraints ====================
+
+    def get_legal_constraint(self, constraint_name: str) -> Dict:
+        """Fetch legal constraint by name"""
+        params = {'constraint_name': constraint_name}
+        response = self.client.get(f"{self.base_url}/legal-constraints/", params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Find the specific constraint
+        for constraint in data:
+            if constraint['constraint_name'] == constraint_name:
+                return constraint
+
+        raise ValueError(f"Constraint {constraint_name} not found")
+
+    def get_all_legal_constraints(self) -> List[Dict]:
+        """Fetch all legal constraints"""
+        response = self.client.get(f"{self.base_url}/legal-constraints/")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Company Policy Constraints ====================
+
+    def get_company_policy(self, policy_name: str,
+                          planning_mode: Optional[str] = None) -> Dict:
+        """Fetch company policy constraint by name (DYNAMIC)"""
+        params = {'policy_name': policy_name}
+        if planning_mode:
+            params['planning_mode'] = planning_mode
+
+        response = self.client.get(f"{self.base_url}/company-policy-constraints/",
+                                  params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Find the specific policy
+        for policy in data:
+            if policy['policy_name'] == policy_name:
+                return policy
+
+        raise ValueError(f"Policy {policy_name} not found")
+
+    def get_all_company_policies(self) -> List[Dict]:
+        """Fetch all company policies"""
+        response = self.client.get(f"{self.base_url}/company-policy-constraints/")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Utility Methods ====================
+
+    def fetch_constraint_values(self, legal_constraint_name: str,
+                               company_policy_name: str,
+                               planning_mode: Optional[str] = None) -> tuple:
+        """
+        Fetch both legal and company constraint values
+        Returns: (legal_constraint, company_policy)
+        """
+        legal = self.get_legal_constraint(legal_constraint_name)
+        company = self.get_company_policy(company_policy_name, planning_mode)
+        return legal, company
+
+    def fetch_test_dataset(self, num_requests: int = 2,
+                          num_resources: int = 3) -> Dict:
+        """
+        Fetch a small test dataset for initial testing
+        Returns: Dict with requests, resources, absences
+
+        Note: API doesn't respect limit param, so we manually slice results
+        """
+        # Fetch all data and manually limit (API doesn't respect limit parameter)
+        requests_data = self.get_requests()
+        requests_data['data'] = requests_data['data'][:num_requests]
+        requests_data['total'] = len(requests_data['data'])
+
+        resources_data = self.get_resources()
+        resources_data['data'] = resources_data['data'][:num_resources]
+        resources_data['total'] = len(resources_data['data'])
+
+        # Fetch absences for selected resources
+        resource_ids = [r['resource_id'] for r in resources_data['data']]
+        all_absences = []
+        for resource_id in resource_ids:
+            absences = self.get_absences(resource_id=resource_id)
+            all_absences.extend(absences.get('data', []))
+
+        return {
+            'requests': requests_data,
+            'resources': resources_data,
+            'absences': {'data': all_absences, 'total': len(all_absences)}
+        }
+
+
+# Singleton instance for convenience
+_client_instance = None
+
+def get_client() -> CFFApiClient:
+    """Get or create singleton API client"""
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = CFFApiClient()
+    return _client_instance

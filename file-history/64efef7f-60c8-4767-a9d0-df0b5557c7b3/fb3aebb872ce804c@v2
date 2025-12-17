@@ -1,0 +1,158 @@
+"""
+Base Analyzer Class for Constraints
+All constraint analyzers must inherit from this class and implement the required methods
+"""
+from abc import ABC, abstractmethod
+from typing import Dict, List, Any
+
+
+class ConstraintAnalyzer(ABC):
+    """
+    Base class for constraint-specific analyzers
+
+    Each constraint (LC_01, LC_02, etc.) should have its own analyzer
+    that inherits from this class and implements all abstract methods.
+    """
+
+    def __init__(self, constraint_id: str, constraint_name: str):
+        """
+        Initialize the analyzer
+
+        Args:
+            constraint_id: Constraint identifier (e.g., "LC_01")
+            constraint_name: Human-readable name (e.g., "max_weekly_hours")
+        """
+        self.constraint_id = constraint_id
+        self.constraint_name = constraint_name
+
+    @abstractmethod
+    def analyze_violations(self,
+                          solution,
+                          data,
+                          constraints,
+                          violation_metadata: List[Dict]) -> Dict[str, Any]:
+        """
+        Analyze violations for this specific constraint
+
+        Args:
+            solution: Solved model with assignments
+            data: PreprocessedData object
+            constraints: ConstraintValues object
+            violation_metadata: List of violation metadata from constraint module
+
+        Returns:
+            {
+                "constraint_id": str,
+                "constraint_name": str,
+                "total_violations": int,
+                "total_violation_amount": float,
+                "affected_resources": int,
+                "severity_breakdown": {
+                    "LOW": int,
+                    "MEDIUM": int,
+                    "HIGH": int
+                },
+                "detailed_violations": [
+                    {
+                        "resource_id": str,
+                        "total_violations": int,
+                        "violations": [
+                            {
+                                "context": {},  # Constraint-specific (week, day, etc.)
+                                "legal_limit": float,
+                                "company_limit": float,
+                                "actual_value": float,
+                                "violation_amount": float,
+                                "severity": "LOW|MEDIUM|HIGH",
+                                "affected_assignments": [request_ids],
+                                "how_to_fix": [str]
+                            }
+                        ]
+                    }
+                ]
+            }
+        """
+        pass
+
+    @abstractmethod
+    def check_would_violate(self,
+                           simulated_assignment: Dict,
+                           existing_assignments: List[Dict],
+                           data,
+                           constraints) -> Dict[str, Any]:
+        """
+        Check if adding this assignment would violate the constraint
+        Used for training impact analysis and resource capacity checks
+
+        Args:
+            simulated_assignment: The assignment to test
+                {
+                    'resource_id': str,
+                    'request_id': str,
+                    'start': datetime,
+                    'end': datetime,
+                    'duration_hours': float
+                }
+            existing_assignments: Current assignments for this resource
+            data: PreprocessedData object
+            constraints: ConstraintValues object
+
+        Returns:
+            {
+                "would_violate": bool,
+                "violation_type": "legal|company|none",
+                "violation_amount": float,
+                "reason": str,
+                "details": {}  # Constraint-specific details
+            }
+        """
+        pass
+
+    @abstractmethod
+    def suggest_weight_adjustment(self,
+                                  violations: Dict) -> Dict[str, Any]:
+        """
+        Suggest weight adjustments to reduce violations
+
+        Args:
+            violations: Output from analyze_violations()
+
+        Returns:
+            {
+                "constraint_id": str,
+                "current_weight": float,
+                "suggested_adjustments": [
+                    {
+                        "new_weight": float,
+                        "expected_impact": str,
+                        "trade_offs": str
+                    }
+                ]
+            }
+        """
+        pass
+
+    def classify_severity(self,
+                         violation_amount: float,
+                         legal_limit: float,
+                         company_limit: float) -> str:
+        """
+        Classify violation severity
+
+        Args:
+            violation_amount: Amount of violation
+            legal_limit: Legal constraint limit
+            company_limit: Company policy limit
+
+        Returns:
+            "LOW" | "MEDIUM" | "HIGH"
+        """
+        # Percentage over company limit
+        pct_over = (violation_amount / company_limit) * 100 if company_limit > 0 else 0
+
+        if pct_over < 10:
+            return "LOW"
+        elif pct_over < 20:
+            return "MEDIUM"
+        else:
+            return "HIGH"

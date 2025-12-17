@@ -1,0 +1,156 @@
+2025-11-19T10:45:03.302Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/CFF/solver_v2/.claude/settings.local.json...
+2025-11-19T10:45:03.329Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-11-19T10:45:03.329Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-11-19T10:45:03.329Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-11-19T10:45:03.329Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-11-19T10:45:03.329Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-11-19T10:45:03.341Z [DEBUG] Applying permission update: Adding 4 allow rule(s) to destination 'localSettings': ["Bash(python main.py:*)","Bash(python visualize_calendar.py:*)","Bash(curl:*)","Bash(python3:*)"]
+2025-11-19T10:45:03.342Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-11-19T10:45:03.343Z [DEBUG] Total LSP servers loaded: 0
+2025-11-19T10:45:03.466Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-11-19T10:45:03.466Z [DEBUG] LSP manager initialized with 0 servers
+2025-11-19T10:45:03.610Z [DEBUG] LSP server manager initialized successfully
+2025-11-19T10:45:03.610Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-11-19T10:45:03.658Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/CFF/solver_v2/.claude/skills
+2025-11-19T10:45:03.658Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-11-19T10:45:03.718Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-11-19T10:45:03.718Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-11-19T10:45:03.718Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-11-19T10:45:03.719Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1763549103718-z1ncv5.sh
+2025-11-19T10:45:03.719Z [DEBUG] Shell binary exists: true
+2025-11-19T10:45:03.719Z [DEBUG] Execution timeout: 10000ms
+2025-11-19T10:45:03.722Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json.tmp.28096.1763549103722
+2025-11-19T10:45:03.727Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-11-19T10:45:03.727Z [DEBUG] Renaming /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json.tmp.28096.1763549103722 to /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json
+2025-11-19T10:45:03.727Z [DEBUG] File /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json written atomically
+2025-11-19T10:45:03.732Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549103732
+2025-11-19T10:45:03.732Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:03.736Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:03.736Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:03.736Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549103732 to /home/javiervel/.claude.json
+2025-11-19T10:45:03.736Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:03.742Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-11-19T10:45:03.742Z [DEBUG] Total plugin skills loaded: 0
+2025-11-19T10:45:03.742Z [DEBUG] Total plugin commands loaded: 0
+2025-11-19T10:45:03.742Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-11-19T10:45:03.744Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-11-19T10:45:03.746Z [DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+2025-11-19T10:45:03.779Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-11-19T10:45:03.780Z [DEBUG] Shell snapshot created successfully (4888 bytes)
+2025-11-19T10:45:03.792Z [DEBUG] Total plugin agents loaded: 0
+2025-11-19T10:45:03.828Z [DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+2025-11-19T10:45:03.833Z [DEBUG] MCP server "knowledge-graph": Starting connection with timeout of 30000ms
+2025-11-19T10:45:03.836Z [DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+2025-11-19T10:45:03.841Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549103841
+2025-11-19T10:45:03.841Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:03.845Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:03.845Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:03.845Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549103841 to /home/javiervel/.claude.json
+2025-11-19T10:45:03.845Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:03.854Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-11-19T10:45:03.854Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:03.854Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-11-19T10:45:03.998Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549103998
+2025-11-19T10:45:03.998Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:04.002Z [DEBUG] Temp file written successfully, size: 72014 bytes
+2025-11-19T10:45:04.002Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:04.002Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549103998 to /home/javiervel/.claude.json
+2025-11-19T10:45:04.002Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:04.011Z [DEBUG] performStartupChecks called
+2025-11-19T10:45:04.011Z [DEBUG] Starting background plugin installations
+2025-11-19T10:45:04.012Z [DEBUG] performBackgroundPluginInstallations called
+2025-11-19T10:45:04.608Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-11-19T10:45:04.614Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-11-19T10:45:04.639Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-11-19T10:45:04.639Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:04.639Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-11-19T10:45:04.641Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-11-19T10:45:04.641Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:04.641Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-11-19T10:45:04.641Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-11-19T10:45:04.661Z [DEBUG] MCP server "knowledge-graph": Successfully connected to stdio server in 829ms
+2025-11-19T10:45:04.661Z [DEBUG] MCP server "knowledge-graph": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph","version":"1.13.1"}}
+2025-11-19T10:45:04.663Z [DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 827ms
+2025-11-19T10:45:04.663Z [DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+2025-11-19T10:45:04.665Z [ERROR] MCP server "knowledge-graph" Server stderr: [11/19/25 11:45:04] INFO     Processing request of type            server.py:624
+                             ListToolsRequest
+2025-11-19T10:45:04.667Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [11/19/25 11:45:04] INFO     Processing request of type            server.py:624
+                             ListToolsRequest
+2025-11-19T10:45:04.668Z [ERROR] MCP server "knowledge-graph" Server stderr: INFO     Processing request of type            server.py:624
+                             ListPromptsRequest
+2025-11-19T10:45:04.669Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: INFO     Processing request of type            server.py:624
+                             ListPromptsRequest
+2025-11-19T10:45:04.669Z [ERROR] MCP server "knowledge-graph" Server stderr: INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+2025-11-19T10:45:04.676Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+2025-11-19T10:45:04.695Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549104695
+2025-11-19T10:45:04.696Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:04.699Z [DEBUG] Temp file written successfully, size: 72014 bytes
+2025-11-19T10:45:04.699Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:04.699Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549104695 to /home/javiervel/.claude.json
+2025-11-19T10:45:04.699Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:04.701Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549104701
+2025-11-19T10:45:04.701Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:04.704Z [DEBUG] Temp file written successfully, size: 72014 bytes
+2025-11-19T10:45:04.704Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:04.704Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549104701 to /home/javiervel/.claude.json
+2025-11-19T10:45:04.704Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:04.708Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549104708
+2025-11-19T10:45:04.708Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:04.711Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:04.711Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:04.711Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549104708 to /home/javiervel/.claude.json
+2025-11-19T10:45:04.712Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:04.715Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549104715
+2025-11-19T10:45:04.716Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:04.725Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:04.726Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:04.726Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549104715 to /home/javiervel/.claude.json
+2025-11-19T10:45:04.726Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:05.320Z [ERROR] MCP server "context7" Server stderr: Context7 Documentation MCP Server running on stdio
+2025-11-19T10:45:05.320Z [DEBUG] MCP server "context7": Successfully connected to stdio server in 1503ms
+2025-11-19T10:45:05.320Z [DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.29"}}
+2025-11-19T10:45:05.333Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-11-19T10:45:05.360Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549105360
+2025-11-19T10:45:05.360Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:05.364Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:05.364Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:05.364Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549105360 to /home/javiervel/.claude.json
+2025-11-19T10:45:05.364Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:05.372Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 40ms
+2025-11-19T10:45:05.372Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.44"}}
+2025-11-19T10:45:06.341Z [DEBUG] Stream started - received first chunk
+2025-11-19T10:45:06.568Z [DEBUG] Skills and commands included in Skill tool:
+2025-11-19T10:45:06.568Z [DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-11-19T10:45:08.172Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-11-19T10:45:08.172Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:08.172Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-11-19T10:45:08.886Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-11-19T10:45:09.212Z [DEBUG] Stream started - received first chunk
+2025-11-19T10:45:10.709Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-11-19T10:45:10.709Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:10.709Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-11-19T10:45:13.609Z [DEBUG] Getting matching hook commands for SessionStart with query: resume
+2025-11-19T10:45:13.609Z [DEBUG] Found 0 hook matchers in settings
+2025-11-19T10:45:13.609Z [DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+2025-11-19T10:45:13.611Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json.tmp.28096.1763549113611
+2025-11-19T10:45:13.611Z [DEBUG] Preserving file permissions: 100600
+2025-11-19T10:45:13.615Z [DEBUG] Temp file written successfully, size: 179 bytes
+2025-11-19T10:45:13.615Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:13.615Z [DEBUG] Renaming /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json.tmp.28096.1763549113611 to /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json
+2025-11-19T10:45:13.615Z [DEBUG] File /home/javiervel/.claude/todos/deb29aab-84bf-4100-b6ac-fe41360ea8b8-agent-deb29aab-84bf-4100-b6ac-fe41360ea8b8.json written atomically
+2025-11-19T10:45:13.619Z [DEBUG] FileHistory: Copied backup fe659c5659b5beee@v1 from session 64efef7f-60c8-4767-a9d0-df0b5557c7b3 to deb29aab-84bf-4100-b6ac-fe41360ea8b8
+2025-11-19T10:45:13.619Z [DEBUG] FileHistory: Copied backup fe659c5659b5beee@v2 from session 64efef7f-60c8-4767-a9d0-df0b5557c7b3 to deb29aab-84bf-4100-b6ac-fe41360ea8b8
+2025-11-19T10:45:13.631Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549113631
+2025-11-19T10:45:13.631Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:13.636Z [DEBUG] Temp file written successfully, size: 72119 bytes
+2025-11-19T10:45:13.636Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:13.636Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549113631 to /home/javiervel/.claude.json
+2025-11-19T10:45:13.636Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-11-19T10:45:13.643Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.28096.1763549113643
+2025-11-19T10:45:13.643Z [DEBUG] Preserving file permissions: 100644
+2025-11-19T10:45:13.647Z [DEBUG] Temp file written successfully, size: 72014 bytes
+2025-11-19T10:45:13.647Z [DEBUG] Applied original permissions to temp file
+2025-11-19T10:45:13.647Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.28096.1763549113643 to /home/javiervel/.claude.json
+2025-11-19T10:45:13.647Z [DEBUG] File /home/javiervel/.claude.json written atomically

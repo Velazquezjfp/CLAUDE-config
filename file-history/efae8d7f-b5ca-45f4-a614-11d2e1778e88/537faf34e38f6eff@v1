@@ -1,0 +1,743 @@
+"""
+Calendar Visualization Tool for CFF Solver
+Generates an interactive HTML calendar showing:
+1. Resource availability (blocked days: holidays, training, assigned)
+2. Assignment schedule with resource allocations
+"""
+import json
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List
+from api.client import get_client
+from config import TEST_MODE, TEST_NUM_REQUESTS, TEST_NUM_RESOURCES
+
+
+def load_solution(solution_path="solver_v2/output/solution.json"):
+    """Load the solver solution from JSON file"""
+    try:
+        with open(solution_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Solution file not found at {solution_path}")
+        return None
+
+
+def fetch_data():
+    """Fetch current data from the database"""
+    client = get_client()
+
+    if TEST_MODE:
+        dataset = client.fetch_test_dataset(
+            num_requests=TEST_NUM_REQUESTS,
+            num_resources=TEST_NUM_RESOURCES
+        )
+        requests = dataset['requests']['data']
+        resources = dataset['resources']['data']
+        absences = dataset['absences']['data']
+    else:
+        requests = client.get_requests()['data']
+        resources = client.get_resources()['data']
+        absences = client.get_absences()['data']
+
+    return requests, resources, absences
+
+
+def get_date_range(requests, absences):
+    """Determine the overall date range for the calendar"""
+    dates = []
+
+    # Get dates from requests
+    for req in requests:
+        start_str = req['shift_start_time']
+        end_str = req['shift_finish_time']
+
+        # Ensure timezone-aware: handle both 'Z' and already UTC formats
+        if isinstance(start_str, str):
+            start = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+        else:
+            start = start_str  # Already datetime
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+
+        if isinstance(end_str, str):
+            end = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+        else:
+            end = end_str  # Already datetime
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+
+        dates.extend([start, end])
+
+    # Get dates from absences
+    for absence in absences:
+        start_str = absence.get('start_date', '')
+        end_str = absence.get('end_date', '')
+
+        if not start_str or not end_str:
+            continue
+
+        # Handle both timezone-aware and naive strings
+        if 'T' not in start_str:
+            start_str = start_str + 'T00:00:00Z'
+        if 'T' not in end_str:
+            end_str = end_str + 'T23:59:59Z'
+
+        start = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+        end = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+
+        # Ensure timezone-aware
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+
+        dates.extend([start, end])
+
+    if not dates:
+        # Default to current week if no data
+        return datetime.now(timezone.utc), datetime.now(timezone.utc) + timedelta(days=7)
+
+    return min(dates).replace(hour=0, minute=0, second=0, microsecond=0), \
+           max(dates).replace(hour=23, minute=59, second=59, microsecond=999999)
+
+
+def generate_html_calendar(requests, resources, absences, solution=None):
+    """Generate an interactive HTML calendar"""
+
+    start_date, end_date = get_date_range(requests, absences)
+
+    # Build resource availability map
+    resource_map = {}
+    for resource in resources:
+        res_id = resource['resource_id']
+        resource_map[res_id] = {
+            'name': f"{res_id}",
+            'type': resource.get('type', 'Unknown'),
+            'contract': resource.get('contract', 'Unknown'),
+            'blocked_dates': {},
+            'assignments': []
+        }
+
+    # Add absences to resource map
+    for absence in absences:
+        res_id = absence.get('resource_id')
+        if res_id and res_id in resource_map:
+            start_str = absence.get('start_date', '')
+            end_str = absence.get('end_date', '')
+
+            if not start_str or not end_str:
+                continue
+
+            # Handle both timezone-aware and naive strings
+            if 'T' not in start_str:
+                start_str = start_str + 'T00:00:00Z'
+            if 'T' not in end_str:
+                end_str = end_str + 'T23:59:59Z'
+
+            start = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+            end = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+
+            # Mark each day as blocked
+            current = start
+            while current <= end:
+                date_key = current.strftime('%Y-%m-%d')
+                resource_map[res_id]['blocked_dates'][date_key] = {
+                    'type': absence.get('type', 'Absence'),
+                    'reason': absence.get('notes', 'N/A')
+                }
+                current += timedelta(days=1)
+
+    # Add assignments if solution provided
+    if solution and 'assignments' in solution:
+        for assignment in solution['assignments']:
+            res_id = assignment['resource_id']
+            if res_id in resource_map:
+                resource_map[res_id]['assignments'].append({
+                    'request_id': assignment['request_id'],
+                    'start': assignment['start'],
+                    'end': assignment['end'],
+                    'duration': assignment['duration_hours']
+                })
+
+    # Build request list for calendar
+    request_list = []
+    for req in requests:
+        # Calculate duration from start/end times if not provided
+        start_dt = datetime.fromisoformat(req['shift_start_time'].replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(req['shift_finish_time'].replace('Z', '+00:00'))
+        duration_hours = (end_dt - start_dt).total_seconds() / 3600
+
+        request_list.append({
+            'id': req['id'],
+            'start': req['shift_start_time'],
+            'end': req['shift_finish_time'],
+            'duration': duration_hours,
+            'status': req.get('assignment_status', 'open')
+        })
+
+    # Generate HTML
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFF Solver - Calendar Visualization</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }}
+
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+
+        h1 {{
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }}
+
+        .summary {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+
+        .summary h2 {{
+            color: #34495e;
+            margin-bottom: 15px;
+        }}
+
+        .stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }}
+
+        .stat-card {{
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+        }}
+
+        .stat-card .label {{
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }}
+
+        .stat-card .value {{
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }}
+
+        .tabs {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }}
+
+        .tab {{
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }}
+
+        .tab.active {{
+            background: #3498db;
+            color: white;
+        }}
+
+        .tab:hover:not(.active) {{
+            background: #ecf0f1;
+        }}
+
+        .tab-content {{
+            display: none;
+        }}
+
+        .tab-content.active {{
+            display: block;
+        }}
+
+        .section {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+
+        .section h3 {{
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }}
+
+        .resource-grid {{
+            display: grid;
+            gap: 15px;
+        }}
+
+        .resource-card {{
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            background: #fafafa;
+        }}
+
+        .resource-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }}
+
+        .resource-name {{
+            font-weight: bold;
+            color: #2c3e50;
+        }}
+
+        .resource-info {{
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }}
+
+        .timeline {{
+            margin-top: 10px;
+        }}
+
+        .day-row {{
+            display: flex;
+            gap: 2px;
+            margin-bottom: 5px;
+            align-items: center;
+        }}
+
+        .day-label {{
+            width: 80px;
+            font-size: 0.75rem;
+            color: #7f8c8d;
+        }}
+
+        .day-cell {{
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+
+        .day-cell:hover {{
+            transform: scale(1.1);
+            z-index: 10;
+        }}
+
+        .day-cell.available {{
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }}
+
+        .day-cell.blocked {{
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }}
+
+        .day-cell.assigned {{
+            background: #cce5ff;
+            border-color: #b8daff;
+        }}
+
+        .day-cell.weekend {{
+            background: #e9ecef;
+        }}
+
+        .legend {{
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }}
+
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        .legend-color {{
+            width: 20px;
+            height: 20px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }}
+
+        .request-list {{
+            display: grid;
+            gap: 10px;
+        }}
+
+        .request-item {{
+            padding: 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+        }}
+
+        .request-item.night {{
+            border-left-color: #34495e;
+        }}
+
+        .request-id {{
+            font-weight: bold;
+            color: #2c3e50;
+        }}
+
+        .request-time {{
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }}
+
+        .assignment-badge {{
+            display: inline-block;
+            padding: 4px 8px;
+            background: #d1ecf1;
+            color: #0c5460;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-top: 5px;
+        }}
+
+        .tooltip {{
+            position: relative;
+        }}
+
+        .tooltip .tooltiptext {{
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+        }}
+
+        .tooltip:hover .tooltiptext {{
+            visibility: visible;
+            opacity: 1;
+        }}
+
+        .calendar-header {{
+            display: flex;
+            gap: 2px;
+            margin-bottom: 5px;
+        }}
+
+        .calendar-date {{
+            width: 30px;
+            height: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: #7f8c8d;
+            font-weight: bold;
+        }}
+
+        .calendar-date .day {{
+            font-size: 0.7rem;
+        }}
+
+        .calendar-date .date {{
+            font-size: 0.9rem;
+            color: #2c3e50;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CFF Solver - Calendar Visualization</h1>
+
+        <div class="summary">
+            <h2>Overview</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="label">Planning Period</div>
+                    <div class="value">{start_date.strftime('%b %d')} - {end_date.strftime('%b %d')}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Total Resources</div>
+                    <div class="value">{len(resources)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Total Requests</div>
+                    <div class="value">{len(requests)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Assignments</div>
+                    <div class="value">{len(solution.get('assignments', [])) if solution else 0}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(event, 'resources')">Resource Availability</button>
+            <button class="tab" onclick="switchTab(event, 'assignments')">Assignments</button>
+            <button class="tab" onclick="switchTab(event, 'requests')">All Requests</button>
+        </div>
+
+        <!-- Resource Availability Tab -->
+        <div id="resources" class="tab-content active">
+            <div class="section">
+                <h3>Resource Availability Calendar</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color available"></div>
+                        <span>Available</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color blocked"></div>
+                        <span>Blocked (Holiday/Training)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color assigned"></div>
+                        <span>Assigned</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color weekend"></div>
+                        <span>Weekend</span>
+                    </div>
+                </div>
+
+                <div class="resource-grid">
+"""
+
+    # Generate calendar dates
+    date_list = []
+    current = start_date
+    while current <= end_date:
+        date_list.append(current)
+        current += timedelta(days=1)
+
+    # Add calendar header (dates)
+    html += '                    <div class="calendar-header">\n'
+    html += '                        <div style="width: 80px;"></div>\n'
+    for date in date_list:
+        day_name = date.strftime('%a')[:2]
+        day_num = date.strftime('%d')
+        html += f'                        <div class="calendar-date"><div class="day">{day_name}</div><div class="date">{day_num}</div></div>\n'
+    html += '                    </div>\n'
+
+    # Add each resource
+    for res_id, res_data in sorted(resource_map.items()):
+        html += f"""                    <div class="resource-card">
+                        <div class="resource-header">
+                            <div class="resource-name">{res_data['name']}</div>
+                            <div class="resource-info">{res_data['type']} | {res_data['contract']}</div>
+                        </div>
+                        <div class="timeline">
+                            <div class="day-row">
+                                <div class="day-label">Status</div>
+"""
+
+        # Add day cells
+        for date in date_list:
+            date_key = date.strftime('%Y-%m-%d')
+            is_weekend = date.weekday() >= 5
+
+            # Check status
+            if date_key in res_data['blocked_dates']:
+                blocked_info = res_data['blocked_dates'][date_key]
+                css_class = 'day-cell blocked tooltip'
+                tooltip = f'<span class="tooltiptext">{blocked_info["type"]}: {blocked_info["reason"]}</span>'
+            else:
+                # Check if assigned on this date
+                assigned_on_date = any(
+                    datetime.fromisoformat(a['start'].replace('Z', '+00:00')).date() == date.date()
+                    for a in res_data['assignments']
+                )
+
+                if assigned_on_date:
+                    css_class = 'day-cell assigned tooltip'
+                    # Find assignment details
+                    assignment = next(
+                        (a for a in res_data['assignments']
+                         if datetime.fromisoformat(a['start'].replace('Z', '+00:00')).date() == date.date()),
+                        None
+                    )
+                    if assignment:
+                        tooltip = f'<span class="tooltiptext">Assigned: {assignment["request_id"]}<br>{assignment["duration"]}h</span>'
+                    else:
+                        tooltip = ''
+                elif is_weekend:
+                    css_class = 'day-cell weekend'
+                    tooltip = ''
+                else:
+                    css_class = 'day-cell available'
+                    tooltip = ''
+
+            html += f'                                <div class="{css_class}">{date.day}{tooltip}</div>\n'
+
+        html += """                            </div>
+                        </div>
+                    </div>
+"""
+
+    html += """                </div>
+            </div>
+        </div>
+
+        <!-- Assignments Tab -->
+        <div id="assignments" class="tab-content">
+            <div class="section">
+                <h3>Assignment Schedule</h3>
+"""
+
+    if solution and 'assignments' in solution:
+        html += '                <div class="request-list">\n'
+        for assignment in sorted(solution['assignments'], key=lambda x: x['start']):
+            start_dt = datetime.fromisoformat(assignment['start'].replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(assignment['end'].replace('Z', '+00:00'))
+            is_night = start_dt.hour >= 21 or start_dt.hour < 6
+
+            html += f"""                    <div class="request-item {'night' if is_night else ''}">
+                        <div class="request-id">{assignment['request_id']}</div>
+                        <div class="assignment-badge">→ {assignment['resource_id']}</div>
+                        <div class="request-time">
+                            {start_dt.strftime('%Y-%m-%d %H:%M')} - {end_dt.strftime('%Y-%m-%d %H:%M')}
+                            ({assignment['duration_hours']}h)
+                        </div>
+                    </div>
+"""
+        html += '                </div>\n'
+    else:
+        html += '                <p>No assignments found. Run the solver first.</p>\n'
+
+    html += """            </div>
+        </div>
+
+        <!-- All Requests Tab -->
+        <div id="requests" class="tab-content">
+            <div class="section">
+                <h3>All Requests</h3>
+                <div class="request-list">
+"""
+
+    for req in sorted(request_list, key=lambda x: x['start']):
+        start_dt = datetime.fromisoformat(req['start'].replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(req['end'].replace('Z', '+00:00'))
+        is_night = start_dt.hour >= 21 or start_dt.hour < 6
+
+        # Check if assigned
+        assigned_resource = None
+        if solution and 'assignments' in solution:
+            for assignment in solution['assignments']:
+                if assignment['request_id'] == req['id']:
+                    assigned_resource = assignment['resource_id']
+                    break
+
+        html += f"""                    <div class="request-item {'night' if is_night else ''}">
+                        <div class="request-id">{req['id']}</div>
+                        {f'<div class="assignment-badge">→ {assigned_resource}</div>' if assigned_resource else ''}
+                        <div class="request-time">
+                            {start_dt.strftime('%Y-%m-%d %H:%M')} - {end_dt.strftime('%Y-%m-%d %H:%M')}
+                            ({req['duration']}h) | Status: {req['status']}
+                        </div>
+                    </div>
+"""
+
+    html += """                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(evt, tabName) {
+            // Hide all tab contents
+            var tabContents = document.getElementsByClassName("tab-content");
+            for (var i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+
+            // Remove active class from all tabs
+            var tabs = document.getElementsByClassName("tab");
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+
+            // Show current tab and mark as active
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+</body>
+</html>"""
+
+    return html
+
+
+def main():
+    """Main function to generate the calendar visualization"""
+    print("\n" + "="*70)
+    print(" CFF SOLVER - CALENDAR VISUALIZATION")
+    print("="*70 + "\n")
+
+    print("[1/3] Fetching data from database...")
+    requests, resources, absences = fetch_data()
+    print(f"  Loaded {len(requests)} requests, {len(resources)} resources, {len(absences)} absences")
+
+    print("\n[2/3] Loading solution...")
+    solution = load_solution()
+    if solution:
+        print(f"  Solution status: {solution['metadata']['status']}")
+        print(f"  Assignments: {len(solution.get('assignments', []))}")
+    else:
+        print("  No solution loaded (will show resources only)")
+
+    print("\n[3/3] Generating HTML calendar...")
+    html = generate_html_calendar(requests, resources, absences, solution)
+
+    output_path = "solver_v2/output/calendar.html"
+    with open(output_path, 'w') as f:
+        f.write(html)
+
+    print(f"\n✅ Calendar saved to: {output_path}")
+    print("\nOpen the file in your browser to view the interactive calendar!")
+    print("="*70 + "\n")
+
+
+if __name__ == "__main__":
+    main()

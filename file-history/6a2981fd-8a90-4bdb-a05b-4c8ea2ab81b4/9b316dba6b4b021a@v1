@@ -1,0 +1,55 @@
+"""
+Configuration settings for CFF Planning API
+"""
+from pydantic_settings import BaseSettings
+from typing import Optional
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+
+    # API Settings
+    API_V1_STR: str = "/api/v1"
+    PROJECT_NAME: str = "CFF Personnel Planning API"
+    VERSION: str = "2.0.0"
+    DESCRIPTION: str = "REST API for CFF Personnel Planning and Resource Management System"
+
+    # Database Settings
+    DB_HOST: str = "postgres"
+    DB_PORT: int = 5432
+    DB_NAME: str = "cff_planning"
+    DB_USER: str = "cff_app_user"
+    DB_PASSWORD: str = "changeme"
+
+    # Connection Pool Settings
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+
+    # CORS Settings
+    CORS_ORIGINS: list = ["*"]
+
+    # Pagination Defaults
+    DEFAULT_PAGE_SIZE: int = 50
+    MAX_PAGE_SIZE: int = 200
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """Construct database URL"""
+        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    @property
+    def SYNC_DATABASE_URL(self) -> str:
+        """Construct sync database URL (for migrations)"""
+        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+# Global settings instance
+settings = Settings()

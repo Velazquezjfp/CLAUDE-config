@@ -1,0 +1,238 @@
+"""
+BSA Details router - Consolidated BSA information from multiple tables
+Connects to EXTERNAL database (data tables)
+Uses the get_bsa_details_json() PostgreSQL function to consolidate data from:
+- demands_list
+- demands
+- assignments
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional
+
+from database import get_external_db
+
+
+router = APIRouter(prefix="/bsa-details", tags=["BSA Details"])
+
+
+@router.get("/{bsa_id}")
+async def get_bsa_details(
+    bsa_id: str,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get consolidated BSA details by calling the get_bsa_details_json() database function.
+
+    This endpoint consolidates information from three tables:
+    - demands_list: Historical BSA records
+    - demands: Current demand/shift information
+    - assignments: Resource assignment information
+
+    Returns a JSON object with:
+    - bsa_id: The BSA identifier
+    - status: ASSIGNED, OPEN, or UNKNOWN
+    - team_id: Team reference
+    - demand_shift: Shift type from demands table
+    - assignment_calendar_type: Calendar type from assignments
+    - first_shift_start, last_shift_end: Date range from demands_list
+    - demand_shift_start_time, demand_shift_finish_time: Times from demands
+    - assignment_calendar_start, assignment_calendar_end: Times from assignments
+    - duty_station_from_code, demand_start_location_code: Location codes
+    - mandate_owner, demand_responsible_person, assignment_responsible: Responsible persons
+    - personnel: Personnel info from demands
+    - required_qualifications: From demands (JSONB array)
+    - required_skills: From assignments
+    - demand_resource_category, assignment_resource_category: Resource categories
+    """
+    try:
+        query = text("SELECT get_bsa_details_json(:bsa_id)")
+        result = await db.execute(query, {"bsa_id": bsa_id})
+        row = result.fetchone()
+
+        if not row or row[0] is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"BSA with ID '{bsa_id}' not found in demands_list or demands tables",
+            )
+
+        return row[0]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching BSA details: {str(e)}",
+        )
+
+
+@router.get("/")
+async def search_bsa_details(
+    bsa_ids: Optional[str] = Query(None, description="Comma-separated list of BSA IDs to fetch"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get consolidated BSA details for multiple BSA IDs.
+
+    Query parameter:
+    - bsa_ids: Comma-separated list of BSA IDs (e.g., "803380,815378,729657")
+
+    Returns an array of BSA detail objects.
+    If no bsa_ids provided, returns usage information.
+    """
+    if not bsa_ids:
+        return {
+            "message": "Provide bsa_ids query parameter with comma-separated BSA IDs",
+            "example": "/api/v1/bsa-details?bsa_ids=803380,815378,729657",
+            "single_lookup": "/api/v1/bsa-details/{bsa_id}",
+        }
+
+    try:
+        # Split and clean the BSA IDs
+        bsa_id_list = [bid.strip() for bid in bsa_ids.split(",") if bid.strip()]
+
+        if not bsa_id_list:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid BSA IDs provided",
+            )
+
+        if len(bsa_id_list) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum 100 BSA IDs per request",
+            )
+
+        results = []
+        for bsa_id in bsa_id_list:
+            query = text("SELECT get_bsa_details_json(:bsa_id)")
+            result = await db.execute(query, {"bsa_id": bsa_id})
+            row = result.fetchone()
+            if row and row[0] is not None:
+                results.append(row[0])
+
+        return {
+            "total": len(results),
+            "requested": len(bsa_id_list),
+            "data": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching BSA details: {str(e)}",
+        )
+
+
+@router.get("/status/{status_filter}")
+async def get_bsa_by_status(
+    status_filter: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get BSA IDs filtered by status (ASSIGNED, OPEN, UNKNOWN).
+
+    This uses the function logic to determine status:
+    - ASSIGNED: Has records in assignments table
+    - OPEN: Has records in demands but not assignments
+    - UNKNOWN: Only in demands_list
+
+    Returns paginated list of BSA IDs with their details.
+    """
+    status_filter = status_filter.upper()
+    if status_filter not in ["ASSIGNED", "OPEN", "UNKNOWN"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status must be one of: ASSIGNED, OPEN, UNKNOWN",
+        )
+
+    try:
+        offset = (page - 1) * per_page
+
+        # Build query based on status
+        if status_filter == "ASSIGNED":
+            count_query = text("""
+                SELECT COUNT(DISTINCT dl.bsa_id)
+                FROM demands_list dl
+                INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+                INNER JOIN assignments a ON a.bsa_id = dl.bsa_id
+            """)
+            data_query = text("""
+                SELECT DISTINCT dl.bsa_id
+                FROM demands_list dl
+                INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+                INNER JOIN assignments a ON a.bsa_id = dl.bsa_id
+                ORDER BY dl.bsa_id
+                LIMIT :limit OFFSET :offset
+            """)
+        elif status_filter == "OPEN":
+            count_query = text("""
+                SELECT COUNT(DISTINCT dl.bsa_id)
+                FROM demands_list dl
+                INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+                WHERE NOT EXISTS (SELECT 1 FROM assignments a WHERE a.bsa_id = dl.bsa_id)
+            """)
+            data_query = text("""
+                SELECT DISTINCT dl.bsa_id
+                FROM demands_list dl
+                INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+                WHERE NOT EXISTS (SELECT 1 FROM assignments a WHERE a.bsa_id = dl.bsa_id)
+                ORDER BY dl.bsa_id
+                LIMIT :limit OFFSET :offset
+            """)
+        else:  # UNKNOWN
+            count_query = text("""
+                SELECT COUNT(DISTINCT dl.bsa_id)
+                FROM demands_list dl
+                WHERE NOT EXISTS (SELECT 1 FROM demands d WHERE d.bsa_id = dl.bsa_id)
+            """)
+            data_query = text("""
+                SELECT DISTINCT dl.bsa_id
+                FROM demands_list dl
+                WHERE NOT EXISTS (SELECT 1 FROM demands d WHERE d.bsa_id = dl.bsa_id)
+                ORDER BY dl.bsa_id
+                LIMIT :limit OFFSET :offset
+            """)
+
+        # Get count
+        count_result = await db.execute(count_query)
+        total = count_result.scalar()
+
+        # Get BSA IDs
+        result = await db.execute(data_query, {"limit": per_page, "offset": offset})
+        bsa_ids = [row[0] for row in result.fetchall()]
+
+        # Fetch details for each BSA ID
+        details = []
+        for bsa_id in bsa_ids:
+            detail_query = text("SELECT get_bsa_details_json(:bsa_id)")
+            detail_result = await db.execute(detail_query, {"bsa_id": bsa_id})
+            detail_row = detail_result.fetchone()
+            if detail_row and detail_row[0] is not None:
+                details.append(detail_row[0])
+
+        import math
+        total_pages = math.ceil(total / per_page) if total > 0 else 1
+
+        return {
+            "status_filter": status_filter,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "data": details,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching BSA details by status: {str(e)}",
+        )

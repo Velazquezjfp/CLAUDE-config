@@ -1,0 +1,388 @@
+# CFF Workforce Planning - Complete Development Workflow
+
+**Last Updated:** November 20, 2025
+
+## Project Structure Overview
+
+```
+CFF/
+├── constraints_v2/              # STEP 1: Constraint/Objective SPECIFICATIONS
+│   ├── constraints_methodology.md  # How to create specs
+│   ├── constraint_template.yaml    # Template for new specs
+│   └── LC_XX_*.yaml               # Individual constraint specs
+│
+├── solver_v2/                   # STEP 2: IMPLEMENTATION & ANALYSIS
+│   ├── README.md                   # Implementation guide
+│   ├── CHANGELOG.md                # Version history
+│   ├── constraints/                # Constraint implementations
+│   ├── objectives/                 # Objective implementations
+│   ├── solver/model.py             # Main solver orchestrator
+│   ├── analysis/                   # Post-solve analysis system
+│   │   ├── ANALYSIS_METHODOLOGY.md # How to add analyzers
+│   │   ├── constraint_analyzers/   # Constraint analyzers
+│   │   ├── objective_analyzers/    # Objective analyzers
+│   │   ├── solution_analyzer.py    # Main orchestrator
+│   │   └── tests/                  # Unit tests for analyzers
+│   └── config.py                   # Enable/disable features
+│
+└── mock_data_v2/database_application_v2/  # Database & API
+    └── api/routers/QUICK_REFERENCE.md     # API documentation
+```
+
+---
+
+## Complete Workflow: From Spec to Analysis
+
+### PHASE 1: Create Constraint/Objective SPECIFICATION
+
+**Location:** `constraints_v2/`
+
+**Goal:** Define WHAT the constraint/objective is and HOW to implement it
+
+**Methodology Document:** `constraints_v2/constraints_methodology.md`
+
+#### Steps:
+
+1. **Read the methodology:**
+   ```bash
+   cat constraints_v2/constraints_methodology.md
+   ```
+
+2. **Verify database fields via API:**
+   ```bash
+   # CRITICAL: Always verify actual fields before creating spec
+   curl -s "http://150.241.245.65:8002/api/v1/resources/?page=1&per_page=1" | python3 -m json.tool
+   curl -s "http://150.241.245.65:8002/api/v1/requests/?page=1&per_page=1" | python3 -m json.tool
+   ```
+
+3. **Use the template:**
+   ```bash
+   cp constraints_v2/constraint_template.yaml constraints_v2/LC_05_new_constraint.yaml
+   ```
+
+4. **Fill in the spec:**
+   - Constraint metadata (name, category, legal reference)
+   - Legal limit (FIXED by law)
+   - Company limit (DYNAMIC from API)
+   - Database inputs needed
+   - Preprocessing calculations
+   - Mathematical formulation
+   - Implementation notes
+
+5. **Document dynamic value variations:**
+   - Conservative mode values
+   - Balanced mode values
+   - Aggressive mode values
+   - Special contexts (night, holidays, emergencies)
+
+**Example Specs:**
+- `LC_01_max_weekly_hours_v3.yaml` - Legal + company weekly hours
+- `LC_02_max_daily_hours_14h_span.yaml` - 14-hour rolling window
+- `CP_02_qualification_matching.yaml` - Hard constraint with no violations
+
+---
+
+### PHASE 2.1: Implement Constraint/Objective in Solver
+
+**Location:** `solver_v2/`
+
+**Goal:** Translate spec into working OR-tools CP-SAT code
+
+**Reference Documents:**
+- `solver_v2/README.md` - Implementation guide
+- `solver_v2/CHANGELOG.md` - Version history and patterns
+
+#### Steps:
+
+1. **Read implementation guide:**
+   ```bash
+   head -200 solver_v2/README.md
+   head -150 solver_v2/CHANGELOG.md
+   ```
+
+2. **Create implementation file:**
+
+   For constraints:
+   ```bash
+   touch solver_v2/constraints/lc_05_new_constraint.py
+   ```
+
+   For objectives:
+   ```bash
+   touch solver_v2/objectives/new_objective.py
+   ```
+
+3. **Implement using OR-tools CP-SAT:**
+
+   **Constraints MUST return `(violations, metadata)` tuple:**
+   ```python
+   def add_new_constraint(model, x_vars, data, constraints) -> tuple:
+       violations = []
+       violation_metadata = []
+
+       # Add constraints...
+       # Collect metadata...
+
+       return violations, violation_metadata  # REQUIRED format
+   ```
+
+   **Objectives return variables for objective function:**
+   ```python
+   def add_new_objective(model, x_vars, data):
+       objective_vars = []
+
+       # Create objective variables...
+
+       return objective_vars
+   ```
+
+4. **Integrate into solver:**
+
+   Edit `solver_v2/solver/model.py`:
+   ```python
+   # In _add_constraint_modules()
+   if "LC_05_new_constraint" in ENABLED_CONSTRAINTS:
+       viols, metadata = add_new_constraint(...)
+       self.violations.extend(viols)
+       self.violation_metadata.extend(metadata)
+
+   # In _add_objectives()
+   if "new_objective" in ENABLED_OBJECTIVES:
+       obj_vars = add_new_objective(...)
+       self.objective_vars.extend(obj_vars)
+   ```
+
+5. **Enable in config:**
+
+   Edit `solver_v2/config.py`:
+   ```python
+   ENABLED_CONSTRAINTS = [
+       # ... existing ...
+       "LC_05_new_constraint",
+   ]
+
+   ENABLED_OBJECTIVES = [
+       # ... existing ...
+       "new_objective",
+   ]
+   ```
+
+6. **Test:**
+   ```bash
+   python main.py
+   ```
+
+---
+
+### PHASE 2.2: Add Analyzer for Post-Solve Analysis
+
+**Location:** `solver_v2/analysis/`
+
+**Goal:** Provide actionable insights about violations and performance
+
+**Methodology Document:** `solver_v2/analysis/ANALYSIS_METHODOLOGY.md`
+
+#### Steps:
+
+1. **Read the methodology:**
+   ```bash
+   cat solver_v2/analysis/ANALYSIS_METHODOLOGY.md
+   ```
+
+2. **Create analyzer file:**
+
+   For constraints:
+   ```bash
+   touch solver_v2/analysis/constraint_analyzers/lc_05_analyzer.py
+   ```
+
+   For objectives:
+   ```bash
+   touch solver_v2/analysis/objective_analyzers/new_objective_analyzer.py
+   ```
+
+3. **Implement analyzer using base class:**
+
+   **Constraint Analyzer:**
+   ```python
+   from .base_analyzer import ConstraintAnalyzer
+
+   class LC_05_Analyzer(ConstraintAnalyzer):
+       def __init__(self):
+           super().__init__(
+               constraint_id='LC_05',
+               constraint_name='new_constraint'
+           )
+
+       def analyze_violations(self, solution, data, constraints, violation_metadata):
+           # Analyze violations, classify severity, suggest fixes
+           pass
+
+       def check_would_violate(self, simulated_assignment, existing_assignments, data, constraints):
+           # Check if adding assignment would violate
+           pass
+
+       def suggest_weight_adjustment(self, violations):
+           # Suggest weight changes based on violation patterns
+           pass
+   ```
+
+   **Objective Analyzer:**
+   ```python
+   from .base_analyzer import ObjectiveAnalyzer
+
+   class NewObjectiveAnalyzer(ObjectiveAnalyzer):
+       def __init__(self):
+           super().__init__(
+               objective_id='new_objective',
+               objective_name='New Objective Description'
+           )
+
+       def analyze_performance(self, solution, data, constraints):
+           # Calculate achievement rate, identify gaps
+           pass
+
+       def get_gap_details(self, solution, data):
+           # Detailed gap analysis with recommendations
+           pass
+   ```
+
+4. **Register analyzer in orchestrator:**
+
+   Edit `solver_v2/analysis/solution_analyzer.py`:
+   ```python
+   from analysis.constraint_analyzers.lc_05_analyzer import LC_05_Analyzer
+
+   class SolutionAnalyzer:
+       def __init__(self, ...):
+           self.constraint_analyzers = {
+               # ... existing ...
+               'LC_05_new_constraint': LC_05_Analyzer(),
+           }
+   ```
+
+5. **Test analyzer:**
+   ```bash
+   python main.py
+   # Check output/analysis_report.json for new analyzer results
+   ```
+
+---
+
+## Key Principles
+
+### 1. Database-First Architecture
+- All constraint values (except legal limits) fetched from API
+- Dynamic values allow policy changes without redeployment
+- Always verify fields via API before implementing
+
+### 2. Three-Tier Constraint System
+```
+Tier 1: LEGAL (Hard)    → Cannot be violated (model.Add())
+Tier 2: COMPANY (Soft)  → Can violate with penalty (violation variables)
+Tier 3: OBJECTIVES      → Optimization goals
+```
+
+### 3. Metadata for Analysis
+- All constraints return `(violations, metadata)` tuple
+- Metadata enables deterministic post-solve analysis
+- No LLM hallucinations - all metrics calculated
+
+### 4. Modular Design
+- Each constraint/objective is independent
+- Easy to enable/disable via `config.py`
+- Analyzers follow same pattern
+
+---
+
+## Testing Strategy
+
+### Unit Testing (Development)
+```bash
+# Test individual analyzers
+python solver_v2/analysis/tests/test_lc02_analyzer.py
+```
+
+### Integration Testing (Full System)
+```bash
+# Test with small dataset
+python main.py  # Uses TEST_MODE from config.py
+```
+
+### Production Testing
+```bash
+# Test with full database
+# Edit config.py: TEST_MODE = False
+python main.py
+```
+
+---
+
+## Output Files
+
+After running `main.py`:
+
+```
+solver_v2/output/
+├── solution.json           # Solver assignments
+├── analysis_report.json    # Comprehensive analysis (NEW)
+└── calendar.html          # Interactive visualization
+```
+
+---
+
+## Important Files Reference
+
+### Specification Phase
+- `constraints_v2/constraints_methodology.md` - How to create specs
+- `constraints_v2/constraint_template.yaml` - Spec template
+- `mock_data_v2/database_application_v2/api/routers/QUICK_REFERENCE.md` - API docs
+
+### Implementation Phase
+- `solver_v2/README.md` - Implementation guide
+- `solver_v2/CHANGELOG.md` - Version history
+- `solver_v2/config.py` - Feature toggles
+
+### Analysis Phase
+- `solver_v2/analysis/ANALYSIS_METHODOLOGY.md` - How to add analyzers
+- `solver_v2/analysis/solution_analyzer.py` - Main orchestrator
+
+---
+
+## Common Questions
+
+### Q: Do I need to update `update_constraints_metadata.py` for new constraints?
+**A:** No. That was a ONE-TIME migration script (Nov 20, 2025) to update existing constraints. New constraints should return `(violations, metadata)` from the start. The script is now archived in `solver_v2/utils/archived/`.
+
+### Q: Where do test files go?
+**A:** Development tests for analyzers go in `solver_v2/analysis/tests/` with a README explaining their purpose.
+
+### Q: How do I know what database fields are available?
+**A:** Always verify via API:
+```bash
+curl -s "http://150.241.245.65:8002/api/v1/resources/?page=1&per_page=1" | python3 -m json.tool
+```
+Or read: `mock_data_v2/database_application_v2/api/routers/QUICK_REFERENCE.md`
+
+### Q: What if I don't need an analyzer for a constraint?
+**A:** Some constraints (like LC_04 - continuous work) don't have violations because breaks are external. You still create a minimal analyzer that reports "no violations tracked." See `solver_v2/analysis/constraint_analyzers/lc_04_analyzer.py` for an example.
+
+---
+
+## Next Steps
+
+When adding a new constraint/objective:
+
+1. ✅ Create spec in `constraints_v2/`
+2. ✅ Implement in `solver_v2/constraints/` or `solver_v2/objectives/`
+3. ✅ Add to `solver_v2/solver/model.py`
+4. ✅ Enable in `solver_v2/config.py`
+5. ✅ Create analyzer in `solver_v2/analysis/`
+6. ✅ Register in `solver_v2/analysis/solution_analyzer.py`
+7. ✅ Test with `python main.py`
+8. ✅ Verify `output/analysis_report.json`
+
+---
+
+**End of Workflow Documentation**
+*For questions or clarifications, see individual methodology files in each folder.*

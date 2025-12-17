@@ -1,0 +1,869 @@
+# CFF Personnel Planning System - Project Context
+
+## Version 2.0 Update (November 2025)
+
+### Recent Session Work (November 17, 2025)
+
+#### OR-Tools CP-SAT Constraint Specifications (4/15 Legal Constraints Complete) ⏳
+
+**Location**: `constraints_v2/` (Constraint Specifications Directory)
+
+**Purpose**: Creating database-aligned constraint specifications for OR-Tools CP-SAT solver implementation
+
+Major achievements in constraint modeling:
+
+1. **Established Constraint Specification Methodology**:
+   - **Database-First Approach**: All values fetched from live API at runtime (no hardcoding)
+   - **Two-Tier System**: Legal constraints (FIXED/hard) + Company policies (DYNAMIC/soft)
+   - **Dynamic Value Architecture**: Everything except legal limits can change without code deployment
+   - **Preprocessing Pipeline**: Transform API data → scaled integers for CP-SAT solver
+   - **Documentation**: Created `constraints_methodology.md` with complete approach
+
+2. **Completed Legal Constraint Specifications** (4/15):
+   - **LC_01_max_weekly_hours_v3.yaml**: 50h/week legal, 45h company (dynamic)
+   - **LC_02_max_daily_hours_14h_span.yaml**: 9h/14h legal, 8.5h company (rolling windows)
+   - **LC_03_max_absolute_daily_hours.yaml**: 12.5h/day legal, 10h company (calendar days)
+   - **LC_04_max_continuous_work.yaml**: 5.5h legal, 5h company (with 15min break requirement)
+
+3. **Key Technical Patterns Established**:
+   ```python
+   # Pattern for all constraints:
+   legal_value = api.get("/legal-constraints/")['value']  # FIXED by law
+   company_value = api.get("/company-policy-constraints/", context)['value']  # DYNAMIC
+
+   # CP-SAT requires integers:
+   scaled_value = int(float_value * 100)  # Scale by 100 for precision
+   ```
+
+4. **Dynamic Value System**:
+   - **Conservative Mode**: Stricter limits for safety
+   - **Balanced Mode**: Default company preferences
+   - **Aggressive Mode**: Use legal maximums for emergencies
+   - **Context-Aware**: Night work, holidays, critical tasks trigger different values
+
+5. **Integration with Live API** (http://150.241.245.65:8002):
+   - All specifications reference actual API endpoints
+   - Values fetched dynamically based on planning context
+   - Supports planning mode variations without code changes
+
+**Remaining Legal Constraints** (11 pending):
+- Rest periods: min_daily_rest (11h), min_weekly_rest (35h), weekly_rest_timeframe
+- Schedule limits: min_break_after_continuous (15min), max_consecutive_work_days (6)
+- Night work: period definitions (23:00-06:00), max_night_work_in_10h (9h), compensation (10%)
+- Sunday work: requires_rest (35h), rest_timeframe options
+
+**Calendar System Enhancement Recommendation**:
+Currently missing centralized calendar for:
+- Public holidays (currently tracked per-resource in absences)
+- Operational periods (reduced service, maintenance windows)
+- Demand multipliers for special events
+
+Proposed structure:
+```yaml
+calendar_days:
+  date: "2025-12-25"
+  type: "public_holiday"
+  name: "Christmas"
+  operational_mode: "minimal"
+  demand_factor: 0.3
+  compensation_multiplier: 2.0
+```
+
+This would serve dual purpose:
+1. INPUT: Constraint calculations (holiday pay, reduced demand)
+2. OUTPUT: Final schedule presentation
+
+**Files Created**:
+- `constraints_v2/constraint_template.yaml` - Master template for all constraints
+- `constraints_v2/LC_01_max_weekly_hours_v3.yaml` - Weekly hours constraint
+- `constraints_v2/LC_02_max_daily_hours_14h_span.yaml` - 14-hour span constraint
+- `constraints_v2/LC_03_max_absolute_daily_hours.yaml` - Daily absolute limit
+- `constraints_v2/LC_04_max_continuous_work.yaml` - Continuous work limit
+- `constraints_v2/constraints_methodology.md` - Complete methodology documentation
+
+**Key Insight**: All constraint values (except legal) must be dynamic to support operational flexibility. The system fetches values at runtime based on context (planning mode, special periods, work type) enabling policy changes without redeployment.
+
+---
+
+#### Post-Solve Analysis System Complete ✅ (November 20, 2025)
+
+**Location**: `solver_v2/analysis/` (Comprehensive Analysis Module)
+
+**Purpose**: Provide deterministic, actionable post-solve insights about violations, coverage gaps, and recommendations
+
+Major achievements in analysis system:
+
+1. **Modular Analyzer Architecture**:
+   - **Plugin-based Design**: Each constraint/objective has its own analyzer module
+   - **Deterministic Metrics**: All calculations done in Python (no LLM hallucinations)
+   - **Multi-constraint Awareness**: Training recommendations consider ALL constraints
+   - **Weight Adjustment Suggestions**: Based on violation patterns and trade-offs
+   - **Documentation**: Complete methodology in `ANALYSIS_METHODOLOGY.md`
+
+2. **Analysis Components Created**:
+   - **Base Analyzers**: Abstract classes defining standard interface
+     - `constraint_analyzers/base_analyzer.py` - ConstraintAnalyzer base
+     - `objective_analyzers/base_analyzer.py` - ObjectiveAnalyzer base
+
+   - **Constraint Analyzers** (5 analyzers):
+     - `lc_01_analyzer.py` - Weekly hours violations (legal 50h, company 45h)
+     - `lc_02_analyzer.py` - 14h span violations (legal 9h, company 8.5h)
+     - `lc_03_analyzer.py` - Absolute daily violations (legal 12.5h, company 10h)
+     - `lc_04_analyzer.py` - Continuous work (breaks external - no violations)
+     - `cp_02_analyzer.py` - Qualification gaps and training opportunities
+
+   - **Objective Analyzers** (2 analyzers):
+     - `coverage_analyzer.py` - Request coverage gaps with qualification analysis
+     - `workload_analyzer.py` - Resource workload distribution analysis
+
+   - **Main Orchestrator**:
+     - `solution_analyzer.py` - Coordinates all analyzers, generates comprehensive report
+
+3. **Metadata Collection Pipeline**:
+   ```python
+   # All constraints return (violations, metadata) tuple
+   def add_constraint(...) -> tuple:
+       violations = []
+       violation_metadata = []  # Track context for analysis
+
+       # For each violation
+       violation_metadata.append({
+           'constraint_id': 'LC_01',
+           'resource_id': resource_id,
+           'context': {'week': week_idx},
+           'legal_limit': 50,
+           'company_limit': 45,
+           'affected_assignments': [req_ids]
+       })
+
+       return violations, violation_metadata
+   ```
+
+4. **Analysis Output Structure** (`output/analysis_report.json`):
+   ```json
+   {
+     "metadata": {
+       "status": "OPTIMAL",
+       "total_assignments": 43,
+       "solve_time_seconds": 10.5
+     },
+     "constraint_violations": {
+       "LC_01_max_weekly_hours": {
+         "total_violations": 25,
+         "total_violation_amount": 45.5,
+         "severity_breakdown": {"LOW": 15, "MEDIUM": 8, "HIGH": 2},
+         "detailed_violations": [...]
+       }
+     },
+     "objective_performance": {
+       "maximize_coverage": {
+         "achievement_rate": 86.0,
+         "gaps": [
+           {
+             "gap_type": "QUALIFICATION_GAP",
+             "recommendations": ["Train RES-001 on FORKLIFT"]
+           }
+         ]
+       }
+     },
+     "summary": {
+       "overall_status": "GOOD",
+       "coverage": {"rate": 86.0, "category": "GOOD"},
+       "violations": {"severity": "MEDIUM"},
+       "top_recommendations": [...]
+     }
+   }
+   ```
+
+5. **Key Features**:
+   - **Severity Classification**: LOW (<10% over), MEDIUM (10-20%), HIGH (>20%)
+   - **Specific Fix Suggestions**: "Remove REQ-X to reduce hours to 39h in Week 2"
+   - **Qualification Gap Analysis**: Identifies missing skills and near-match resources
+   - **Training Impact Simulation**: Uses `check_would_violate()` to validate recommendations
+   - **Weight Adjustment Guidance**: Suggests which weights to modify with expected trade-offs
+   - **Gap Categorization**: QUALIFICATION_GAP, CAPACITY_GAP, CONSTRAINT_GAP
+
+6. **Testing Framework** (`analysis/tests/`):
+   - Unit tests for each analyzer
+   - Mock solution and data objects
+   - Tests all three methods: `analyze_violations()`, `check_would_violate()`, `suggest_weight_adjustment()`
+   - Files: `test_lc_02_analyzer.py`, `test_lc_03_analyzer.py`, `test_cp_02_analyzer.py`
+
+7. **Integration with main.py**:
+   - Automatically runs after successful solve (OPTIMAL or FEASIBLE)
+   - Generates `output/analysis_report.json` (36KB, 912 lines for test dataset)
+   - Prints executive summary to console
+   - Handles both `solution_assignments` and `assignments` attributes for compatibility
+
+8. **Example Analysis Output** (Test Run):
+   ```
+   Overall Status: NEEDS IMPROVEMENT
+
+   Coverage: 50.0% (POOR)
+     - Covered: 1/2 requests
+     - Uncovered: 1 requests
+
+   Workload Balance: 20.0% (POOR)
+     - Variance: 9.0h
+
+   Violations: HIGH
+     - Total Count: 25
+     - Total Amount: 14,147h over limits
+     - Affected Resources: 1
+
+   Top Recommendations:
+     • [HIGH] Train RES-INT-0001 on 'Technique de levage et élingueur'
+     • [HIGH] Redistribute 6.0h from overloaded to underutilized resources
+   ```
+
+**Files Created/Modified**:
+- `solver_v2/analysis/ANALYSIS_METHODOLOGY.md` - Complete guide for adding analyzers
+- `solver_v2/analysis/constraint_analyzers/` - 5 constraint analyzer modules
+- `solver_v2/analysis/objective_analyzers/` - 2 objective analyzer modules
+- `solver_v2/analysis/solution_analyzer.py` - Main orchestrator
+- `solver_v2/analysis/tests/` - Unit test framework with README
+- `solver_v2/main.py` - Updated to run analysis post-solve
+- `solver_v2/constraints/*.py` - Updated to return (violations, metadata) tuples
+- `solver_v2/solver/model.py` - Updated to collect violation_metadata
+- `CFF/WORKFLOW.md` - Master workflow document including analysis phase
+
+**Archived Files**:
+- `solver_v2/utils/archived/update_constraints_metadata.py` - One-time migration script
+
+**Key Insight**: Deterministic analysis with calculated metrics (not LLM-generated) provides reliable, actionable insights. Multi-constraint awareness ensures training recommendations are realistic - a resource may need a qualification but could still violate other constraints if assigned.
+
+---
+
+### Major Changes in v2
+1. **Hierarchical Team Structure**: Region (Succursale) → Team → Sub-group (Color)
+2. **Enhanced Excel Sources**: New Resource List, Absences, and Assignments Excel files
+3. **ETL Pipeline**: Complete ETL system for Excel → JSON transformation
+4. **Improved Data Model**: Better tracking of assignments, absences, and team hierarchy
+
+### Recent Session Work (November 13, 2025)
+
+#### Constraint System API & Documentation Complete ✅
+
+**Location**: `mock_data_v2/database_application_v2/` (Database Service Module - Production Ready)
+
+**Deployment URL**: `http://150.241.245.65:8002` (Live API on server)
+
+Major enhancements to constraint system with complete API and documentation:
+
+1. **CORS Configuration Fixed**:
+   - **Problem**: Frontend couldn't access API from different origin
+   - **Solution**: Configured `allow_origin_regex=".*"` with `allow_credentials=False`
+   - **Files**: `api/config.py`, `api/main.py`
+   - **Status**: ✅ Accessible from any origin
+
+2. **Constraint System APIs Created** (4 new routers, 16 new endpoints):
+   - `api/routers/company_policies.py` - Company policy constraints (GET/PUT)
+   - `api/routers/objective_weights.py` - Optimization weights (GET/PUT)
+   - `api/routers/utilization_targets.py` - Resource efficiency targets (GET/PUT)
+   - `api/routers/location_distances.py` - Pre-calculated travel distances (GET/PUT)
+   - **Total Endpoints**: Increased from 66 to **82 endpoints**
+
+3. **Pydantic Models Added** (`api/models.py` lines 461-570):
+   - CompanyPolicyConstraint, CompanyPolicyConstraintUpdate
+   - ObjectiveWeight, ObjectiveWeightUpdate
+   - UtilizationTarget, UtilizationTargetUpdate
+   - LocationDistance, LocationDistanceUpdate
+
+4. **Comprehensive HTML Documentation Created**:
+
+   **A. `docs/constraints_ui_proposal.html`** (Stakeholder-focused):
+   - **Audience**: Product managers, designers, team discussion
+   - **Purpose**: Visual UI mockup for constraint configuration
+   - **Features**:
+     - Interactive controls for all 5 constraint tables
+     - Legal constraints shown as read-only reference cards with 🔒 icons
+     - Planning mode presets (Conservative/Balanced/Aggressive) as selectable cards
+     - Company policies with appropriate controls (number inputs, toggles, intensity buttons)
+     - Objective weights as normalized percentage sliders (0-100%)
+     - Utilization targets as direct input cards
+     - Location distances as searchable table with filters
+     - "?" button opens API integration modal
+     - Complete coverage of all parameters from all tables
+
+   **B. `docs/constraints_api_integration_guide.html`** (Developer-focused):
+   - **Audience**: Frontend developers
+   - **Purpose**: Technical implementation guide
+   - **Features**:
+     - Complete API specs for all 82 endpoints (GET/PUT with HTTP method badges)
+     - Request/Response data models (field-by-field documentation)
+     - JavaScript code examples (axios-based) for every operation
+     - **Critical: Percentage-to-weight translation formulas** with worked examples
+     - Error handling patterns and HTTP status codes
+     - 10-phase implementation checklist (setup → optimization)
+     - Quick reference table of all endpoints
+     - Cross-references to UI proposal HTML
+
+   **Both files**: Share identical section structure for easy cross-reference
+
+5. **Critical Implementation Patterns Documented**:
+
+   **A. Percentage-to-Weight Translation** (Objective Weights):
+   ```javascript
+   // UI shows 0-100%, backend needs actual weight within range
+   actual_weight = weight_min + (percentage/100) × (weight_max - weight_min)
+
+   // Example: Travel Time at 80%
+   // Range: 1-50, Percentage: 80
+   // Result: 1 + (0.8 × 49) = 40.2
+   ```
+
+   **B. Trailing Slash Requirement**:
+   - All API URLs MUST end with `/`
+   - Without it: 307 redirects or 404 errors
+   - ✅ Correct: `/company-policy-constraints/`
+   - ❌ Wrong: `/company-policy-constraints`
+
+   **C. Legal Constraints Read-Only**:
+   - POST/PUT/DELETE return 405 Method Not Allowed
+   - Represents Swiss LDT - immutable by design
+
+   **D. Planning Mode Mutual Exclusivity**:
+   - Only one planning mode active at a time
+   - Must deactivate others before activating new mode
+
+6. **Three-Layer Constraint Architecture** (Now fully API-accessible):
+
+   **Layer 1: Legal Constraints** (15 constraints - READ-ONLY)
+   - Swiss Labor Law (LDT) limits
+   - `GET /api/v1/legal-constraints/`
+   - Immutable, serve as bounds for Layer 2
+
+   **Layer 2: Company Policy Constraints** (18 policies - MODIFIABLE)
+   - CFF internal policies within legal bounds
+   - `GET/PUT /api/v1/company-policy-constraints/`
+   - Categories: working_hours, rest_periods, team_composition, regional, night_work, planning_mode
+   - Planning Modes: Conservative (ID 16), Balanced (ID 17), Aggressive (ID 18)
+
+   **Layer 3: Objective Weights** (9 weights - MODIFIABLE)
+   - Multi-objective optimization for OR-tools
+   - `GET/PUT /api/v1/objective-weights/`
+   - Different ranges per objective (1-10, 1-50, 5-100) to compensate for scale differences
+   - Coefficients sum to ~1.0 for balanced optimization
+
+   **Supporting Data**:
+   - **Utilization Targets** (6 targets): Resource efficiency goals
+     - `GET/PUT /api/v1/utilization-targets/`
+   - **Location Distances** (400 pairs): Pre-calculated travel distances
+     - `GET/PUT /api/v1/location-distances/`
+     - Composite key: (from_location_id, to_location_id)
+     - Helper endpoint: `GET /api/v1/location-distances/from-location/{id}`
+
+7. **Updated Documentation**:
+   - `docs/API_ENDPOINTS.md` - Updated with all 82 endpoints
+   - Added sections 12-15 for constraint system endpoints
+   - Complete cURL examples for all operations
+
+**Key Design Decisions**:
+- **Normalized UI, Actual Backend Values**: UI shows percentages (0-100%) for consistency, backend receives translated weights
+- **Separation of Concerns**: Two HTML files - one for stakeholders (UI proposal), one for developers (integration guide)
+- **Progressive Disclosure**: UI organized simple → advanced (Legal → Planning Modes → Company Policies → Objectives → Targets → Distances)
+- **Partial Updates**: All PUT endpoints support sending only fields to change
+
+**Why Different Weight Ranges?**:
+- OR-tools objectives have different natural scales
+- Example: Travel time (0-120 min) vs Team changes (0-5 count)
+- Weight ranges compensate to prevent magnitude domination
+- UI normalizes all to 0-100% for user-friendly consistency
+
+**Testing & Verification**:
+- ✅ All 82 endpoints functional
+- ✅ CORS working from any origin
+- ✅ Swagger UI updated: `http://150.241.245.65:8002/docs`
+- ✅ Legal constraints properly read-only (405 on modify attempts)
+- ✅ Company policies respect legal bounds
+- ✅ Location distances composite key working
+
+**Files Modified/Created**:
+- Modified: `api/config.py`, `api/main.py`, `api/models.py`, `api/routers/__init__.py`
+- Created: `api/routers/company_policies.py`, `objective_weights.py`, `utilization_targets.py`, `location_distances.py`
+- Created: `docs/constraints_ui_proposal.html`, `docs/constraints_api_integration_guide.html`
+- Updated: `docs/API_ENDPOINTS.md`
+
+---
+
+### Previous Session Work (November 11, 2025)
+
+#### Database Schema Redesign & Data Quality Fixes ✅
+
+**Location**: `mock_data_v2/database_application_v2/` (Database Service Module - Development Stage)
+
+**Important Note**: `database_application_v2` is now a **self-contained database service module** with its own packaged `core_data/` for deployment portability. The main project working directory remains `CFF/`.
+
+Major schema and data quality fixes:
+
+1. **Schema Redesign - Hierarchical Request IDs**:
+   - **Problem**: BSA-ID as primary key couldn't handle one task needing multiple resource types
+   - **Solution**: Hierarchical structure with `request_id` (e.g., REQ-828796-01, REQ-828796-02) + `bsa_id` (parent task)
+   - **Result**: 231 requests properly represent all resource requirements for 23 unique BSA tasks
+
+2. **Resource Category Matching**:
+   - Fixed category mismatches between resources and their assigned requests
+   - All 67 assignments now have validated category compatibility
+   - Validation trigger enforces matches at database level
+
+3. **Overlapping Assignment Removal**:
+   - Detected and removed 26 assignments where resources were double-booked
+   - Fixed date range logic for proper overlap detection
+   - Created utility scripts for validation
+
+4. **Self-Contained Packaging**:
+   - `database_application_v2/core_data/` is now a packaged copy (not a symlink)
+   - All paths relative to service root for portability
+   - See `PACKAGING.md` for synchronization workflow
+   - **Note**: Source data remains in `CFF/mock_data_v2/core_data/`
+
+5. **SQL Schema Visualization Service** (`sql_diagram/`):
+   - Standalone service for generating visual database schema diagrams
+   - Reads schema.sql and produces ERD diagrams in PNG/SVG formats
+   - Includes utilities: `generate_diagram.py`, `regenerate.sh`, `test_portability.sh`
+   - Configuration templates in `config/` directory
+   - Output saved to `output/` directory with timestamped files
+
+6. **SQLAlchemy 2.0 Fix**:
+   - Fixed API health check with `text()` wrapper for raw SQL
+
+**Final Data State**:
+- 70 resources with proper categories
+- 231 requests with hierarchical IDs
+- 67 assignments (no overlaps, validated)
+- 369 absences (including auto-blocked)
+- ✅ All constraints passing
+
+**Utility Scripts**: `add_unique_request_ids.py`, `fix_assignments_and_resources_matching.py`, `find_overlapping_assignments.py`, `remove_overlapping_assignments.py`
+
+---
+
+### Previous Session Work (November 10, 2025)
+
+#### Dockerized Database Application Complete ✅
+
+**Location**: `mock_data_v2/database_application_v2/` (Database Service Module)
+
+Created a production-ready dockerized PostgreSQL database with FastAPI REST API:
+
+1. **Data Quality Fixes**:
+   - Fixed 333 NaN values in `requests.json` (converted to null)
+   - Updated `schema.sql` with French `absence_status` enum (En_attente, Approuvé, Rejeté, Annulé)
+   - All data now consistent with SQL schema
+
+2. **Enhanced Migration Script** (`database/migrate_json_to_sql_v2.py`):
+   - Migrates qualifications table from qualifications.json
+   - Migrates location_distances from location_distance_matrix_mock.json
+   - Proper NaN/None handling
+   - Comprehensive data validation (79 test checks)
+   - Transaction-safe with rollback
+
+3. **FastAPI Application** (66 REST endpoints):
+   - Full CRUD for 10 resources (regions, teams, sub-groups, resources, absences, requests, assignments, locations, qualifications, constraints)
+   - Pagination on 6 large tables (default 50, max 200 items/page)
+   - Read-only enforcement for legal_constraints (Swiss LDT)
+   - Auto-generated OpenAPI docs at `/docs`
+   - AsyncPG connection pooling (20 connections)
+
+4. **Docker Infrastructure**:
+   - `docker-compose.yml` - PostgreSQL 14 + FastAPI services
+   - Persistent storage: Docker volume OR host storage (configurable via `--use-host-storage` flag)
+   - Default storage path: `./data/` (configurable via `--storage-path`)
+   - Health checks for both services
+   - Automated initialization with data migration
+
+5. **Deployment Automation** (`scripts/`):
+   - `deploy.sh` - Main deployment script with flags
+   - `health-check.sh` - Automated health verification
+   - `backup-db.sh` - Database backup with compression
+   - `stop.sh`, `restart.sh` - Service management
+
+6. **Comprehensive Test Suite** (`tests/`):
+   - 79 async tests covering all functionality
+   - Connection, CRUD, Pagination, Read-only, Data integrity
+   - Test orchestrator with summary reports
+   - All tests passing ✅
+
+7. **Complete Documentation** (`docs/`):
+   - `API_ENDPOINTS.md` - All 66 endpoints with cURL examples (1,800+ lines)
+   - `SQL_QUERIES_REFERENCE.md` - 150+ SQL queries organized by category (1,700+ lines)
+   - `DEPLOYMENT_GUIDE.md` - Complete deployment guide (35 KB)
+   - `INTEGRATION_GUIDE.md` - Python/JavaScript integration examples (54 KB)
+
+**Quick Deploy**:
+```bash
+cd mock_data_v2/database_application_v2
+./scripts/deploy.sh --use-host-storage --storage-path ./data
+# Access API: http://localhost:8000/docs
+```
+
+**Key Endpoints**:
+- API: http://localhost:8000/api/v1
+- Docs (Swagger): http://localhost:8000/docs
+- Health: http://localhost:8000/health
+- PostgreSQL: localhost:5432
+
+---
+
+### Previous Session Work (November 6-7, 2025)
+
+#### Data Refactoring Complete
+1. **6-Step Python Refactoring Process** (`utility/version_2/refactoring/`):
+   - Step 1: Cleaned and consolidated demands (231 rows, removed "Confirmé" status)
+   - Step 2: Updated resources with proper regional alignment (70 resources)
+   - Step 3: Generated realistic absences (322 records across 5 types)
+   - Step 4: Created internal coverage (37.2% covered, 86 assignments)
+   - Step 5: Created external coverage (5.6% covered, 13 assignments)
+   - Step 6: Validated all relationships (11 passed checks, 0 critical failures)
+   - **Key Result**: 57.1% demands left uncovered for solver optimization
+
+2. **ETL Pipeline Updates**:
+   - Created `extract_couverts.py` to replace `extract_assignments.py`
+   - Processes both internal and external coverage files
+   - Generates Assignment_Blocked absences dynamically
+   - Updated `extract_demands.py` for new consolidated structure
+   - Modified `run_all_etl.py` for new pipeline flow
+
+3. **Documentation Created**:
+   - `FIELD_MAPPING_DOCUMENTATION.md`: Complete Excel → JSON field mappings
+   - `REFACTORING_COMPLETE.md`: Full refactoring process documentation
+   - Shows all column transformations and data type conversions
+
+4. **PostgreSQL Database Schema** (`mock_data_v2/`):
+   - `schema.sql`: Production-ready PostgreSQL 14+ schema
+   - 13 core tables with full referential integrity
+   - ENUM types for data validation
+   - 11 performance indexes (GIN for JSONB, GIST for date ranges)
+   - 4 analytical views for reporting
+   - 3 business logic triggers (auto timestamps, Assignment_Blocked creation)
+   - 2 utility functions (check_resource_availability, calculate_coverage_percentage)
+   - Exclusion constraints to prevent double-booking
+
+5. **Database Migration Tools**:
+   - `migrate_json_to_sql.py`: Python script for JSON → PostgreSQL migration
+   - Google Cloud SQL compatible with connection pooling
+   - Transaction-safe with rollback capability
+   - `SQL_SCHEMA_README.md`: Complete deployment guide for Cloud SQL
+
+#### Key Design Decisions
+- **BSA-ID Duplicates**: Intentionally maintained - duplicates represent multiple resource needs
+- **1:1 Mapping**: Each demand row gets exactly one coverage row
+- **Partial Coverage Strategy**: 57.1% left uncovered for OR-Tools solver testing
+- **PostgreSQL Choice**: Selected for complex relationships, ACID compliance, and OR-Tools integration
+- **JSONB Usage**: For flexible fields (qualifications, availability patterns)
+- **Cloud SQL Deployment**: Estimated $50-75/month for current scale
+
+### New Data Structure
+
+#### Folder Organization
+```
+CFF/
+├── excel_mock_v2/           # Refactored Mock Excel source files
+│   ├── mock_Resource_List_2025.xlsx
+│   ├── mock_Resource_Absences_2025.xlsx
+│   ├── mock_Export_tour_a_couvrir_cleaned_2025.xlsx (consolidated demands)
+│   ├── mock_Export_tour_couverts_interne_2025.xlsx (internal coverage)
+│   └── mock_Export_tour_couverts_externe_2025.xlsx (external coverage)
+├── ETL_v1/                  # ETL pipeline scripts
+│   ├── extract_resources.py
+│   ├── extract_absences.py
+│   ├── extract_couverts.py (NEW - replaces extract_assignments.py)
+│   ├── extract_demands.py (updated for consolidated file)
+│   └── run_all_etl.py
+├── mock_data_v2/           # Generated JSON data + Database schemas
+│   ├── core_data/
+│   │   ├── resources.json (70 resources with hierarchy)
+│   │   ├── absences.json (322 absences)
+│   │   ├── assignments.json (99 assignments)
+│   │   ├── requests.json (231 demands)
+│   │   ├── locations.json
+│   │   ├── qualifications.json
+│   │   └── location_distance_matrix_mock.json
+│   ├── database_application_v2/  # ✅ NEW: Complete Dockerized Application
+│   │   ├── api/                  # FastAPI application (66 endpoints)
+│   │   ├── database/             # PostgreSQL setup & migration
+│   │   ├── docker/               # Docker configurations
+│   │   ├── scripts/              # Deployment automation
+│   │   ├── tests/                # Test suite (79 tests)
+│   │   ├── docs/                 # Complete documentation
+│   │   ├── sql_diagram/          # SQL schema visualization service
+│   │   └── docker-compose.yml    # Service orchestration
+│   ├── schema.sql (PostgreSQL production schema)
+│   ├── migrate_json_to_sql.py (migration script)
+│   ├── SQL_SCHEMA_README.md (deployment guide)
+│   └── FIELD_MAPPING_DOCUMENTATION.md (Excel→JSON mappings)
+├── utility/version_2/refactoring/  # Data refactoring scripts
+│   ├── step1_clean_demands.py
+│   ├── step2_update_resources.py
+│   ├── step3_generate_absences.py
+│   ├── step4_create_couverts_interne.py
+│   ├── step5_create_couverts_externe.py
+│   ├── step6_validate_relationships.py
+│   └── run_all_refactoring.py
+└── mock_data_V1/           # Original v1 data (preserved)
+```
+
+#### Key Data Model Enhancements
+
+1. **Resource Hierarchy**:
+   - Resources belong to: Region → Team → Sub-group (color)
+   - Teams are globally unique
+   - Sub-groups are variable per team (different teams have different colors)
+
+2. **Absence Management**:
+   - Multiple absence types: Holiday, Training, Sick_Leave, Assignment_Blocked
+   - Assignment_Blocked auto-generated from confirmed assignments
+   - Integrated with resource availability
+
+3. **Assignment Tracking**:
+   - New Assignments table linking BSA IDs to Resource IDs
+   - Status synchronization: Confirmed demands lock assignments
+   - Support for multi-resource assignments (teams)
+
+### Mock Data Summary (After Refactoring)
+
+- **Resources**: 70 total (50 internal, 20 external)
+- **Regions**: 4 Swiss regions (Lausanne, Genève, Bern, Zurich)
+- **Teams**: 10 globally unique teams
+- **Sub-groups**: 9 colors (variable per team)
+- **Absences**: 322 records + 86 auto-generated Assignment_Blocked
+- **Assignments**: 99 total (86 internal, 13 external)
+- **Requests**: 231 cleaned demands (23 unique BSA-IDs with duplicates)
+- **Coverage Status**:
+  - Covered: 42.9% (99/231)
+  - Uncovered: 57.1% (132/231) - ready for solver optimization
+
+---
+
+## Overview
+The CFF (Swiss Federal Railways) Personnel Planning System is an optimization solution for scheduling maintenance personnel across various railway maintenance tasks. The system uses Integer Programming and Google OR-Tools to find optimal resource assignments while respecting legal constraints, company policies, and operational preferences.
+
+## Problem Domain
+
+### Core Challenge
+Schedule maintenance personnel (internal and external resources) to cover maintenance requests across multiple locations while:
+- Complying with Swiss Labor Law (LDT)
+- Minimizing costs
+- Optimizing travel time
+- Maintaining team continuity at multiple levels (region, team, sub-group)
+- Balancing workload across resources
+- Respecting resource absences and existing assignments
+
+### Key Features
+1. **Partial Replanning**: Users can lock certain assignments and re-run the solver to fill gaps
+2. **Blocked Shifts Management**: Handle pre-existing assignments and absences that block resource availability
+3. **Multi-Objective Optimization**: Balance between cost, travel time, team cohesion, and coverage
+4. **Flexible Resource Types**: Support for internal employees and external contractors with different cost structures
+5. **Hierarchical Team Constraints**: Keep sub-groups, teams, or regions together based on requirements
+
+## Integer Programming & OR-Tools
+
+### Integer Programming (IP)
+Integer Programming is an optimization technique where some or all decision variables must take integer values. In our context:
+- **Decision Variables**: Binary variables (0/1) representing whether a resource is assigned to a request
+- **Objective Function**: Weighted combination of cost, travel time, and other metrics to minimize/maximize
+- **Constraints**: Linear inequalities representing legal requirements, availability, and business rules
+
+### Google OR-Tools
+OR-Tools is Google's open-source optimization suite. For this project:
+- **CP-SAT Solver**: Constraint Programming solver for integer problems
+- **Key Advantage**: Handles complex scheduling constraints efficiently
+- **Working Domain**: All variables must be integers (multiply by scaling factor if needed)
+
+### Mathematical Modeling Approach
+1. **Variables**: `x[resource][request]` = 1 if resource assigned to request, 0 otherwise
+2. **Constraints**: Expressed as linear inequalities (e.g., `sum(work_hours) <= max_weekly_hours`)
+3. **Objective**: Weighted sum of different goals (minimize cost + minimize travel + maximize coverage)
+4. **Team Constraints**: Additional variables for team/sub-group cohesion
+
+## Key Terminology
+
+- **BSA-ID**: Unique identifier for work requests
+- **PE de/PE jusqu'à**: Start and end locations for maintenance work
+- **Tour de service**: Service shift/tour
+- **Succursale**: Branch/Region (parent organizational unit)
+- **Équipe**: Team within a region
+- **Sous-groupe/Couleur**: Sub-group identified by color within a team
+- **Monteur VF**: Track maintenance worker
+- **Chef/fe sécurité**: Safety officer (mandatory role)
+- **Service de nuit**: Night service (23:00-06:00)
+- **Compétences requises**: Required qualifications/skills
+
+## Constraint Categories
+
+### 1. Legal Constraints (Swiss LDT) - Immutable
+- Maximum 50 hours/week
+- Maximum 9 hours/day within 14-hour span
+- Minimum 11 hours rest between shifts
+- Minimum 35 hours weekly rest
+- Maximum 6 consecutive work days
+- Night work compensation rules
+- Sunday work compensation requirements
+
+### 2. Company Policies - Configurable within legal bounds
+- Preferred maximum daily/weekly hours (stricter than legal)
+- Recovery buffers after night shifts
+- Team composition requirements
+- Regional proximity preferences
+- Sub-group cohesion preferences
+
+### 3. Soft Constraints - Freely adjustable
+- Minimum on-site presence duration
+- Workload balance tolerance
+- Priority site assignments
+- Team continuity preferences at all levels (region/team/sub-group)
+- Resource utilization targets
+
+## Data Flow
+
+### v2 ETL Pipeline Flow (Updated)
+
+1. **Excel Input Files** (after refactoring):
+   - `mock_Resource_List_2025.xlsx` - Personnel registry with hierarchy (70 resources)
+   - `mock_Resource_Absences_2025.xlsx` - Absence records (322 absences)
+   - `mock_Export_tour_a_couvrir_cleaned_2025.xlsx` - Consolidated demands (231 rows)
+   - `mock_Export_tour_couverts_interne_2025.xlsx` - Internal coverage (86 assignments)
+   - `mock_Export_tour_couverts_externe_2025.xlsx` - External coverage (13 assignments)
+
+2. **ETL Processing** (ETL_v1/):
+   - `extract_resources.py`: Parse resources with hierarchy → resources.json
+   - `extract_absences.py`: Process absences → absences.json + update resources
+   - `extract_couverts.py`: Process both coverage files → assignments.json + Assignment_Blocked absences
+   - `extract_demands.py`: Parse cleaned demands → requests.json
+   - Date transformations: Swiss format (dd.mm.yyyy) → ISO (YYYY-MM-DD)
+   - Status mappings: French → English enums
+   - Field mappings documented in FIELD_MAPPING_DOCUMENTATION.md
+
+3. **JSON Output** (mock_data_v2/core_data/):
+   - `resources.json` - 70 resources with hierarchy, qualifications, availability patterns
+   - `requests.json` - 231 demands with 23 unique BSA-IDs (duplicates = multiple needs)
+   - `assignments.json` - 99 assignments (37.2% internal, 5.6% external coverage)
+   - `absences.json` - 322 absences + 86 auto-generated Assignment_Blocked
+
+4. **Database Migration & Deployment** (UPDATED):
+   - `migrate_json_to_sql_v2.py` - Enhanced migration with qualifications & distances
+   - `schema.sql` - Production-ready PostgreSQL schema with French enums
+   - Complete Docker deployment in `database_application_v2/`
+   - FastAPI REST API with 66 endpoints
+
+5. **Solver Input**:
+   - Validated JSON data with 57.1% uncovered demands (132/231)
+   - Constraint configurations
+   - Distance matrices
+   - Existing locked assignments for partial replanning
+
+## System Architecture (Enhanced)
+
+### Data Layer
+- **Excel Import**: Multi-file ETL pipeline with refactoring tools
+- **JSON Storage**: Structured v2 format with metadata and validation
+- **PostgreSQL Database**: Production-ready schema with 18 tables, views, triggers
+- **Database Schema**: Hierarchical team structure with JSONB for flexibility
+- **REST API**: FastAPI application with 66 endpoints, full CRUD operations
+- **Docker Deployment**: Complete containerized solution with persistent storage
+
+### Business Logic
+- **Team Hierarchy Manager**: Region → Team → Sub-group navigation
+- **Absence Manager**: Multiple absence types with auto-generation (Assignment_Blocked)
+- **Assignment Tracker**: Status synchronization, locking, 1:1 BSA-ID mapping enforcement
+- **Coverage Calculator**: Real-time coverage metrics (42.9% covered, 57.1% uncovered)
+
+### Solver Integration
+- **Constraint Builder**: Hierarchical team constraints + Swiss LDT compliance
+- **Variable Manager**: Resource-request assignment variables
+- **Objective Calculator**: Multi-objective optimization (cost, travel, coverage)
+- **Data Validation**: Pre-solver data integrity checks
+
+### Database Features
+- **18 Total Tables**: 10 core tables (resources, absences, assignments, requests, etc.) + 8 constraint tables
+- **11 ENUM Types**: Data validation with French values (absence_status, assignment_status, etc.)
+- **11 Performance Indexes**: GIN for JSONB, GIST for date ranges, B-tree for FKs
+- **4 Analytical Views**: Available resources, coverage analysis, utilization reports, current assignments
+- **Business Logic Triggers**: Auto timestamps, Assignment_Blocked creation, qualification validation
+- **Utility Functions**: check_resource_availability(), calculate_coverage_percentage()
+- **Exclusion Constraints**: Prevent double-booking automatically
+- **REST API Access**: FastAPI application with 66 endpoints, auto-generated OpenAPI docs
+
+## Testing with Mock Data v2
+
+Mock data v2 supports testing of:
+1. **Hierarchical Constraints**: Keep sub-groups/teams/regions together
+2. **Complex Absences**: Multiple types, overlapping periods
+3. **Team Assignments**: Multi-resource assignments to single BSA
+4. **Status Flows**: Pre-reserved → Confirmed → Locked
+5. **Edge Cases**:
+   - Teams with different sub-group counts
+   - Resources with multiple simultaneous absences
+   - Partial team assignments
+
+## Data Quality Tracking
+
+### Real Data (from Excel)
+- BSA IDs (23 unique IDs with duplicates = 231 demand rows)
+- Locations (extracted from PE columns)
+- Qualifications (from Compétences requises)
+- Service types and work categories
+- Date patterns (realistic distribution across Oct-Dec 2025)
+
+### Mocked Data (Carefully Generated)
+- Resource personal information (names, contacts)
+- Team compositions and colors (9 sub-groups across 10 teams)
+- Specific absence dates (322 records avoiding peak demand months)
+- Assignment relationships (99 assignments with valid Resource_IDs)
+- Regional distributions (4 regions: Lausanne, Genève, Bern, Zurich)
+
+### Auto-Generated Data
+- Resource IDs (RES-INT-XXXX, RES-EXT-XXXX patterns)
+- Assignment IDs (ASSIGN-INT/EXT-{BSA-ID}-{index} pattern)
+- Absence IDs (ABS-XXXXX, ABS-BLOCK-XXXX patterns)
+- Assignment_Blocked absences (86 auto-generated from confirmed assignments)
+
+### Data Validation Results
+- ✅ All Resource_IDs exist in resources
+- ✅ 1:1 BSA-ID to assignment mapping (no over-coverage)
+- ✅ No absence conflicts detected
+- ✅ All dates within valid ranges (Oct-Dec 2025)
+- ✅ Regional alignment verified
+- ⚠️ 17 warnings for partial coverage (intentional for solver testing)
+
+## Performance Requirements (Updated)
+
+- Handle 300+ requests per planning period
+- Support 100+ resources with full hierarchy
+- Process complex team constraints
+- Solve within configurable time limits
+- Track 400+ absence records
+- Manage 100+ concurrent assignments
+
+## Next Steps
+
+### Completed ✅
+1. ✅ Define hierarchical team structure (Region → Team → Sub-group)
+2. ✅ Create ETL pipeline for Excel → JSON (ETL_v1/)
+3. ✅ Implement enhanced data model v2 with refactoring
+4. ✅ Generate comprehensive mock data (70 resources, 231 demands)
+5. ✅ Create PostgreSQL production schema (schema.sql)
+6. ✅ Build database migration tools (migrate_json_to_sql_v2.py)
+7. ✅ Document field mappings and data flow
+8. ✅ Validate data relationships (1:1 BSA-ID mapping)
+9. ✅ Ensure 57.1% uncovered demands for solver testing
+10. ✅ **Deploy dockerized database with FastAPI REST API** (database_application_v2/)
+11. ✅ **Create REST API for data management** - 66 endpoints with full CRUD
+12. ✅ **Complete documentation** - API, SQL, deployment, integration guides
+
+### Ready for Next Phase ⏳
+13. ⏳ **IN PROGRESS**: Creating constraint specifications for OR-Tools CP-SAT solver (4/15 legal constraints completed)
+14. ⏳ Test solver with 132 uncovered demands (57.1%)
+15. ⏳ Validate Swiss LDT constraint compliance in solver
+16. ⏳ Integrate solver with FastAPI endpoints
+
+### Future Enhancements 📋
+17. 📋 Build web UI for visualization and management
+18. 📋 Implement real-time assignment tracking (WebSockets)
+19. 📋 Add solver result visualization dashboard
+20. 📋 Create reporting and analytics module
+21. 📋 Implement partial replanning workflow
+22. 📋 Add constraint configuration UI
+23. 📋 Add authentication/authorization (JWT)
+24. 📋 Deploy to production (Kubernetes/Cloud)
+25. 📋 **RECOMMENDED**: Implement centralized calendar system for holidays and operational periods

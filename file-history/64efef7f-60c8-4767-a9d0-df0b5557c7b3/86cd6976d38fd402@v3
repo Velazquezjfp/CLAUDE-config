@@ -1,0 +1,51 @@
+"""
+Configuration for CFF Workforce Planning Solver MVP
+"""
+
+# API Configuration
+API_BASE_URL = "http://150.241.245.65:8002/api/v1"
+
+# Planning Configuration
+PLANNING_MODE = "Balanced"  # Conservative, Balanced, Aggressive
+
+# Solver Configuration
+SOLVER_TIME_LIMIT_SECONDS = 60  # Time limit for CP-SAT solver
+USE_SOFT_CONSTRAINTS = True     # Enable soft constraints with violations
+
+# Workload Balancing Configuration
+ENABLE_WORKLOAD_BALANCING = False  # Balance hours across resources
+WORKLOAD_BALANCE_WEIGHT = 1.5     # Weight for workload balancing objective (0.0-5.0)
+MAX_WORKLOAD_DEVIATION_HOURS = 10 # Max acceptable deviation from average (hours)
+
+# Scaling Configuration
+SCALING_FACTOR = 100           # Scale floats to integers (hours * 100)
+
+# Test Mode Configuration
+TEST_MODE = False               # Start with small dataset
+TEST_NUM_REQUESTS = 2          # Number of requests to test with
+TEST_NUM_RESOURCES = 3         # Number of resources to test with
+
+# Enabled Constraints (for incremental testing)
+ENABLED_CONSTRAINTS = [
+    "LC_01_max_weekly_hours",
+    "LC_02_max_daily_hours_14h_span",
+    "LC_03_max_absolute_daily_hours",
+    "LC_04_max_continuous_work",
+    "CP_02_qualification_matching",  # Company policy: qualification matching
+]
+
+# Enabled Objectives (operational preferences)
+ENABLED_OBJECTIVES = [
+    "maximize_coverage",         # Maximize number of requests covered (highest priority)
+    "balance_workload",          # Balance hours across resources
+    # "minimize_idle_time",      # Minimize resource idle time (future)
+    # "balance_team_utilization",# Balance team utilization (future)
+]
+
+# Logging Configuration
+LOG_LEVEL = "INFO"             # DEBUG, INFO, WARNING, ERROR
+LOG_FILE = "solver_v2/logs/solver.log"
+
+# Output Configuration
+SAVE_SOLUTION = True
+SOLUTION_OUTPUT_PATH = "solver_v2/output/solution.json"

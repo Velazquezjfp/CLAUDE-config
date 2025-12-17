@@ -1,0 +1,150 @@
+# Router Updates Summary - Schema Changes
+**Date:** December 9, 2025
+
+## Changes Made
+
+### 1. resources.py Router Updates
+
+#### New Query Parameters Added:
+- `region_code` (Optional[str]) - Filter by region code
+- `division_code` (Optional[str]) - Filter by division code
+- `location_code` (Optional[str]) - Filter by location code
+
+#### Endpoints Updated:
+- ✅ `GET /api/v1/resources/` - List with pagination
+  - Added 3 new filter parameters
+  - Added 3 new columns to SELECT query
+
+- ✅ `GET /api/v1/resources/{resource_id}` - Get by ID
+  - Added 3 new columns to SELECT query
+
+#### New Response Fields:
+All resource responses now include:
+```json
+{
+  "resource_id": 1,
+  "region_code": "RWT",
+  "division_code": "FB",
+  "location_code": "ALL",
+  ...
+}
+```
+
+---
+
+### 2. demands.py Router Updates
+
+#### New Query Parameters Added:
+- `region_code` (Optional[str]) - Filter by region code
+- `division_code` (Optional[str]) - Filter by division code
+- `location_code` (Optional[str]) - Filter by location code
+
+#### Endpoints Updated:
+- ✅ `GET /api/v1/demands/` - List with pagination
+  - Added 3 new filter parameters
+  - Added 3 new columns to SELECT query
+
+- ✅ `GET /api/v1/demands/{demand_id}` - Get by ID
+  - Added 3 new columns to SELECT query
+
+#### New Response Fields:
+All demand responses now include:
+```json
+{
+  "id": 1,
+  "bsa_id": "803380",
+  "region_code": null,
+  "division_code": null,
+  "location_code": null,
+  ...
+}
+```
+
+---
+
+## Example API Calls
+
+### Resources with Filters
+
+```bash
+# Filter by region code
+curl "http://localhost:8002/api/v1/resources/?region_code=RWT"
+
+# Filter by division code
+curl "http://localhost:8002/api/v1/resources/?division_code=FB"
+
+# Filter by location code
+curl "http://localhost:8002/api/v1/resources/?location_code=ALL"
+
+# Combine multiple filters
+curl "http://localhost:8002/api/v1/resources/?region_code=RWT&division_code=FB&status_filter=Actif"
+```
+
+### Demands with Filters
+
+```bash
+# Filter by region code
+curl "http://localhost:8002/api/v1/demands/?region_code=RWT"
+
+# Filter by division code
+curl "http://localhost:8002/api/v1/demands/?division_code=FB"
+
+# Filter by location code
+curl "http://localhost:8002/api/v1/demands/?location_code=GE"
+
+# Combine multiple filters
+curl "http://localhost:8002/api/v1/demands/?region_code=RWT&branch=Genève&assignment_status=Pré-réservé"
+```
+
+---
+
+## Backward Compatibility
+
+✅ **100% Backward Compatible**
+- New parameters are optional
+- Old API calls continue to work unchanged
+- New columns are nullable (NULL values allowed)
+- No breaking changes
+
+---
+
+## Deployment Instructions
+
+```bash
+# On production server
+cd /path/to/database_application_v2
+
+# Rebuild Docker image with updated routers
+docker-compose up --build -d
+
+# Check logs
+docker-compose logs api | tail -50
+
+# Test new endpoints
+curl "http://150.241.245.65:8002/api/v1/resources/?region_code=RWT"
+curl "http://150.241.245.65:8002/api/v1/demands/?division_code=FB"
+```
+
+---
+
+## What's Next
+
+### Remaining Tasks:
+1. ✅ Update SQL_QUERIES_REFERENCE.md - Add new columns to table schemas
+2. ✅ Update ROUTER_SUMMARY.md - Document new filter parameters
+3. ✅ Test endpoints in production
+4. ✅ Update API_ENDPOINTS.md (optional)
+
+---
+
+## Files Modified
+
+1. ✅ `/api/routers/resources.py` - Added 3 filter params, updated SELECT queries
+2. ✅ `/api/routers/demands.py` - Added 3 filter params, updated SELECT queries
+
+## Files To Update
+
+1. ⏳ `/docs/SQL_QUERIES_REFERENCE.md` - Add new columns to schemas
+2. ⏳ `/docs/ROUTER_SUMMARY.md` - Document new filters
+3. ⏳ `/docs/API_ENDPOINTS.md` (optional) - Update endpoint documentation
+

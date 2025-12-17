@@ -1,0 +1,122 @@
+"""
+Constraint Value Fetching and Organization
+All values are fetched dynamically from the live database
+"""
+import sys
+sys.path.append('..')
+from api.client import get_client
+from config import PLANNING_MODE
+
+
+class ConstraintValues:
+    """Container for all constraint values (legal and company)"""
+
+    def __init__(self, planning_mode: str = PLANNING_MODE):
+        self.planning_mode = planning_mode
+        self.client = get_client()
+
+        # Will be populated by fetch methods
+        self.legal = {}
+        self.company = {}
+
+    def fetch_all_constraints(self):
+        """Fetch all constraint values needed for enabled constraints"""
+        self.fetch_weekly_hours()
+        self.fetch_daily_14h_span()
+        self.fetch_absolute_daily()
+        self.fetch_continuous_work()
+
+    # ==================== LC_01: Max Weekly Hours ====================
+
+    def fetch_weekly_hours(self):
+        """Fetch max weekly hours constraints"""
+        legal, company = self.client.fetch_constraint_values(
+            legal_constraint_name="max_weekly_hours",
+            company_policy_name="Preferred Max Weekly Hours",
+            planning_mode=self.planning_mode
+        )
+
+        self.legal['max_weekly_hours'] = legal['parameter_value']['value']
+        self.company['max_weekly_hours'] = company['parameter_value']['value']
+
+    # ==================== LC_02: Max Daily Hours in 14h Span ====================
+
+    def fetch_daily_14h_span(self):
+        """Fetch max daily hours in 14h span constraints"""
+        legal, company = self.client.fetch_constraint_values(
+            legal_constraint_name="max_daily_hours_14h_span",
+            company_policy_name="Preferred Max in 14h Span",
+            planning_mode=self.planning_mode
+        )
+
+        self.legal['max_hours_in_14h'] = legal['parameter_value']['value']
+        self.company['max_hours_in_14h'] = company['parameter_value']['value']
+
+    # ==================== LC_03: Max Absolute Daily Hours ====================
+
+    def fetch_absolute_daily(self):
+        """Fetch max absolute daily hours constraints"""
+        legal, company = self.client.fetch_constraint_values(
+            legal_constraint_name="max_absolute_daily_hours",
+            company_policy_name="Preferred Max Daily Hours",
+            planning_mode=self.planning_mode
+        )
+
+        self.legal['max_hours_per_day'] = legal['parameter_value']['value']
+        self.company['max_hours_per_day'] = company['parameter_value']['value']
+
+    # ==================== LC_04: Max Continuous Work ====================
+
+    def fetch_continuous_work(self):
+        """Fetch max continuous work constraints"""
+        legal_continuous = self.client.get_legal_constraint("max_continuous_work")
+        legal_break = self.client.get_legal_constraint("min_break_after_continuous")
+        company = self.client.get_company_policy(
+            "Preferred Max Continuous Work",
+            planning_mode=self.planning_mode
+        )
+
+        self.legal['max_continuous_hours'] = legal_continuous['parameter_value']['value']
+        self.legal['min_break_minutes'] = legal_break['parameter_value']['value']
+        self.company['max_continuous_hours'] = company['parameter_value']['value']
+
+    # ==================== Utility Methods ====================
+
+    def get_legal_value(self, constraint_key: str):
+        """Get legal constraint value"""
+        if constraint_key not in self.legal:
+            raise KeyError(f"Legal constraint '{constraint_key}' not found. Did you fetch it?")
+        return self.legal[constraint_key]
+
+    def get_company_value(self, constraint_key: str):
+        """Get company policy value"""
+        if constraint_key not in self.company:
+            raise KeyError(f"Company policy '{constraint_key}' not found. Did you fetch it?")
+        return self.company[constraint_key]
+
+    def print_summary(self):
+        """Print summary of all constraint values"""
+        print("\n" + "="*60)
+        print("CONSTRAINT VALUES SUMMARY")
+        print("="*60)
+        print(f"Planning Mode: {self.planning_mode}")
+        print("\nLEGAL CONSTRAINTS (Hard - Never Violated):")
+        print("-" * 60)
+        for key, value in self.legal.items():
+            print(f"  {key:30s}: {value}")
+
+        print("\nCOMPANY POLICIES (Soft - Can Violate with Penalty):")
+        print("-" * 60)
+        for key, value in self.company.items():
+            print(f"  {key:30s}: {value}")
+        print("="*60 + "\n")
+
+
+def fetch_constraint_values(planning_mode: str = PLANNING_MODE) -> ConstraintValues:
+    """
+    Convenience function to fetch all constraint values
+    Returns: ConstraintValues object with all values populated
+    """
+    constraints = ConstraintValues(planning_mode=planning_mode)
+    constraints.fetch_all_constraints()
+    return constraints

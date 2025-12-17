@@ -1,0 +1,257 @@
+"""
+CP_02: Qualification Matching Analyzer
+Analyzes blocked assignments and qualification gaps (HARD CONSTRAINT)
+"""
+from .base_analyzer import ConstraintAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class CP_02_Analyzer(ConstraintAnalyzer):
+    """
+    Analyzer for CP_02 (qualification matching)
+
+    Note: This is a HARD constraint, so it doesn't have soft violations.
+    Instead, it analyzes blocked assignments and qualification gaps.
+    """
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='CP_02',
+            constraint_name='qualification_matching'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze qualification gaps and blocked assignments
+
+        Since this is a hard constraint, there are no soft violations.
+        Instead, we analyze which requests couldn't be covered due to
+        qualification mismatches.
+        """
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        # Get covered and uncovered requests
+        covered_ids = {a['demand_id'] for a in assignments}
+        uncovered_requests = [
+            req for req in data.requests
+            if req['id'] not in covered_ids
+        ]
+
+        # Analyze qualification gaps
+        qualification_gaps = []
+        training_opportunities = []
+        hiring_needs = []
+
+        for request in uncovered_requests:
+            req_id = request['id']
+            req_quals = set(request.get('required_qualifications', []))
+
+            # Skip if no qualifications required
+            if not req_quals:
+                continue
+
+            # Find resources and check for matches/near-matches
+            has_qualified = False
+            near_matches = []
+
+            for resource in data.resources:
+                res_id = resource['resource_id']
+                res_quals = set(resource.get('qualifications', []))
+                missing = req_quals - res_quals
+
+                if len(missing) == 0:
+                    has_qualified = True
+                    # If we have qualified resources but request not covered,
+                    # it's likely a capacity/constraint issue, not qualification
+                    break
+                elif len(missing) <= 2:
+                    near_matches.append({
+                        'resource_id': res_id,
+                        'resource_qualifications': list(res_quals),
+                        'missing_qualifications': list(missing),
+                        'missing_count': len(missing)
+                    })
+
+            if not has_qualified:
+                # Pure qualification gap
+                qualification_gaps.append({
+                    'request_id': req_id,
+                    'required_qualifications': list(req_quals),
+                    'near_matches': sorted(near_matches, key=lambda x: x['missing_count'])[:3],
+                    'gap_type': 'NO_QUALIFIED_RESOURCE'
+                })
+
+                # Analyze training vs hiring
+                if near_matches:
+                    # Near matches exist - training opportunity
+                    best_match = min(near_matches, key=lambda x: x['missing_count'])
+                    training_opportunities.append({
+                        'request_id': req_id,
+                        'resource_id': best_match['resource_id'],
+                        'qualifications_to_add': best_match['missing_qualifications'],
+                        'impact': f"Enables coverage of {req_id}",
+                        'priority': 'HIGH' if best_match['missing_count'] == 1 else 'MEDIUM'
+                    })
+                else:
+                    # No near matches - hiring needed
+                    hiring_needs.append({
+                        'required_qualifications': list(req_quals),
+                        'impact': f"Enables coverage of {req_id}",
+                        'priority': 'HIGH'
+                    })
+
+        # Calculate metrics
+        total_qualification_gaps = len(qualification_gaps)
+        requests_with_quals = len([r for r in data.requests if r.get('required_qualifications', [])])
+
+        # Group training opportunities by qualification
+        training_by_qual = {}
+        for opp in training_opportunities:
+            for qual in opp['qualifications_to_add']:
+                if qual not in training_by_qual:
+                    training_by_qual[qual] = []
+                training_by_qual[qual].append(opp['resource_id'])
+
+        return {
+            "constraint_id": "CP_02",
+            "constraint_name": "qualification_matching",
+            "constraint_type": "HARD",
+            "total_blocked_assignments": total_qualification_gaps,
+            "qualification_gaps": {
+                "total_gaps": total_qualification_gaps,
+                "requests_with_requirements": requests_with_quals,
+                "gap_percentage": round(
+                    (total_qualification_gaps / requests_with_quals * 100) if requests_with_quals > 0 else 0,
+                    2
+                ),
+                "detailed_gaps": qualification_gaps
+            },
+            "training_opportunities": {
+                "total_opportunities": len(training_opportunities),
+                "by_qualification": {
+                    qual: {
+                        'resource_count': len(resources),
+                        'resources': list(set(resources)),
+                        'impact': f"Enables {len(resources)} potential assignments"
+                    }
+                    for qual, resources in sorted(
+                        training_by_qual.items(),
+                        key=lambda x: len(x[1]),
+                        reverse=True
+                    )
+                },
+                "detailed_opportunities": training_opportunities[:10]  # Top 10
+            },
+            "hiring_needs": {
+                "total_positions": len(hiring_needs),
+                "detailed_needs": hiring_needs[:5]  # Top 5
+            },
+            "recommendations": self._generate_recommendations(
+                training_opportunities,
+                hiring_needs,
+                training_by_qual
+            )
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check if resource has required qualifications for this request
+
+        For hard constraints, this either completely blocks (legal violation)
+        or allows the assignment.
+        """
+        # Find the request
+        req_id = simulated_assignment['id']
+        res_id = simulated_assignment['resource_id']
+
+        request = next((r for r in data.requests if r['id'] == req_id), None)
+        resource = next((r for r in data.resources if r['resource_id'] == res_id), None)
+
+        if not request or not resource:
+            return {
+                "would_violate": True,
+                "violation_type": "legal",
+                "reason": "Request or resource not found"
+            }
+
+        req_quals = set(request.get('required_qualifications', []))
+        res_quals = set(resource.get('qualifications', []))
+
+        missing = req_quals - res_quals
+
+        if missing:
+            return {
+                "would_violate": True,
+                "violation_type": "legal",
+                "violation_amount": len(missing),
+                "reason": f"Resource lacks required qualifications: {list(missing)}",
+                "details": {
+                    "required_qualifications": list(req_quals),
+                    "resource_qualifications": list(res_quals),
+                    "missing_qualifications": list(missing)
+                }
+            }
+
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "reason": "Resource has all required qualifications"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """
+        Not applicable for hard constraints
+
+        Hard constraints cannot be violated - they completely block assignments.
+        Weight adjustment doesn't apply.
+        """
+        return {
+            "constraint_id": "CP_02",
+            "constraint_type": "HARD",
+            "message": "Weight adjustment not applicable for hard constraints",
+            "suggested_adjustments": []
+        }
+
+    def _generate_recommendations(self, training_opportunities, hiring_needs, training_by_qual):
+        """Generate prioritized recommendations"""
+        recommendations = []
+
+        # High-impact training recommendations
+        high_impact_quals = [
+            (qual, info) for qual, info in
+            sorted(training_by_qual.items(), key=lambda x: len(x[1]), reverse=True)
+            if len(info) >= 2
+        ]
+
+        for qual, resources in high_impact_quals[:3]:  # Top 3
+            recommendations.append({
+                'type': 'TRAINING',
+                'priority': 'HIGH',
+                'action': f"Train {len(resources)} resources on {qual}",
+                'resources': list(set(resources))[:5],
+                'expected_impact': f"Could enable {len(resources)} additional assignments"
+            })
+
+        # Individual training recommendations
+        for opp in training_opportunities[:5]:  # Top 5 individual
+            if opp['priority'] == 'HIGH':
+                recommendations.append({
+                    'type': 'TRAINING',
+                    'priority': 'HIGH',
+                    'action': f"Train {opp['resource_id']} on {opp['qualifications_to_add']}",
+                    'expected_impact': opp['impact']
+                })
+
+        # Hiring recommendations
+        for need in hiring_needs[:3]:  # Top 3
+            recommendations.append({
+                'type': 'HIRING',
+                'priority': need['priority'],
+                'action': f"Hire resource with qualifications: {need['required_qualifications']}",
+                'expected_impact': need['impact']
+            })
+
+        return recommendations

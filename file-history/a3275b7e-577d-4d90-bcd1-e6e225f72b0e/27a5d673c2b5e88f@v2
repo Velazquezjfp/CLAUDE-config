@@ -1,0 +1,71 @@
+"""
+LC_04: Maximum Continuous Work Without Break
+Legal Constraint: 5.5 hours continuous work (hard)
+Company Policy: 5 hours (soft, dynamic)
+
+Note: For MVP, we implement a simplified version that checks
+if individual tasks exceed the continuous work limit.
+Full implementation would track segments across multiple tasks.
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_continuous_work_constraints(model: cp_model.CpModel,
+                                   x_vars: dict,
+                                   data,
+                                   constraints) -> list:
+    """
+    Add maximum continuous work constraints to the model (MVP version)
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        List of violation variables (for soft constraints)
+    """
+    MAX_HOURS_LEGAL = constraints.get_legal_value('max_continuous_hours')
+    MAX_HOURS_COMPANY = constraints.get_company_value('max_continuous_hours')
+
+    violations = []
+
+    print(f"\n[LC_04] Adding continuous work constraints (MVP)...")
+    print(f"  Legal limit: {MAX_HOURS_LEGAL}h continuous (hard)")
+    print(f"  Company limit: {MAX_HOURS_COMPANY}h continuous (soft)")
+
+    # MVP: Check that individual tasks don't exceed continuous work limit
+    # Full version would track continuous segments across multiple tasks
+    constraint_count = 0
+
+    for resource_id in data.resource_ids:
+        for request_id in data.request_ids:
+            task_duration = data.task_duration[request_id]
+
+            # If task duration exceeds legal limit, it cannot be assigned
+            if task_duration > MAX_HOURS_LEGAL:
+                # Hard constraint: cannot assign this task
+                model.Add(x_vars[(resource_id, request_id)] == 0)
+                print(f"  WARNING: Task {request_id} duration {task_duration:.2f}h exceeds legal limit!")
+                constraint_count += 1
+            elif task_duration > MAX_HOURS_COMPANY and USE_SOFT_CONSTRAINTS:
+                # Soft constraint: penalize if task exceeds company preference
+                violation = model.NewIntVar(
+                    0, 50,
+                    f'violation_continuous_{resource_id}_{request_id}'
+                )
+                # If assigned, must have violation
+                excess = int((task_duration - MAX_HOURS_COMPANY) * SCALING_FACTOR)
+                model.Add(violation >= excess).OnlyEnforceIf(x_vars[(resource_id, request_id)])
+                model.Add(violation == 0).OnlyEnforceIf(x_vars[(resource_id, request_id)].Not())
+                violations.append(violation)
+                constraint_count += 1
+
+    print(f"  Added {constraint_count} continuous work constraints")
+    print(f"  NOTE: This is MVP version - full segment tracking not yet implemented")
+
+    return violations

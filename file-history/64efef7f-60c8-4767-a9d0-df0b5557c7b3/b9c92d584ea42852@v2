@@ -1,0 +1,83 @@
+"""
+Batch update constraint modules to return metadata
+This script updates all constraint modules to return (violations, metadata) tuples
+"""
+import re
+import os
+
+# Files to update and their constraint IDs
+CONSTRAINT_FILES = {
+    'constraints/lc_02_daily_14h_span.py': 'LC_02',
+    'constraints/lc_03_absolute_daily.py': 'LC_03',
+    'constraints/lc_04_continuous_work.py': 'LC_04',
+    'constraints/cp_02_qualification_matching.py': 'CP_02',
+}
+
+def update_constraint_file(filepath, constraint_id):
+    """Update a single constraint file"""
+    print(f"Updating {filepath}...")
+
+    with open(filepath, 'r') as f:
+        content = f.read()
+
+    # Skip if already updated
+    if 'violation_metadata' in content and f'return violations, violation_metadata' in content:
+        print(f"  Already updated, skipping...")
+        return
+
+    # Update function signature: list -> tuple
+    content = re.sub(
+        r'-> list:',
+        r'-> tuple:',
+        content
+    )
+
+    # Update docstring
+    content = re.sub(
+        r'Returns:\s+List of violation variables \(for soft constraints\)',
+        '''Returns:
+        Tuple of (violations, metadata):
+            - violations: List of violation variables (for soft constraints)
+            - metadata: List of dicts with violation context for analysis''',
+        content
+    )
+
+    # Add violation_metadata initialization after violations = []
+    if 'violation_metadata = []' not in content:
+        content = re.sub(
+            r'(violations = \[\])',
+            r'\1\n    violation_metadata = []  # Track metadata for analysis',
+            content
+        )
+
+    # Update return statement
+    content = re.sub(
+        r'return violations\s*$',
+        r'return violations, violation_metadata  # Return tuple',
+        content,
+        flags=re.MULTILINE
+    )
+
+    print(f"  Updated!")
+
+    with open(filepath, 'w') as f:
+        f.write(content)
+
+def main():
+    print("Batch updating constraint modules...")
+    print("=" * 60)
+
+    for filepath, constraint_id in CONSTRAINT_FILES.items():
+        if os.path.exists(filepath):
+            update_constraint_file(filepath, constraint_id)
+        else:
+            print(f"File not found: {filepath}")
+
+    print("=" * 60)
+    print("Batch update complete!")
+    print("\nNOTE: You still need to manually add metadata collection logic")
+    print("in each file where violations are created (inside the loops).")
+    print("See lc_01_weekly_hours.py for the pattern.")
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,363 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 01: Maximum Weekly Working Hours (Database-Aligned Version 3)
+# Swiss LDT Art. 9
+
+constraint_metadata:
+  name: "max_weekly_hours"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 50 hours in any calendar week"
+  legal_reference: "Swiss LDT Art. 9"
+  modifiable: false
+  constraint_id: 1                          # From database
+
+constraint_parameters:
+  - name: "max_hours_per_week"
+    description: "Maximum allowed working hours per week - LEGAL LIMIT"
+    type: "integer"
+    unit: "hours"
+    default_value: 50                       # From legal_constraints API
+    min_value: 0
+    max_value: 168
+    source: "legal_constraints.constraint_id=1"
+    api_endpoint: "GET /api/v1/legal-constraints/?constraint_name=max_weekly_hours"
+    dynamic: false                          # Legal limits don't change
+
+  - name: "max_hours_company_weekly"
+    description: "Company preferred maximum (stricter than legal) - DYNAMICALLY FETCHED"
+    type: "integer"
+    unit: "hours"
+    default_value: 45                       # Current value from API (can change!)
+    min_value: 0
+    max_value: 50                          # Cannot exceed legal limit
+    source: "company_policy_constraints.constraint_id=1"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=Preferred%20Max%20Weekly%20Hours"
+    dynamic: true                           # Value changes based on planning mode or policy updates
+    notes: |
+      This value is NOT hardcoded. It's fetched dynamically from the database and can vary:
+      - Different planning modes (Conservative/Balanced/Aggressive) may have different values
+      - HR can update this value through the API without code changes
+      - Value is validated to ensure it doesn't exceed legal limit (50h)
+
+data_inputs_from_database:
+  - name: "requests"
+    description: "Task/request data from database"
+    source_table: "requests"
+    api_endpoint: "GET /api/v1/requests/"
+    required_fields:
+      - "request_id"                       # REQ-828796-41 format
+      - "start_datetime"                   # ISO format timestamp
+      - "end_datetime"                     # ISO format timestamp
+      - "resource_category"                # For matching
+      - "people_needed"                    # Number of resources needed
+      - "assignment_status"                # pending/confirmed
+      - "locked"                           # boolean for fixed assignments
+
+  - name: "resources"
+    description: "Resource data from database"
+    source_table: "resources"
+    api_endpoint: "GET /api/v1/resources/"
+    required_fields:
+      - "resource_id"                      # RES-INT-0001 format
+      - "type"                             # Internal/External
+      - "weekly_hours"                     # Contract hours (30, 35, 40, 42)
+      - "cost_per_hour"                    # "56.72" format
+      - "availability_pattern"              # Daily availability windows
+
+  - name: "absences"
+    description: "Resource absences including blocked time"
+    source_table: "absences"
+    api_endpoint: "GET /api/v1/absences/"
+    required_fields:
+      - "absence_id"                       # ABS-00131, ABS-BLOCK-9026 formats
+      - "resource_id"
+      - "type"                             # Holiday, Sick_Leave, Training, Assignment_Blocked
+      - "start_date"
+      - "end_date"
+      - "status"                           # Approuvé/En_attente/Rejeté/Annulé
+
+  - name: "assignments"
+    description: "Existing assignments (for partial replanning)"
+    source_table: "assignments"
+    api_endpoint: "GET /api/v1/assignments/"
+    required_fields:
+      - "assignment_id"
+      - "resource_id"
+      - "request_id"
+      - "status"                           # Confirmé = locked
+
+preprocessed_data:
+  - name: "hours_in_week"
+    description: "Hours of each task that fall within each week (scaled by 100)"
+    type: "integer"
+    dimensions: "[tasks, weeks]"
+    calculation: |
+      # Preprocessing step (Python)
+      def calculate_hours_in_week(request, week_start, week_end):
+          task_start = datetime.fromisoformat(request['start_datetime'])
+          task_end = datetime.fromisoformat(request['end_datetime'])
+
+          # Calculate overlap between task and week
+          overlap_start = max(task_start, week_start)
+          overlap_end = min(task_end, week_end)
+
+          if overlap_start >= overlap_end:
+              return 0  # No overlap
+
+          hours = (overlap_end - overlap_start).total_seconds() / 3600
+          return int(hours * 100)  # Scale by 100
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req_id] = 1 if resource r assigned to request req_id"
+    type: "boolean"
+    dimensions: "[resources, request_ids]"
+    domain: "[0, 1]"
+
+  - name: "work_hours_weekly"
+    description: "Total hours worked by resource r in week w (scaled by 100)"
+    type: "integer"
+    dimensions: "[resources, weeks]"
+    domain: "[0, 5000]"                    # Max 50 hours * 100
+
+  - name: "violation_weekly"
+    description: "Soft violation variable for company policy (if using soft constraints)"
+    type: "integer"
+    dimensions: "[resources, weeks]"
+    domain: "[0, 500]"                     # Max 5 hour violation * 100
+
+mathematical_formulation:
+  equation: |
+    Preprocessing (before solver):
+    For each request req and week w:
+        hours_in_week[req][w] = calculate_overlap(
+            req.start_datetime,
+            req.end_datetime,
+            week_w_start,
+            week_w_end
+        ) * 100
+
+    Hard Constraint (Legal - 50h):
+    For each resource r and week w:
+        work_hours_weekly[r][w] = Σ(x[r][req] × hours_in_week[req][w])
+                                   for all requests req
+
+        work_hours_weekly[r][w] ≤ max_hours_per_week × 100
+
+    Soft Constraint (Company Policy - 45h or dynamic):
+    For each resource r and week w:
+        work_hours_weekly[r][w] ≤ max_hours_company_weekly × 100 + violation_weekly[r][w]
+
+    Add to objective: minimize Σ(violation_weekly[r][w]) with appropriate weight
+
+  explanation: |
+    Two-tier constraint system:
+    1. **Legal limit (50h)**: Hard constraint - NEVER violated
+    2. **Company policy (45h default)**: Soft constraint - prefer not to violate
+
+    Benefits of this approach:
+    - Normal operations stay within 45h (company preference)
+    - High demand periods can use 45-50h buffer with penalties
+    - System always finds feasible solutions (unlike hard 45h limit)
+    - Dynamic values allow policy adjustments without code changes
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Step 1: Fetch constraint data from API (DYNAMIC VALUES)
+    async def fetch_weekly_constraints(planning_mode=None):
+        async with httpx.AsyncClient() as client:
+            # Get legal constraint - this is fixed
+            legal_response = await client.get(
+                f"{API_URL}/legal-constraints/?constraint_name=max_weekly_hours"
+            )
+            legal = legal_response.json()[0]
+
+            # Get company policy - this is DYNAMIC and can vary!
+            params = {"policy_name": "Preferred Max Weekly Hours"}
+            if planning_mode:
+                # Different modes may have different weekly limits
+                params["planning_mode"] = planning_mode
+
+            company_response = await client.get(
+                f"{API_URL}/company-policy-constraints/",
+                params=params
+            )
+            company = company_response.json()[0]
+
+            return legal, company
+
+    # Step 2: Preprocess requests (same as before)
+    def preprocess_requests(requests_from_db, planning_weeks):
+        hours_in_week = {}
+
+        for req in requests_from_db['data']:
+            req_id = req['request_id']
+            start = datetime.fromisoformat(req['start_datetime'])
+            end = datetime.fromisoformat(req['end_datetime'])
+
+            for week_idx, (week_start, week_end) in enumerate(planning_weeks):
+                overlap_hours = calculate_overlap_hours(start, end, week_start, week_end)
+                hours_in_week[(req_id, week_idx)] = int(overlap_hours * 100)
+
+        return hours_in_week
+
+    # Step 3: Add constraints with DYNAMIC values
+    def add_weekly_hours_constraints(model, x, resources, requests, weeks,
+                                      hours_in_week, legal_constraint, company_policy):
+
+        # DYNAMIC VALUES FROM API - NOT HARDCODED!
+        MAX_HOURS_LEGAL = legal_constraint['parameter_value']['value']      # 50 from API
+        MAX_HOURS_COMPANY = company_policy['parameter_value']['value']      # 45 (or varies!)
+        SCALING_FACTOR = 100
+
+        violations = []  # Track soft constraint violations
+
+        for r in resources:
+            r_id = r['resource_id']
+
+            for w_idx, week in enumerate(weeks):
+                # Calculate total hours for this resource-week
+                weekly_sum = sum(
+                    x[(r_id, req['request_id'])] *
+                    hours_in_week.get((req['request_id'], w_idx), 0)
+                    for req in requests
+                )
+
+                # Hard constraint (legal limit - always enforced)
+                model.Add(weekly_sum <= MAX_HOURS_LEGAL * SCALING_FACTOR)
+
+                # Soft constraint (company preference)
+                if USE_SOFT_CONSTRAINTS:
+                    violation = model.NewIntVar(0, 500, f'violation_weekly_{r_id}_{w_idx}')
+                    model.Add(
+                        weekly_sum <= MAX_HOURS_COMPANY * SCALING_FACTOR + violation
+                    )
+                    violations.append(violation)
+
+        return violations
+
+    # Step 4: Include violations in objective function
+    def build_objective(model, violations_weekly, violations_14h, other_costs):
+        # Weight violations based on severity
+        WEEKLY_VIOLATION_WEIGHT = 50    # Per hour over company limit
+        DAILY_VIOLATION_WEIGHT = 100    # Per hour over 14h limit
+
+        objective_terms = []
+
+        # Add violation penalties
+        for v in violations_weekly:
+            objective_terms.append(v * WEEKLY_VIOLATION_WEIGHT)
+
+        # Add other objectives (coverage, travel, etc.)
+        objective_terms.extend(other_costs)
+
+        model.Minimize(sum(objective_terms))
+
+validation_rules:
+  - rule: "Company limit must not exceed legal limit"
+    condition: "max_hours_company_weekly <= max_hours_per_week"
+  - rule: "Week boundaries follow ISO 8601"
+    condition: "Monday 00:00 to Sunday 23:59"
+  - rule: "All datetime comparisons in UTC"
+    condition: "consistent timezone handling"
+  - rule: "Locked assignments are pre-fixed"
+    condition: "x[r][req] = 1 for confirmed assignments"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_daily_hours_14h_span"
+    relationship: "Daily limits (7 days × 12.5h = 87.5h) must respect weekly limit (50h)"
+  - related_constraint: "min_weekly_rest"
+    relationship: "Work hours + rest hours (35h min) must fit in 168h week"
+  - related_constraint: "max_consecutive_work_days"
+    relationship: "6 consecutive days at 8.3h/day = 49.8h fits within 50h limit"
+  - related_constraint: "absences"
+    relationship: "Absent days reduce available working hours in week"
+
+dynamic_value_examples:
+  - planning_mode: "Conservative"
+    max_hours_company_weekly: 42           # Stricter limit for safety
+    notes: "Conservative mode uses lower bounds, prefers work-life balance"
+
+  - planning_mode: "Balanced"
+    max_hours_company_weekly: 45           # Default balanced approach
+
+  - planning_mode: "Aggressive"
+    max_hours_company_weekly: 50           # Use full legal limit
+    notes: "Emergency coverage mode - uses legal maximum"
+
+  - custom_policy: "Summer Period"
+    max_hours_company_weekly: 40           # Reduced hours in summer
+    notes: "Seasonal adjustment for vacation coverage"
+
+  - custom_policy: "Year-End Rush"
+    max_hours_company_weekly: 48           # Slightly higher for busy period
+    notes: "Temporary increase for year-end maintenance"
+
+penalty_configuration:
+  applicable: true                          # Company policy can be soft
+  penalty_weight: 50                        # Per 0.01 hour over company limit
+  penalty_calculation: "linear"
+  notes: |
+    - Legal limit (50h) is ALWAYS hard constraint
+    - Company limit (45h or dynamic) can be soft with penalties
+    - Penalties guide solver to prefer staying within company policy
+
+examples:
+  - scenario: "Normal 40-hour work week"
+    input:
+      resource: "RES-INT-0001"
+      week: "2025-W48"
+      company_limit: 45                    # Fetched from API
+      assigned_tasks:
+        - task: "REQ-001", duration: 8, day: "Monday"
+        - task: "REQ-002", duration: 8, day: "Tuesday"
+        - task: "REQ-003", duration: 8, day: "Wednesday"
+        - task: "REQ-004", duration: 8, day: "Thursday"
+        - task: "REQ-005", duration: 8, day: "Friday"
+    output:
+      work_hours_weekly: 4000              # 40 hours * 100
+      legal_constraint_satisfied: true     # Below 50h
+      company_constraint_satisfied: true   # Below 45h
+      violation: 0
+
+  - scenario: "High demand week - using buffer"
+    input:
+      resource: "RES-INT-0002"
+      week: "2025-W51"
+      company_limit: 45                    # From API (Balanced mode)
+      assigned_tasks:
+        - Monday-Friday: 9 hours/day
+        - Saturday: 3 hours
+    output:
+      total_hours: 48
+      work_hours_weekly: 4800              # 48 * 100
+      legal_constraint_satisfied: true     # Below 50h ✓
+      company_constraint_satisfied: false  # Exceeds 45h ✗
+      violation_amount: 300                # 3 hours over company limit
+      penalty_cost: 150                    # 300 × 0.5 weight
+
+  - scenario: "Emergency mode - aggressive planning"
+    input:
+      resource: "RES-INT-0003"
+      week: "2025-W52"
+      planning_mode: "Aggressive"
+      company_limit: 50                    # Fetched dynamically for aggressive mode
+      assigned_tasks:
+        - total_hours: 50
+    output:
+      work_hours_weekly: 5000
+      legal_constraint_satisfied: true
+      company_constraint_satisfied: true   # Company limit = legal limit in aggressive mode
+      violation: 0
+      notes: "No penalty in aggressive mode when at legal limit"
+
+notes:
+  - "Week definition: ISO 8601 (Monday 00:00 to Sunday 23:59)"
+  - "All values scaled by 100 for integer domain (CP-SAT requirement)"
+  - "Dynamic fetching allows policy changes without code deployment"
+  - "Two-tier system ensures legal compliance while optimizing preferences"
+  - "Assignment_Blocked absences automatically prevent double-booking"
+  - "Contract hours (weekly_hours field) may differ from actual worked hours"

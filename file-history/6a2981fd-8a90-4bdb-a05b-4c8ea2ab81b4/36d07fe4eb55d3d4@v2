@@ -1,0 +1,181 @@
+# Solver Performance Issue - Full Dataset
+
+**Date:** December 10, 2025
+**Issue:** Solver hangs when processing full dataset (25,448 demands × 374 resources)
+
+---
+
+## Problem
+
+The solver is trying to build constraints for the complete dataset:
+- **25,448 demands**
+- **374 resources**
+- **= 9,517,152 decision variables** (resource-demand combinations)
+
+This creates a massive constraint matrix that is computationally infeasible to solve.
+
+### Where It Hangs
+
+```
+[LC_02] Adding 14h span constraints...
+  Legal limit: 9h in 14h (hard)
+  Company limit: 8.5h in 14h (soft)
+^CKeyboardInterrupt (user stopped it)
+```
+
+The solver was stuck building constraints for LC_02, iterating through millions of combinations.
+
+---
+
+## Root Cause
+
+The solver was designed and tested with **small datasets** (2-50 demands), not production scale (25,000+ demands).
+
+### Complexity Analysis
+
+**For each constraint:**
+- Iterates through all resources: 374
+- For each resource, iterates through all demands: 25,448
+- For each demand, checks multiple time windows: ~322
+- **Total iterations:** 374 × 25,448 × 322 = **~3 billion operations** just for LC_02!
+
+This is exponential complexity that doesn't scale.
+
+---
+
+## Solutions
+
+### Option 1: Filter Demands by Planning Period (RECOMMENDED)
+Only fetch demands within a specific date range (e.g., next 2 weeks).
+
+**Implementation:**
+```python
+# In api/client.py - add date filtering
+def get_demands(self, start_date=None, end_date=None, ...):
+    params = {
+        'per_page': 200,
+        'shift_start_time__gte': start_date,  # If API supports
+        'shift_start_time__lte': end_date
+    }
+```
+
+**Expected Result:**
+- Reduce 25,448 demands to ~500-1,000 relevant demands
+- Makes problem solvable in reasonable time (minutes instead of hours/days)
+
+### Option 2: Use TEST_MODE
+Set `TEST_MODE = True` in `config.py` to limit dataset size.
+
+**Current Implementation:**
+```python
+# In config.py
+TEST_MODE = True  # Fetch small dataset
+TEST_NUM_REQUESTS = 50
+TEST_NUM_RESOURCES = 50
+```
+
+**Pro:** Quick testing
+**Con:** Doesn't solve real production problem
+
+### Option 3: Batch Processing
+Process demands in batches (e.g., 1,000 at a time).
+
+**Pro:** Can handle full dataset eventually
+**Con:** Complex to implement, may miss optimal global solution
+
+### Option 4: Add Assignment Status Filter
+Only fetch unassigned demands.
+
+```python
+# In api/client.py
+def get_demands(self, assignment_status=None, ...):
+    params = {
+        'assignment_status': 'Non attribué'  # Or whatever status means unassigned
+    }
+```
+
+**Expected Result:**
+- Significantly reduce number of demands to process
+- Focus on demands that actually need assignment
+
+---
+
+## Recommended Approach
+
+**Combine Options 1 + 4:**
+
+1. **Filter by assignment status** - Only fetch unassigned demands
+2. **Filter by planning period** - Only fetch demands for next 2-4 weeks
+3. **Keep pagination** - Still fetch all matching demands
+
+**Example API Call:**
+```python
+demands = client.get_demands(
+    assignment_status='Non attribué',
+    start_date='2025-12-10',
+    end_date='2025-12-24'
+)
+```
+
+**Expected Dataset:**
+- ~500-2,000 demands (manageable)
+- ~374 resources (or filter to relevant teams)
+- **= ~200,000-750,000 variables** (solvable in minutes)
+
+---
+
+## API Endpoint Check
+
+Does the demands API support these filters?
+
+```bash
+# Check API documentation
+curl http://150.241.245.65:8002/docs
+
+# Test filters
+curl "http://150.241.245.65:8002/api/v1/demands/?assignment_status=Pré-réservé&per_page=5"
+curl "http://150.241.245.65:8002/api/v1/demands/?shift_start_time__gte=2025-12-10&per_page=5"
+```
+
+---
+
+## Next Steps
+
+1. **Check API capabilities** - What filters are available?
+2. **Add filtering to client.py** - Implement date and status filters
+3. **Update config.py** - Add planning period configuration
+4. **Test with filtered dataset** - Verify solver completes in reasonable time
+5. **Document usage** - Update README with filtering instructions
+
+---
+
+## Field Name Issues (Separate from Performance)
+
+While fixing performance, also need to update field names throughout codebase:
+
+### Current Mapping (in API client):
+- ✅ `required_qualifications`: String → Array (fixed)
+- ❌ Still mapping: `id` → `request_id`
+- ❌ Still mapping: `shift_start_time` → `start_datetime`
+- ❌ Still mapping: `shift_finish_time` → `end_datetime`
+
+### Files That Need Field Name Updates:
+1. `preprocessing/data_processor.py` - lines 66, 113, 117, 118
+2. `preprocessing/time_windows.py` - lines 21, 22, 132, 133, 155, 156, 181, 182, 203, 204, 238, 239
+3. `constraints/cp_02_qualification_matching.py` - lines 48, 52, 61, 78, 127, 135
+
+**Plan:** Update these files to use API field names directly after fixing performance issue.
+
+---
+
+## Conclusion
+
+**Primary Issue:** Scale/performance (trying to solve 9.5M variable problem)
+**Secondary Issue:** Field name mismatches (can fix after addressing performance)
+
+**Priority:**
+1. Fix performance by adding filters
+2. Then fix field names
+3. Then test end-to-end
+
+Without filtering, the solver will NEVER complete on the full dataset.

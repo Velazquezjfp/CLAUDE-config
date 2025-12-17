@@ -1,0 +1,426 @@
+# CFF Personnel Planning System - Database Application v2.0
+
+A complete dockerized PostgreSQL database with FastAPI REST API for the CFF (Swiss Federal Railways) Personnel Planning and Resource Management System.
+
+## 🚀 Quick Start
+
+```bash
+# Deploy the system
+cd database_application_v2
+./scripts/deploy.sh
+
+# Access the API
+open http://localhost:8000/docs
+```
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Deployment](#deployment)
+- [API Documentation](#api-documentation)
+- [Testing](#testing)
+- [Documentation](#documentation)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+
+## 🎯 Overview
+
+This application provides a complete database and API solution for managing:
+- **Resources** (70 personnel: internal and external)
+- **Organizational Hierarchy** (4 regions → 10 teams → 9 sub-groups)
+- **Absences** (322+ records with multiple types)
+- **Requests** (231 maintenance demands)
+- **Assignments** (99 confirmed assignments)
+- **Locations** (20+ Swiss railway locations)
+- **Qualifications** (Skills and certifications)
+- **Legal Constraints** (Swiss LDT compliance - read-only)
+
+## ✨ Features
+
+### Database
+- **PostgreSQL 14+** with production-ready schema
+- **13 core tables** with full referential integrity
+- **ENUM types** for data validation
+- **11 performance indexes** (GIN for JSONB, GIST for date ranges)
+- **4 analytical views** for reporting
+- **3 business logic triggers** (auto timestamps, Assignment_Blocked creation)
+- **2 utility functions** (check_resource_availability, calculate_coverage_percentage)
+- **Exclusion constraints** to prevent double-booking
+
+### API
+- **FastAPI** with async support
+- **66 REST endpoints** (full CRUD)
+- **Auto-generated OpenAPI documentation** at `/docs`
+- **Pagination** on large tables (default 50, max 200 items/page)
+- **Advanced filtering** (status, type, date ranges, etc.)
+- **Read-only enforcement** for legal constraints (Swiss LDT)
+- **Connection pooling** for performance
+- **Comprehensive error handling**
+
+### Deployment
+- **Fully dockerized** (PostgreSQL + FastAPI)
+- **Automated deployment** with scripts
+- **Persistent storage** (docker volumes or host storage)
+- **Health checks** automated monitoring
+- **Backup/restore** capabilities
+- **Clean and restart** scripts
+
+### Testing
+- **79 comprehensive tests** using pytest
+- **Test categories**: Connection, CRUD, Pagination, Read-only, Data Integrity
+- **Automated test runner** with summary reports
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Client Application                    │
+│             (Frontend, External Systems)                 │
+└───────────────────────┬─────────────────────────────────┘
+                        │ HTTP/REST
+┌───────────────────────▼─────────────────────────────────┐
+│                   FastAPI Application                    │
+│   ┌─────────────────────────────────────────────────┐   │
+│   │  66 REST Endpoints (Auto-documented)            │   │
+│   │  - Full CRUD operations                         │   │
+│   │  - Pagination & Filtering                       │   │
+│   │  - Data validation (Pydantic)                   │   │
+│   └─────────────────────┬───────────────────────────┘   │
+│                         │ AsyncPG                        │
+└─────────────────────────┼─────────────────────────────────┘
+                          │ SQL
+┌─────────────────────────▼─────────────────────────────────┐
+│              PostgreSQL 14 Database                       │
+│   ┌─────────────────────────────────────────────────┐   │
+│   │  Schema: 13 Tables + 4 Views                    │   │
+│   │  - Core: resources, absences, requests, etc.    │   │
+│   │  - Constraints: legal, company, operational     │   │
+│   │  - Indexes: 11 performance indexes              │   │
+│   │  - Functions: availability, coverage            │   │
+│   └─────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────────┘
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker 20.10+
+- Docker Compose 2.0+
+- 2 GB RAM minimum
+- 5 GB disk space
+
+### Basic Deployment
+
+```bash
+# 1. Navigate to the application directory
+cd database_application_v2
+
+# 2. Deploy with default settings
+./scripts/deploy.sh
+
+# 3. Wait for services to start (~30 seconds)
+
+# 4. Access the API documentation
+open http://localhost:8000/docs
+```
+
+### Advanced Deployment Options
+
+```bash
+# Use custom storage path
+./scripts/deploy.sh --storage-path /var/lib/cff-data
+
+# Use host storage instead of docker volume
+./scripts/deploy.sh --use-host-storage --storage-path /mnt/persistent
+
+# Clean deployment (removes existing data)
+./scripts/deploy.sh --clean
+
+# Skip data migration (use existing database)
+./scripts/deploy.sh --no-migrate
+```
+
+## 📡 API Documentation
+
+### Interactive Documentation
+- **Swagger UI**: http://localhost:8000/docs (recommended)
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/api/v1/openapi.json
+
+### Quick Examples
+
+#### Get All Resources (Paginated)
+```bash
+curl http://localhost:8000/api/v1/resources?page=1&per_page=10
+```
+
+#### Create a New Absence
+```bash
+curl -X POST http://localhost:8000/api/v1/absences \
+  -H "Content-Type: application/json" \
+  -d '{
+    "absence_id": "ABS-TEST-001",
+    "resource_id": "RES-INT-0001",
+    "type": "Holiday",
+    "start_date": "2025-12-20",
+    "end_date": "2025-12-24",
+    "status": "En_attente"
+  }'
+```
+
+#### Get Legal Constraints (Read-Only)
+```bash
+curl http://localhost:8000/api/v1/legal-constraints
+```
+
+## 🧪 Testing
+
+### Run All Tests
+```bash
+cd tests
+python run_all_tests.py
+```
+
+### Run Individual Test Suites
+```bash
+# Connection tests
+pytest test_connection.py -v
+
+# CRUD operations
+pytest test_crud_operations.py -v
+
+# Pagination tests
+pytest test_pagination.py -v
+
+# Read-only enforcement
+pytest test_readonly_constraints.py -v
+
+# Data integrity
+pytest test_data_integrity.py -v
+```
+
+### Test Coverage
+- **79 test cases** covering all endpoints
+- **Connection tests**: 8 tests
+- **CRUD operations**: 12+ test suites
+- **Pagination**: 20 tests
+- **Read-only enforcement**: 18 tests
+- **Data integrity**: 21 tests
+
+## 📚 Documentation
+
+All documentation is located in the `docs/` directory:
+
+### For Developers
+- **[API_ENDPOINTS.md](docs/API_ENDPOINTS.md)** - Complete API reference with 66 endpoints
+- **[SQL_QUERIES_REFERENCE.md](docs/SQL_QUERIES_REFERENCE.md)** - 150+ SQL query examples
+- **[INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md)** - Client integration guide with code examples
+
+### For DevOps
+- **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment instructions
+- **[TROUBLESHOOTING.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting)** - Common issues and solutions
+
+### For Testers
+- **[tests/README.md](tests/README.md)** - Testing documentation
+- **[tests/QUICKSTART.md](tests/QUICKSTART.md)** - Quick start testing guide
+
+## 📁 Project Structure
+
+```
+database_application_v2/
+├── api/                        # FastAPI application
+│   ├── main.py                 # Application entry point
+│   ├── config.py               # Configuration settings
+│   ├── database.py             # Database connection
+│   ├── models.py               # Pydantic models
+│   ├── routers/                # API endpoints
+│   │   ├── resources.py        # Resources endpoints
+│   │   ├── absences.py         # Absences endpoints
+│   │   ├── requests.py         # Requests endpoints
+│   │   ├── assignments.py      # Assignments endpoints
+│   │   └── ...                 # Other routers
+│   └── requirements.txt        # Python dependencies
+├── database/                   # Database files
+│   ├── schema.sql              # PostgreSQL schema
+│   ├── constraints_seed_data.sql # Seed data
+│   ├── migrate_json_to_sql_v2.py # Migration script
+│   └── init-db.sh              # Initialization script
+├── docker/                     # Docker configuration
+│   ├── Dockerfile.postgres     # PostgreSQL image
+│   ├── Dockerfile.api          # API image
+│   └── docker-compose.yml      # Services orchestration
+├── scripts/                    # Deployment scripts
+│   ├── deploy.sh               # Main deployment script
+│   ├── health-check.sh         # Health check script
+│   ├── backup-db.sh            # Backup script
+│   ├── stop.sh                 # Stop services
+│   └── restart.sh              # Restart services
+├── tests/                      # Test suite
+│   ├── test_connection.py      # Connection tests
+│   ├── test_crud_operations.py # CRUD tests
+│   ├── test_pagination.py      # Pagination tests
+│   ├── test_readonly_constraints.py # Read-only tests
+│   ├── test_data_integrity.py  # Data integrity tests
+│   └── run_all_tests.py        # Test orchestrator
+├── docs/                       # Documentation
+│   ├── API_ENDPOINTS.md        # API reference
+│   ├── SQL_QUERIES_REFERENCE.md # SQL reference
+│   ├── DEPLOYMENT_GUIDE.md     # Deployment guide
+│   └── INTEGRATION_GUIDE.md    # Integration guide
+├── .env.example                # Environment template
+└── README.md                   # This file
+```
+
+## 🔧 Management Commands
+
+### Service Management
+```bash
+# Stop services
+./scripts/stop.sh
+
+# Restart services
+./scripts/restart.sh
+
+# Check health
+./scripts/health-check.sh
+
+# View logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f postgres
+docker-compose logs -f api
+```
+
+### Database Management
+```bash
+# Backup database
+./scripts/backup-db.sh
+
+# Restore database
+gunzip -c backups/cff_planning_backup_20251110_120000.sql.gz | \
+  docker-compose exec -T postgres psql -U cff_app_user -d cff_planning
+
+# Access PostgreSQL shell
+docker-compose exec postgres psql -U cff_app_user -d cff_planning
+
+# Run SQL query
+docker-compose exec postgres psql -U cff_app_user -d cff_planning \
+  -c "SELECT COUNT(*) FROM resources;"
+```
+
+## 🐛 Troubleshooting
+
+### Services Won't Start
+```bash
+# Check Docker is running
+docker ps
+
+# Check logs
+docker-compose logs
+
+# Clean and rebuild
+./scripts/deploy.sh --clean
+```
+
+### Database Connection Issues
+```bash
+# Check PostgreSQL is healthy
+docker-compose ps postgres
+
+# Verify database exists
+docker-compose exec postgres psql -U cff_app_user -l
+```
+
+### API Not Responding
+```bash
+# Check API logs
+docker-compose logs api
+
+# Restart API service
+docker-compose restart api
+
+# Run health check
+./scripts/health-check.sh
+```
+
+### Port Already in Use
+```bash
+# Change ports in .env file
+API_PORT=8001
+DB_PORT=5433
+
+# Redeploy
+./scripts/deploy.sh
+```
+
+For more detailed troubleshooting, see [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting).
+
+## 📊 Database Statistics
+
+- **Resources**: 70 (50 internal, 20 external)
+- **Regions**: 4 Swiss regions
+- **Teams**: 10 globally unique teams
+- **Sub-groups**: 9 color-coded sub-groups
+- **Absences**: 322+ records
+- **Assignments**: 99 confirmed
+- **Requests**: 231 maintenance demands
+- **Locations**: 20 Swiss railway locations
+- **Qualifications**: 100+ skills and certifications
+- **Coverage**: 42.9% demands covered, 57.1% available for optimization
+
+## 🔐 Security
+
+### Default Credentials (Change in Production!)
+- **Database**: cff_planning
+- **User**: cff_app_user
+- **Password**: changeme
+
+### Security Recommendations
+1. Change default passwords in `.env`
+2. Use environment variables for secrets
+3. Enable HTTPS in production
+4. Configure firewall rules
+5. Implement authentication/authorization
+6. Use read-only database users for reporting
+
+See [DEPLOYMENT_GUIDE.md - Security](docs/DEPLOYMENT_GUIDE.md#security-considerations) for details.
+
+## 📈 Performance
+
+### Database
+- Connection pool: 20 connections (configurable)
+- Max overflow: 10 additional connections
+- Pool timeout: 30 seconds
+- 11 optimized indexes
+
+### API
+- Async FastAPI with uvicorn
+- Default pagination: 50 items
+- Maximum pagination: 200 items
+- Response time: <100ms for simple queries
+
+## 🤝 Contributing
+
+This is an internal CFF project. For questions or issues, contact the development team.
+
+## 📝 License
+
+Copyright © 2025 CFF (Swiss Federal Railways). All rights reserved.
+
+## 🆘 Support
+
+For technical support:
+1. Check [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#troubleshooting)
+2. Review logs: `docker-compose logs`
+3. Run health check: `./scripts/health-check.sh`
+4. Contact: [your-support-email@cff.ch]
+
+---
+
+**Version**: 2.0.0
+**Last Updated**: November 2025
+**Status**: Production Ready ✅

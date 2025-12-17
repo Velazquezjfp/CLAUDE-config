@@ -1,0 +1,1339 @@
+# CFF Personnel Planning System - SQL Queries Reference
+
+**Database:** PostgreSQL 14+
+**Schema Version:** 2.1
+**Last Updated:** 2025-12-08
+**Architecture:** Dual Database (External + Internal)
+
+---
+
+## Table of Contents
+
+1. [Database Architecture Overview](#1-database-architecture-overview)
+2. [External Database - Production Data](#2-external-database---production-data)
+3. [Internal Database - Parameter Tables](#3-internal-database---parameter-tables)
+4. [Common Query Patterns](#4-common-query-patterns)
+5. [JSONB Field Queries](#5-jsonb-field-queries)
+6. [Join Examples](#6-join-examples)
+7. [Analytical Queries](#7-analytical-queries)
+8. [Pagination Patterns](#8-pagination-patterns)
+9. [Database Functions](#9-database-functions)
+
+---
+
+## 1. Database Architecture Overview
+
+The CFF Personnel Planning System uses a **dual database architecture**:
+
+| Database | Purpose | Connection |
+|----------|---------|------------|
+| **External Database** | Production data (resources, demands, assignments) | `150.241.245.65:5432/cff` |
+| **Internal Database** | Parameters and constraints (read-mostly) | Local container (postgres) |
+
+### Connection Details
+
+**External Database (Production Data):**
+```
+Host: 150.241.245.65
+Port: 5432
+Database: cff
+User: cffdev
+```
+
+**Internal Database (Parameters):**
+```
+Host: localhost (docker container)
+Port: 5432
+Database: cff_planning
+User: postgres
+```
+
+---
+
+## 2. External Database - Production Data
+
+### 2.1 Table Summary
+
+| Table | Rows | Columns | Primary Key | Description |
+|-------|------|---------|-------------|-------------|
+| regions | 3 | 7 | region_id | Regional hierarchy (Succursales) |
+| teams | 61 | 8 | team_id | Team organizational units |
+| groups | 47 | 8 | group_id | Sub-groups within teams |
+| divisions | 6 | 7 | division_id | Division organizational level |
+| resources | 374 | 27 | resource_id | Personnel (internal/external) |
+| absences | 6,190 | 13 | absence_id | Resource absences |
+| demands | 50,896 | 34 | id | Maintenance demands (shifts) |
+| assignments | 106,038 | 23 | id | Resource-to-demand assignments |
+| demands_list | 25,577 | 38 | id | Historical BSA records |
+| locations | 36 | 10 | location_id | Railway locations |
+| qualifications | 101 | 10 | qualification_id | Skills/certifications |
+| operation_points | 761 | 10 | operation_points_id | Operational points |
+| resource_category | 19 | 2 | id | Resource categories |
+
+---
+
+### 2.2 Regions Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| region_id | integer | NOT NULL | Primary key |
+| region_name | varchar | NULL | Region name |
+| region_code | varchar | NOT NULL | Region code |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all regions
+SELECT region_id, region_name, region_code, created_at, created_by, updated_at, updated_by
+FROM regions
+ORDER BY region_name;
+
+-- Get region by ID
+SELECT * FROM regions WHERE region_id = 1;
+
+-- Insert region
+INSERT INTO regions (region_name, region_code, created_by)
+VALUES ('Zurich', 'ZH', 'api')
+RETURNING *;
+
+-- Update region
+UPDATE regions
+SET region_name = 'Zurich Updated', updated_by = 'api'
+WHERE region_id = 1
+RETURNING *;
+
+-- Delete region
+DELETE FROM regions WHERE region_id = 1;
+```
+
+---
+
+### 2.3 Teams Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| team_id | integer | NOT NULL | Primary key |
+| team_name | varchar | NOT NULL | Team name |
+| team_code | varchar | NULL | Team code |
+| region_id | integer | NULL | Foreign key to regions |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all teams
+SELECT team_id, team_name, team_code, region_id, created_at, updated_at
+FROM teams
+ORDER BY team_name;
+
+-- Teams by region
+SELECT * FROM teams WHERE region_id = 1 ORDER BY team_name;
+
+-- Teams with region info
+SELECT t.*, r.region_name, r.region_code
+FROM teams t
+LEFT JOIN regions r ON t.region_id = r.region_id
+ORDER BY r.region_name, t.team_name;
+
+-- Count teams per region
+SELECT r.region_name, COUNT(t.team_id) as team_count
+FROM regions r
+LEFT JOIN teams t ON r.region_id = t.region_id
+GROUP BY r.region_id, r.region_name
+ORDER BY team_count DESC;
+```
+
+---
+
+### 2.4 Groups Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| group_id | integer | NOT NULL | Primary key |
+| group_name | varchar | NOT NULL | Group name |
+| team_id | integer | NOT NULL | Foreign key to teams |
+| color_code | varchar | NULL | Display color |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all groups
+SELECT group_id, group_name, team_id, color_code, created_at, updated_at
+FROM groups
+ORDER BY group_name;
+
+-- Groups by team
+SELECT * FROM groups WHERE team_id = 1 ORDER BY group_name;
+
+-- Groups with team and region hierarchy
+SELECT g.group_id, g.group_name, g.color_code,
+       t.team_id, t.team_name,
+       r.region_id, r.region_name
+FROM groups g
+JOIN teams t ON g.team_id = t.team_id
+LEFT JOIN regions r ON t.region_id = r.region_id
+ORDER BY r.region_name, t.team_name, g.group_name;
+
+-- Count groups per team
+SELECT t.team_name, COUNT(g.group_id) as group_count
+FROM teams t
+LEFT JOIN groups g ON t.team_id = g.team_id
+GROUP BY t.team_id, t.team_name
+ORDER BY group_count DESC;
+```
+
+---
+
+### 2.5 Divisions Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| division_id | integer | NOT NULL | Primary key |
+| division_name | varchar | NULL | Division name |
+| division_code | varchar | NOT NULL | Division code |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all divisions
+SELECT division_id, division_name, division_code, created_at, updated_at
+FROM divisions
+ORDER BY division_code;
+
+-- Get division by code
+SELECT * FROM divisions WHERE division_code = 'FB';
+```
+
+---
+
+### 2.6 Resources Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| resource_id | integer | NOT NULL | Primary key |
+| user_name | varchar | NOT NULL | Username identifier |
+| first_name | varchar | NOT NULL | First name |
+| last_name | varchar | NOT NULL | Last name |
+| email | varchar | NULL | Email address |
+| phone | varchar | NULL | Phone number |
+| number | varchar | NULL | Employee number |
+| address | varchar | NULL | Address |
+| npa | varchar | NULL | Postal code |
+| region_id | integer | NULL | Foreign key to regions |
+| team_id | integer | NULL | Foreign key to teams |
+| group_id | integer | NULL | Foreign key to groups |
+| **region_code** | **varchar** | **NULL** | **Region code reference** |
+| **division_code** | **varchar** | **NULL** | **Division code reference** |
+| **location_code** | **varchar** | **NULL** | **Location code reference** |
+| home_location | varchar | NULL | Home location |
+| contract | varchar | NULL | Contract type |
+| shift_preference | varchar | NULL | Shift preference |
+| weekly_hours | integer | NULL | Weekly hours |
+| cost_per_hour | numeric | NULL | Hourly cost |
+| qualifications | jsonb | NULL | List of qualifications |
+| resource_categories | jsonb | NULL | Resource categories |
+| availability_pattern | jsonb | NULL | Weekly availability |
+| hire_date | date | NULL | Hire date |
+| status | varchar | NOT NULL | Status (Actif, Inactif) |
+| team_salon_hr | varchar | NULL | HR team salon |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all resources
+SELECT resource_id, first_name, last_name, user_name, status, team_id, group_id
+FROM resources
+ORDER BY last_name, first_name;
+
+-- Active resources only
+SELECT * FROM resources WHERE status = 'Actif' ORDER BY last_name;
+
+-- Resources by team
+SELECT * FROM resources WHERE team_id = 1 ORDER BY last_name;
+
+-- Resources with full hierarchy
+SELECT r.resource_id, r.first_name, r.last_name, r.status,
+       g.group_name, t.team_name, reg.region_name
+FROM resources r
+LEFT JOIN groups g ON r.group_id = g.group_id
+LEFT JOIN teams t ON r.team_id = t.team_id
+LEFT JOIN regions reg ON r.region_id = reg.region_id
+WHERE r.status = 'Actif'
+ORDER BY reg.region_name, t.team_name, r.last_name;
+
+-- Count resources by status
+SELECT status, COUNT(*) as count
+FROM resources
+GROUP BY status
+ORDER BY count DESC;
+
+-- Search resource by name
+SELECT * FROM resources
+WHERE first_name ILIKE '%jean%' OR last_name ILIKE '%jean%';
+
+-- Filter by code references (NEW)
+SELECT * FROM resources WHERE region_code = 'RWT';
+SELECT * FROM resources WHERE division_code = 'FB';
+SELECT * FROM resources WHERE location_code = 'ALL';
+
+-- Combine code filters with status (NEW)
+SELECT resource_id, first_name, last_name, status, region_code, division_code
+FROM resources
+WHERE region_code = 'RWT' AND division_code = 'FB' AND status = 'Actif'
+ORDER BY last_name;
+```
+
+---
+
+### 2.7 Absences Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| absence_id | integer | NOT NULL | Primary key |
+| resource_id | varchar | NOT NULL | Foreign key to resources |
+| family_name | varchar | NOT NULL | Family name |
+| type | varchar | NOT NULL | Absence type |
+| start_date | timestamp | NOT NULL | Start datetime |
+| end_date | timestamp | NOT NULL | End datetime |
+| number_of_days | integer | NULL | Duration in days |
+| status | varchar | NULL | Status |
+| notes | varchar | NULL | Notes |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all absences
+SELECT absence_id, resource_id, family_name, type, start_date, end_date, status
+FROM absences
+ORDER BY start_date DESC;
+
+-- Absences by resource
+SELECT * FROM absences WHERE resource_id = '112' ORDER BY start_date DESC;
+
+-- Absences in date range
+SELECT * FROM absences
+WHERE start_date >= '2026-01-01' AND end_date <= '2026-01-31'
+ORDER BY start_date;
+
+-- Approved absences
+SELECT * FROM absences WHERE status = 'Approuvé' ORDER BY start_date;
+
+-- Current absences (today)
+SELECT a.*, r.first_name, r.last_name
+FROM absences a
+JOIN resources r ON a.resource_id::integer = r.resource_id
+WHERE CURRENT_DATE BETWEEN DATE(a.start_date) AND DATE(a.end_date)
+  AND a.status = 'Approuvé';
+
+-- Absence statistics by type
+SELECT type, COUNT(*) as count, SUM(number_of_days) as total_days
+FROM absences
+WHERE status = 'Approuvé'
+GROUP BY type
+ORDER BY count DESC;
+```
+
+---
+
+### 2.8 Demands Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | integer | NOT NULL | Primary key |
+| bsa_id | varchar | NOT NULL | BSA identifier |
+| task_name | varchar | NULL | Task/project name |
+| branch | varchar | NULL | Branch/location |
+| technical_service | varchar | NULL | Technical service type |
+| resource_category | varchar | NULL | Required resource category |
+| resource_category_group | varchar | NULL | Resource category group |
+| shift | varchar | NULL | Shift type |
+| shift_start_time | varchar | NULL | Shift start time |
+| shift_finish_time | varchar | NULL | Shift end time |
+| start_location | varchar | NULL | Start location name |
+| start_location_code | varchar | NULL | Start location code |
+| end_location | varchar | NULL | End location name |
+| end_location_code | varchar | NULL | End location code |
+| **region_code** | **varchar** | **NULL** | **Region code reference** |
+| **division_code** | **varchar** | **NULL** | **Division code reference** |
+| **location_code** | **varchar** | **NULL** | **Location code reference** |
+| people_needed | integer | NULL | People required |
+| personnel | varchar | NULL | Personnel info |
+| required_qualifications | jsonb | NULL | Required qualifications |
+| assigned_resources | jsonb | NULL | Assigned resources |
+| assignment_status | varchar | NULL | Assignment status |
+| priority | varchar | NULL | Priority level |
+| locked | boolean | NULL | Lock status |
+| responsible_person | varchar | NULL | Responsible person |
+| isp_amgt | varchar | NULL | ISP management ID |
+| psp | varchar | NULL | PSP code |
+| work_type | text | NULL | Work type description |
+| work_operation_type1 | varchar | NULL | Work operation type 1 |
+| work_operation_type2 | varchar | NULL | Work operation type 2 |
+| ir_er | varchar | NULL | IR/ER code |
+| comments | varchar | NULL | Comments |
+| team_id | integer | NULL | Team reference |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List demands (paginated)
+SELECT id, bsa_id, task_name, branch, assignment_status, shift_start_time, shift_finish_time
+FROM demands
+ORDER BY id DESC
+LIMIT 50 OFFSET 0;
+
+-- Demands by BSA ID
+SELECT * FROM demands WHERE bsa_id = '803380';
+
+-- Demands by branch
+SELECT * FROM demands WHERE branch = 'Lausanne' ORDER BY shift_start_time;
+
+-- Demands by assignment status
+SELECT assignment_status, COUNT(*) as count
+FROM demands
+GROUP BY assignment_status
+ORDER BY count DESC;
+
+-- Demands with specific technical service
+SELECT * FROM demands WHERE technical_service = 'Câbles';
+
+-- Upcoming demands (next 7 days)
+SELECT * FROM demands
+WHERE shift_start_time::timestamp >= CURRENT_TIMESTAMP
+  AND shift_start_time::timestamp <= CURRENT_TIMESTAMP + INTERVAL '7 days'
+ORDER BY shift_start_time;
+
+-- Demands requiring specific qualification
+SELECT * FROM demands
+WHERE required_qualifications @> '["Monteur VF"]'::jsonb;
+
+-- Filter by code references (NEW)
+SELECT * FROM demands WHERE region_code = 'RWT';
+SELECT * FROM demands WHERE division_code = 'FB';
+SELECT * FROM demands WHERE location_code = 'GE';
+
+-- Combine code filters with status (NEW)
+SELECT id, bsa_id, task_name, assignment_status, region_code, division_code
+FROM demands
+WHERE region_code = 'RWT' AND assignment_status = 'Pré-réservé'
+ORDER BY shift_start_time;
+```
+
+---
+
+### 2.9 Assignments Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | integer | NOT NULL | Primary key |
+| resource_id | varchar | NULL | Resource ID |
+| family_name | varchar | NULL | Family name |
+| request_id | varchar | NULL | Request/BSA ID |
+| bsa_id | varchar | NULL | BSA ID |
+| calendar_type | varchar | NULL | Calendar type |
+| calendar_start | varchar | NULL | Calendar start datetime |
+| calendar_end | varchar | NULL | Calendar end datetime |
+| enterprise | varchar | NULL | Enterprise |
+| meeting_location | varchar | NULL | Meeting location |
+| meeting_time | varchar | NULL | Meeting time |
+| required_skills | varchar | NULL | Required skills |
+| resource_category | varchar | NULL | Resource category |
+| responsible | varchar | NULL | Responsible person |
+| tour_manager | varchar | NULL | Tour manager |
+| work_site | varchar | NULL | Work site |
+| billing_number | varchar | NULL | Billing number |
+| notes | text | NULL | Notes |
+| rdm_comments | varchar | NULL | RDM comments |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List assignments (paginated)
+SELECT id, resource_id, family_name, bsa_id, calendar_type, calendar_start, calendar_end
+FROM assignments
+ORDER BY id DESC
+LIMIT 50 OFFSET 0;
+
+-- Assignments by resource
+SELECT * FROM assignments WHERE resource_id = '112' ORDER BY calendar_start DESC;
+
+-- Assignments by BSA ID
+SELECT * FROM assignments WHERE bsa_id = '803380';
+
+-- Assignments in date range
+SELECT * FROM assignments
+WHERE calendar_start::timestamp >= '2026-01-01'
+  AND calendar_end::timestamp <= '2026-01-31'
+ORDER BY calendar_start;
+
+-- Assignment count by calendar type
+SELECT calendar_type, COUNT(*) as count
+FROM assignments
+GROUP BY calendar_type
+ORDER BY count DESC;
+
+-- Assignments with resource info
+SELECT a.id, a.family_name, a.bsa_id, a.calendar_start, a.calendar_end,
+       r.first_name, r.last_name, r.status as resource_status
+FROM assignments a
+LEFT JOIN resources r ON a.resource_id::integer = r.resource_id
+ORDER BY a.calendar_start DESC
+LIMIT 100;
+```
+
+---
+
+### 2.10 Demands List Table
+
+Historical BSA records for demand tracking.
+
+**Columns (38):**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | integer | NOT NULL | Primary key |
+| bsa_id | varchar | NULL | BSA identifier |
+| branch | varchar | NULL | Branch |
+| mandate_name | varchar | NULL | Mandate name |
+| mandate_owner | varchar | NULL | Mandate owner |
+| mandate_phase | varchar | NULL | Mandate phase |
+| mandate_type | varchar | NULL | Mandate type |
+| technical_service | varchar | NULL | Technical service |
+| start_date | date | NULL | Start date |
+| end_date | date | NULL | End date |
+| status | varchar | NULL | Status |
+| isp_amgt | varchar | NULL | ISP management ID |
+| psp | varchar | NULL | PSP code |
+| team_id | integer | NULL | Team reference |
+| created_at | timestamp | NULL | Creation timestamp |
+| ... | ... | ... | (additional columns) |
+
+**Example Queries:**
+
+```sql
+-- List demands_list (paginated)
+SELECT id, bsa_id, branch, mandate_name, technical_service, start_date, end_date
+FROM demands_list
+ORDER BY id DESC
+LIMIT 50 OFFSET 0;
+
+-- By BSA ID
+SELECT * FROM demands_list WHERE bsa_id = '729657';
+
+-- By branch
+SELECT * FROM demands_list WHERE branch = 'Lausanne';
+
+-- Count by technical service
+SELECT technical_service, COUNT(*) as count
+FROM demands_list
+GROUP BY technical_service
+ORDER BY count DESC;
+```
+
+---
+
+### 2.11 Locations Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| location_id | integer | NOT NULL | Primary key |
+| location_name | varchar | NULL | Location name |
+| location_code | varchar | NOT NULL | Location code |
+| canton | varchar | NULL | Canton |
+| latitude | numeric | NULL | Latitude |
+| longitude | numeric | NULL | Longitude |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all locations
+SELECT location_id, location_name, location_code, canton, latitude, longitude
+FROM locations
+ORDER BY location_code;
+
+-- Locations by canton
+SELECT * FROM locations WHERE canton = 'Vaud';
+
+-- Search location by code
+SELECT * FROM locations WHERE location_code ILIKE '%GE%';
+```
+
+---
+
+### 2.12 Qualifications Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| qualification_id | integer | NOT NULL | Primary key |
+| qualification_name | varchar | NOT NULL | Qualification name |
+| qualification_category | varchar | NULL | Category |
+| description | text | NULL | Description |
+| certification_required | boolean | NULL | Certification required |
+| validity_months | integer | NULL | Validity period in months |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all qualifications
+SELECT qualification_id, qualification_name, qualification_category, certification_required
+FROM qualifications
+ORDER BY qualification_name;
+
+-- Search by name
+SELECT * FROM qualifications WHERE qualification_name ILIKE '%Monteur%';
+
+-- Qualifications requiring certification
+SELECT * FROM qualifications WHERE certification_required = true;
+
+-- Count by category
+SELECT qualification_category, COUNT(*) as count
+FROM qualifications
+GROUP BY qualification_category
+ORDER BY count DESC;
+```
+
+---
+
+### 2.13 Operation Points Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| operation_points_id | integer | NOT NULL | Primary key |
+| station_name | varchar | NOT NULL | Station name |
+| station_code | varchar | NOT NULL | Station code |
+| line_number | varchar | NOT NULL | Line number |
+| km | numeric | NULL | Kilometer marker |
+| team_id | integer | NULL | Team reference |
+| created_at | timestamp | NULL | Creation timestamp |
+| created_by | varchar | NULL | Creator |
+| updated_at | timestamp | NULL | Last update timestamp |
+| updated_by | varchar | NULL | Last updater |
+
+**Example Queries:**
+
+```sql
+-- List all operation points
+SELECT operation_points_id, station_name, station_code, line_number, km
+FROM operation_points
+ORDER BY line_number, km;
+
+-- By line number
+SELECT * FROM operation_points WHERE line_number = '240' ORDER BY km;
+
+-- Search by station
+SELECT * FROM operation_points WHERE station_name ILIKE '%Lausanne%';
+```
+
+---
+
+### 2.14 Resource Category Table
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| id | integer | NOT NULL | Primary key |
+| name | varchar | NOT NULL | Category name |
+
+**Example Queries:**
+
+```sql
+-- List all categories
+SELECT id, name FROM resource_category ORDER BY name;
+```
+
+---
+
+## 3. Internal Database - Parameter Tables
+
+The internal database stores configuration parameters, constraints, and optimization settings.
+
+### 3.1 Legal Constraints Table
+
+Swiss Labour Duration Law (LDT) constraints - **READ-ONLY**
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| constraint_id | integer | NOT NULL | Primary key |
+| constraint_name | varchar | NOT NULL | Constraint name |
+| category | varchar | NULL | Category |
+| parameter_name | varchar | NULL | Parameter name |
+| parameter_value | jsonb | NULL | Parameter value |
+| unit | varchar | NULL | Unit of measure |
+| description | text | NULL | Description |
+| legal_reference | varchar | NULL | Legal reference |
+| immutable | boolean | NOT NULL | Is immutable (always true) |
+| created_at | timestamp | NULL | Creation timestamp |
+
+**Example Queries:**
+
+```sql
+-- List all legal constraints
+SELECT constraint_id, constraint_name, category, parameter_name, parameter_value
+FROM legal_constraints
+ORDER BY category, constraint_name;
+
+-- By category
+SELECT * FROM legal_constraints WHERE category = 'work_time';
+
+-- Get distinct categories
+SELECT DISTINCT category FROM legal_constraints ORDER BY category;
+
+-- Extract numeric value from JSONB
+SELECT constraint_name, parameter_name,
+       (parameter_value->>'value')::numeric as numeric_value,
+       parameter_value->>'unit' as unit
+FROM legal_constraints
+WHERE parameter_value->>'value' IS NOT NULL;
+```
+
+---
+
+### 3.2 Company Policy Constraints Table
+
+CFF company-specific policy constraints (modifiable)
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| constraint_id | integer | NOT NULL | Primary key |
+| constraint_category | varchar | NOT NULL | Category |
+| policy_name | varchar | NOT NULL | Policy name |
+| policy_type | varchar | NULL | Policy type |
+| parameter_name | varchar | NOT NULL | Parameter name |
+| parameter_value | jsonb | NOT NULL | Parameter value |
+| legal_constraint_id | integer | NULL | Reference to legal constraint |
+| valid_from | date | NOT NULL | Valid from date |
+| valid_to | date | NULL | Valid to date |
+| approved_by | varchar | NULL | Approver |
+| notes | text | NULL | Notes |
+| active | boolean | NOT NULL | Is active |
+| created_at | timestamp | NULL | Creation timestamp |
+| updated_at | timestamp | NULL | Last update timestamp |
+
+**Example Queries:**
+
+```sql
+-- List active policies
+SELECT constraint_id, policy_name, parameter_name, parameter_value, valid_from, valid_to
+FROM company_policy_constraints
+WHERE active = true
+ORDER BY constraint_category, policy_name;
+
+-- By category
+SELECT * FROM company_policy_constraints
+WHERE constraint_category = 'working_hours' AND active = true;
+
+-- Policies with legal reference
+SELECT cpc.*, lc.constraint_name as legal_constraint_name
+FROM company_policy_constraints cpc
+LEFT JOIN legal_constraints lc ON cpc.legal_constraint_id = lc.constraint_id
+WHERE cpc.active = true;
+```
+
+---
+
+### 3.3 Objective Weights Table
+
+Optimization objective weights for planning algorithms
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| weight_id | integer | NOT NULL | Primary key |
+| objective_name | varchar | NOT NULL | Objective name |
+| objective_category | varchar | NULL | Category |
+| weight_coefficient | numeric | NOT NULL | Weight coefficient |
+| weight_min | numeric | NULL | Minimum weight |
+| weight_max | numeric | NULL | Maximum weight |
+| description | text | NULL | Description |
+| active | boolean | NOT NULL | Is active |
+| created_at | timestamp | NULL | Creation timestamp |
+| updated_at | timestamp | NULL | Last update timestamp |
+
+**Example Queries:**
+
+```sql
+-- List all weights
+SELECT weight_id, objective_name, weight_coefficient, active
+FROM objective_weights
+ORDER BY objective_category, objective_name;
+
+-- Active weights only
+SELECT * FROM objective_weights WHERE active = true;
+
+-- Update weight coefficient
+UPDATE objective_weights
+SET weight_coefficient = 1.5, updated_at = NOW()
+WHERE weight_id = 1
+RETURNING *;
+```
+
+---
+
+### 3.4 Utilization Targets Table
+
+Resource utilization efficiency targets
+
+**Columns:**
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| target_id | integer | NOT NULL | Primary key |
+| resource_type | varchar | NOT NULL | Resource type |
+| target_type | varchar | NOT NULL | Target type |
+| target_value | numeric | NOT NULL | Target value (0-100) |
+| target_unit | varchar | NOT NULL | Unit (percentage) |
+| scope | varchar | NOT NULL | Scope (global, region, team) |
+| scope_id | integer | NULL | Scope reference ID |
+| valid_from | date | NOT NULL | Valid from date |
+| valid_to | date | NULL | Valid to date |
+| active | boolean | NOT NULL | Is active |
+| created_at | timestamp | NULL | Creation timestamp |
+| updated_at | timestamp | NULL | Last update timestamp |
+
+**Example Queries:**
+
+```sql
+-- List all targets
+SELECT target_id, resource_type, target_type, target_value, scope, active
+FROM utilization_targets
+ORDER BY resource_type, target_type;
+
+-- Active targets for internal resources
+SELECT * FROM utilization_targets
+WHERE resource_type = 'Internal' AND active = true;
+
+-- Update target value
+UPDATE utilization_targets
+SET target_value = 85.0, updated_at = NOW()
+WHERE target_id = 1
+RETURNING *;
+```
+
+---
+
+## 4. Common Query Patterns
+
+### 4.1 Full Organizational Hierarchy
+
+```sql
+-- Complete hierarchy tree (regions -> teams -> groups)
+SELECT
+    r.region_id, r.region_name, r.region_code,
+    t.team_id, t.team_name, t.team_code,
+    g.group_id, g.group_name, g.color_code
+FROM regions r
+LEFT JOIN teams t ON r.region_id = t.region_id
+LEFT JOIN groups g ON t.team_id = g.team_id
+ORDER BY r.region_name, t.team_name, g.group_name;
+
+-- Hierarchy with resource counts
+SELECT
+    r.region_name,
+    t.team_name,
+    g.group_name,
+    COUNT(res.resource_id) as resource_count
+FROM regions r
+LEFT JOIN teams t ON r.region_id = t.region_id
+LEFT JOIN groups g ON t.team_id = g.team_id
+LEFT JOIN resources res ON g.group_id = res.group_id
+GROUP BY r.region_name, t.team_name, g.group_name
+ORDER BY r.region_name, t.team_name, g.group_name;
+```
+
+### 4.2 Resource Availability Check
+
+```sql
+-- Resources available on a specific date (no absences)
+SELECT r.resource_id, r.first_name, r.last_name, r.status
+FROM resources r
+WHERE r.status = 'Actif'
+  AND NOT EXISTS (
+    SELECT 1 FROM absences a
+    WHERE a.resource_id::integer = r.resource_id
+      AND a.status = 'Approuvé'
+      AND '2026-01-15' BETWEEN DATE(a.start_date) AND DATE(a.end_date)
+  )
+ORDER BY r.last_name;
+
+-- Resources with current assignments
+SELECT r.resource_id, r.first_name, r.last_name,
+       COUNT(a.id) as assignment_count
+FROM resources r
+LEFT JOIN assignments a ON a.resource_id::integer = r.resource_id
+  AND a.calendar_start::timestamp <= CURRENT_TIMESTAMP
+  AND a.calendar_end::timestamp >= CURRENT_TIMESTAMP
+WHERE r.status = 'Actif'
+GROUP BY r.resource_id, r.first_name, r.last_name
+ORDER BY assignment_count DESC;
+```
+
+---
+
+## 5. JSONB Field Queries
+
+### 5.1 Qualifications (JSONB Array)
+
+```sql
+-- Resources with specific qualification
+SELECT resource_id, first_name, last_name, qualifications
+FROM resources
+WHERE qualifications @> '["Monteur VF"]'::jsonb;
+
+-- Resources with multiple qualifications (AND)
+SELECT resource_id, first_name, last_name, qualifications
+FROM resources
+WHERE qualifications @> '["Monteur VF", "Chef de la sécurité CR"]'::jsonb;
+
+-- Resources with any of multiple qualifications (OR)
+SELECT resource_id, first_name, last_name, qualifications
+FROM resources
+WHERE qualifications ?| ARRAY['Monteur VF', 'Grutier'];
+
+-- Count qualifications per resource
+SELECT resource_id, first_name, last_name,
+       jsonb_array_length(COALESCE(qualifications, '[]'::jsonb)) as qual_count
+FROM resources
+ORDER BY qual_count DESC;
+
+-- List distinct qualifications across all resources
+SELECT DISTINCT jsonb_array_elements_text(qualifications) as qualification
+FROM resources
+WHERE qualifications IS NOT NULL
+ORDER BY qualification;
+```
+
+### 5.2 Availability Pattern (JSONB Object)
+
+```sql
+-- Resources available on weekends
+SELECT resource_id, first_name, last_name, availability_pattern
+FROM resources
+WHERE (availability_pattern->'saturday'->>'available')::boolean = true
+   OR (availability_pattern->'sunday'->>'available')::boolean = true;
+
+-- Resources with specific working hours
+SELECT resource_id, first_name, last_name,
+       availability_pattern->'monday'->>'hours' as monday_hours
+FROM resources
+WHERE availability_pattern->'monday' IS NOT NULL;
+```
+
+### 5.3 Required Qualifications (Demands)
+
+```sql
+-- Demands requiring specific qualification
+SELECT id, bsa_id, task_name, required_qualifications
+FROM demands
+WHERE required_qualifications @> '["Monteur VF"]'::jsonb;
+
+-- Demands with empty or no qualifications
+SELECT id, bsa_id, task_name
+FROM demands
+WHERE required_qualifications IS NULL
+   OR jsonb_array_length(required_qualifications) = 0;
+
+-- Count demands by required qualification
+SELECT jsonb_array_elements_text(required_qualifications) as qualification,
+       COUNT(*) as demand_count
+FROM demands
+WHERE required_qualifications IS NOT NULL
+GROUP BY qualification
+ORDER BY demand_count DESC;
+```
+
+---
+
+## 6. Join Examples
+
+### 6.1 Resources with Full Hierarchy
+
+```sql
+SELECT
+    r.resource_id,
+    r.first_name || ' ' || r.last_name AS full_name,
+    r.status,
+    g.group_name,
+    g.color_code,
+    t.team_name,
+    t.team_code,
+    reg.region_name,
+    reg.region_code
+FROM resources r
+LEFT JOIN groups g ON r.group_id = g.group_id
+LEFT JOIN teams t ON r.team_id = t.team_id
+LEFT JOIN regions reg ON r.region_id = reg.region_id
+WHERE r.status = 'Actif'
+ORDER BY reg.region_name, t.team_name, g.group_name, r.last_name;
+```
+
+### 6.2 Assignments with Resource and Demand Info
+
+```sql
+SELECT
+    a.id as assignment_id,
+    a.family_name,
+    a.calendar_start,
+    a.calendar_end,
+    a.calendar_type,
+    r.first_name,
+    r.last_name,
+    r.status as resource_status,
+    d.task_name,
+    d.branch,
+    d.technical_service
+FROM assignments a
+LEFT JOIN resources r ON a.resource_id::integer = r.resource_id
+LEFT JOIN demands d ON a.bsa_id = d.bsa_id
+ORDER BY a.calendar_start DESC
+LIMIT 100;
+```
+
+### 6.3 Absences with Resource Hierarchy
+
+```sql
+SELECT
+    ab.absence_id,
+    ab.type,
+    ab.start_date,
+    ab.end_date,
+    ab.status,
+    r.first_name,
+    r.last_name,
+    t.team_name,
+    reg.region_name
+FROM absences ab
+JOIN resources r ON ab.resource_id::integer = r.resource_id
+LEFT JOIN teams t ON r.team_id = t.team_id
+LEFT JOIN regions reg ON r.region_id = reg.region_id
+WHERE ab.status = 'Approuvé'
+ORDER BY ab.start_date DESC;
+```
+
+---
+
+## 7. Analytical Queries
+
+### 7.1 Resource Statistics
+
+```sql
+-- Resources per team
+SELECT t.team_name, COUNT(r.resource_id) as resource_count
+FROM teams t
+LEFT JOIN resources r ON t.team_id = r.team_id
+GROUP BY t.team_id, t.team_name
+ORDER BY resource_count DESC;
+
+-- Resources by status
+SELECT status, COUNT(*) as count
+FROM resources
+GROUP BY status
+ORDER BY count DESC;
+
+-- Qualification distribution
+SELECT jsonb_array_elements_text(qualifications) as qualification,
+       COUNT(*) as resource_count
+FROM resources
+WHERE qualifications IS NOT NULL
+GROUP BY qualification
+ORDER BY resource_count DESC
+LIMIT 20;
+```
+
+### 7.2 Demand Coverage Analysis
+
+```sql
+-- Demands by assignment status
+SELECT assignment_status, COUNT(*) as count
+FROM demands
+GROUP BY assignment_status
+ORDER BY count DESC;
+
+-- Demands by branch
+SELECT branch, COUNT(*) as count,
+       SUM(COALESCE(people_needed, 1)) as total_people_needed
+FROM demands
+GROUP BY branch
+ORDER BY count DESC;
+
+-- Demands by technical service
+SELECT technical_service, COUNT(*) as count
+FROM demands
+GROUP BY technical_service
+ORDER BY count DESC;
+```
+
+### 7.3 Absence Analysis
+
+```sql
+-- Absences by month
+SELECT DATE_TRUNC('month', start_date) as month,
+       type,
+       COUNT(*) as count,
+       SUM(number_of_days) as total_days
+FROM absences
+WHERE status = 'Approuvé'
+GROUP BY DATE_TRUNC('month', start_date), type
+ORDER BY month DESC, type;
+
+-- Top resources by absence days
+SELECT a.resource_id, a.family_name,
+       SUM(a.number_of_days) as total_absence_days,
+       COUNT(*) as absence_count
+FROM absences a
+WHERE a.status = 'Approuvé'
+GROUP BY a.resource_id, a.family_name
+ORDER BY total_absence_days DESC
+LIMIT 20;
+```
+
+---
+
+## 8. Pagination Patterns
+
+### 8.1 Basic Offset Pagination
+
+```sql
+-- Count total records
+SELECT COUNT(*) as total FROM resources WHERE status = 'Actif';
+
+-- Get page (page=2, per_page=50)
+-- offset = (page - 1) * per_page = (2 - 1) * 50 = 50
+SELECT resource_id, first_name, last_name, status
+FROM resources
+WHERE status = 'Actif'
+ORDER BY last_name, first_name
+LIMIT 50 OFFSET 50;
+```
+
+### 8.2 Keyset Pagination (for large tables)
+
+```sql
+-- First page
+SELECT id, bsa_id, task_name, shift_start_time
+FROM demands
+ORDER BY id
+LIMIT 50;
+
+-- Next page (after last id = 50)
+SELECT id, bsa_id, task_name, shift_start_time
+FROM demands
+WHERE id > 50
+ORDER BY id
+LIMIT 50;
+```
+
+### 8.3 Combined Count and Data Query
+
+```sql
+-- Single query with window function
+SELECT
+    resource_id, first_name, last_name, status,
+    COUNT(*) OVER() as total_count
+FROM resources
+WHERE status = 'Actif'
+ORDER BY last_name
+LIMIT 50 OFFSET 0;
+```
+
+---
+
+## 9. Database Functions
+
+### 9.1 get_bsa_details_json() - Consolidated BSA View
+
+This PostgreSQL function consolidates data from three tables (demands_list, demands, assignments) into a single JSON response.
+
+**Function Signature:**
+```sql
+get_bsa_details_json(p_bsa_id TEXT) RETURNS JSONB
+```
+
+**Source Tables:**
+- `demands_list` (dl) - Historical BSA records
+- `demands` (d) - Current demand/shift information
+- `assignments` (a) - Resource assignment information
+
+**Function Definition:**
+```sql
+CREATE OR REPLACE FUNCTION public.get_bsa_details_json(p_bsa_id text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE
+AS $function$
+DECLARE
+    result JSONB;
+BEGIN
+    SELECT jsonb_build_object(
+        'bsa_id', dl.bsa_id,
+        'demand_resource_category', d.resource_category,
+        'assignment_resource_category', a.resource_category,
+        'team_id', dl.team_id,
+        'demand_shift', d.shift,
+        'assignment_calendar_type', a.calendar_type,
+        'first_shift_start', dl.first_shift_start,
+        'demand_shift_start_time', d.shift_start_time,
+        'assignment_calendar_start', a.calendar_start,
+        'last_shift_end', dl.last_shift_end,
+        'demand_shift_finish_time', d.shift_finish_time,
+        'assignment_calendar_end', a.calendar_end,
+        'duty_station_from_code', dl.duty_station_from_code,
+        'demand_start_location_code', d.start_location_code,
+        'mandate_owner', dl.mandate_owner,
+        'demand_responsible_person', d.responsible_person,
+        'assignment_responsible', a.responsible,
+        'personnel', d.personnel,
+        'required_qualifications', d.required_qualifications,
+        'required_skills', a.required_skills,
+        'status',
+            CASE
+                WHEN EXISTS (SELECT 1 FROM assignments aa WHERE aa.bsa_id = p_bsa_id)
+                    THEN 'ASSIGNED'
+                WHEN EXISTS (SELECT 1 FROM demands dd WHERE dd.bsa_id = p_bsa_id)
+                    THEN 'OPEN'
+                ELSE 'UNKNOWN'
+            END
+    ) INTO result
+    FROM demands_list dl
+    INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+    LEFT JOIN assignments a ON a.bsa_id = dl.bsa_id
+    WHERE dl.bsa_id = p_bsa_id
+    LIMIT 1;
+
+    RETURN result;
+END;
+$function$;
+```
+
+**Usage Examples:**
+
+```sql
+-- Get details for a single BSA ID
+SELECT get_bsa_details_json('803380');
+
+-- Get details with pretty print
+SELECT jsonb_pretty(get_bsa_details_json('803380'));
+
+-- Extract specific field from result
+SELECT get_bsa_details_json('803380')->>'status';
+
+-- Get details for multiple BSA IDs
+SELECT bsa_id, get_bsa_details_json(bsa_id) as details
+FROM (VALUES ('803380'), ('815378'), ('729657')) AS t(bsa_id);
+
+-- Find all assigned BSAs with their details
+SELECT DISTINCT dl.bsa_id, get_bsa_details_json(dl.bsa_id) as details
+FROM demands_list dl
+INNER JOIN demands d ON d.bsa_id = dl.bsa_id
+INNER JOIN assignments a ON a.bsa_id = dl.bsa_id
+LIMIT 10;
+
+-- Count BSAs by status using the function logic
+SELECT
+    CASE
+        WHEN EXISTS (SELECT 1 FROM assignments a WHERE a.bsa_id = dl.bsa_id) THEN 'ASSIGNED'
+        WHEN EXISTS (SELECT 1 FROM demands d WHERE d.bsa_id = dl.bsa_id) THEN 'OPEN'
+        ELSE 'UNKNOWN'
+    END as status,
+    COUNT(DISTINCT dl.bsa_id) as count
+FROM demands_list dl
+GROUP BY 1
+ORDER BY count DESC;
+```
+
+**Return Fields:**
+| Field | Source Table | Description |
+|-------|-------------|-------------|
+| bsa_id | demands_list | BSA identifier |
+| status | calculated | ASSIGNED/OPEN/UNKNOWN |
+| team_id | demands_list | Team reference |
+| demand_shift | demands | Shift type |
+| assignment_calendar_type | assignments | Calendar type |
+| first_shift_start | demands_list | Start date |
+| last_shift_end | demands_list | End date |
+| demand_shift_start_time | demands | Shift start time |
+| demand_shift_finish_time | demands | Shift end time |
+| assignment_calendar_start | assignments | Assignment start |
+| assignment_calendar_end | assignments | Assignment end |
+| duty_station_from_code | demands_list | Station code |
+| demand_start_location_code | demands | Location code |
+| mandate_owner | demands_list | Mandate owner |
+| demand_responsible_person | demands | Responsible person |
+| assignment_responsible | assignments | Assignment responsible |
+| personnel | demands | Personnel count |
+| required_qualifications | demands | Required qualifications (JSONB) |
+| required_skills | assignments | Required skills |
+| demand_resource_category | demands | Resource category |
+| assignment_resource_category | assignments | Assignment resource category |
+
+---
+
+## Summary
+
+This reference provides **100+ SQL queries** for the CFF dual database system:
+
+| Category | Query Count |
+|----------|------------|
+| External DB CRUD | 50+ |
+| Internal DB CRUD | 15+ |
+| JSONB Operations | 15+ |
+| Join Queries | 10+ |
+| Analytical Queries | 15+ |
+| Pagination | 5+ |
+| Database Functions | 5+ |
+
+**Key Points:**
+- External DB: 13 production tables (resources, demands, assignments, etc.)
+- Internal DB: 4 parameter tables (constraints, weights, targets)
+- Database Functions: `get_bsa_details_json()` for consolidated BSA views
+- JSONB fields: `qualifications`, `availability_pattern`, `required_qualifications`, `assigned_resources`
+- All queries are PostgreSQL 14+ compatible

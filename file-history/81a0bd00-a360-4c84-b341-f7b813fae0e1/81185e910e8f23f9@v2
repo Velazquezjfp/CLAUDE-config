@@ -1,0 +1,1265 @@
+import json
+import base64
+import io
+import traceback
+import pdfplumber
+import pandas as pd
+import re
+from datetime import datetime
+from fuzzywuzzy import fuzz
+from typing import Dict, List, Tuple, Optional, Any
+
+
+class PDFTimesheetExtractor:
+
+    def __init__(self, fuzzy_threshold: int = 90):
+        self.fuzzy_threshold = fuzzy_threshold
+
+        # Master data parameters to extract from PDF header
+        self.master_data_parameters = [
+            "Nachweis zur Leistungserbringung externer Dienstleister für das Bundesamt für Migration und Flüchtlinge",
+            "Auftraggeber", "Verantwortlicher Projektleiter (sachlicher Zeichnender)", "Verantwortlicher Projektleiter",
+            "Auftragnehmer", "Verantwortlicher AG", "Verantwortlicher AN (Ansprechpartner der Firma)", "Verantwortlicher AN",
+            "Ansprechpartner der Firma", "Vorhaben", "Vertrags-Nr", "Projektbezeichnung", "Projekt",
+            "Vertragsnummer BAMF", "Vertragsnummer/Kennung Auftraggeber:", " Vertragsnummer/Kennung Auftragnehmer",
+            "Vertragsnummer/Kennung Unterauftragnehmer","Unterauftragnehmer","Einsatzbericht Monat", "Leistungszeitraum",
+            "Leistungserbringer(in) (Subdienstleister)", "Leistungserbringer(in)", "Leistung erbracht durch",
+            "Rolle im Projekt", "Dienstort", "Meilenstein", "Aktenzeichen BAMF", "Bestellnummer",
+            "VC-ID", "PG (Role im Projekt)", "PO"
+        ]
+
+        # Table column categories for hours extraction
+        self.table_categories = {
+            'onsite': ['vor Ort', 'On site', 'onsite'],
+            'remote': ['Remote', 'Remote**', 'homeoffice', 'HomeOffice', 'Home office', 'Homeoffice**'],
+            'total_hours': ["geleistete Stunden", "Aufwand (Stunden)", "Stunden", "Aufwand in Std", "Aufwand"],
+            'location': ["Einsatzort"],
+            'date': ["Datum", "TT.MM.JJJJ"],
+            'descriptions': ["Beschreibung", "Meilenstein/Task/Beschreibung", "Durchgeführte Arbeiten"]
+        }
+
+        # Mapping for date and consultant name extraction
+        self.date_mapping = ["Einsatzbericht Monat", "Leistungszeitraum"]
+        self.consultant_mapping = [
+            "Leistungserbringer(in) (Subdienstleister)",
+            "Leistungserbringer(in)",
+            "Leistung erbracht durch"
+        ]
+
+        # Onsite/remote location identifiers
+        self.onsite_values = ['vor Ort', 'On site', 'onsite']
+        self.remote_values = ['Remote', 'Remote**', 'homeoffice', 'HomeOffice', 'Home office', 'Homeoffice**']
+
+    def extract_pdf_data(self, pdf_bytes: bytes, filename: str = "uploaded_pdf") -> Dict[str, Any]:
+        """
+        Main extraction method for PDF timesheet data from bytes
+
+        Args:
+            pdf_bytes: PDF file as bytes
+            filename: Original filename for the PDF (optional, defaults to "uploaded_pdf")
+
+        Returns:
+            Dictionary containing extracted data in required format
+        """
+        result = {
+            "Masterdata": {},
+            "total_hours": None,
+            "onsite_hours": None,
+            "remote_hours": None,
+            "checksum": None,
+            "date": None,
+            "consultant_name": None,
+            "processing_timestamp": datetime.now().isoformat(),
+            "file_name": filename
+        }
+
+        try:
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                total_pages = len(pdf.pages)
+
+                # Extract all text from all pages
+                all_text = ""
+                page_texts = []
+
+                for page_num, page in enumerate(pdf.pages, 1):
+                    page_text = page.extract_text() or ""
+                    page_texts.append(page_text)
+                    all_text += f"--- Page {page_num} ---\n{page_text}\n"
+
+                # Extract master data from first page
+                result["Masterdata"] = self._extract_master_data(page_texts[0] if page_texts else "")
+
+                # Extract checksum from footers
+                result["checksum"] = self._extract_checksum(page_texts)
+
+                # Extract date and consultant name from master data
+                result["date"] = self._map_date_from_master_data(result["Masterdata"])
+                result["consultant_name"] = self._map_consultant_from_master_data(result["Masterdata"])
+
+                # Extract hours data from tables
+                hours_data = self._extract_hours_data(pdf, all_text)
+                result.update(hours_data)
+
+                # Add health check parameters
+                health_check = self._perform_health_check(result)
+                result.update(health_check)
+
+                # Add file content as base64
+                result["file_content"] = base64.b64encode(pdf_bytes).decode('utf-8')
+
+                return result
+
+        except Exception as e:
+            result["error"] = str(e)
+            # Add health check even for errors
+            health_check = self._perform_health_check(result)
+            result.update(health_check)
+            # Add file content even for errors
+            result["file_content"] = base64.b64encode(pdf_bytes).decode('utf-8')
+            return result
+
+    def _extract_master_data(self, first_page_text: str) -> Dict[str, str]:
+        """Extract master data from the first page using fuzzy matching"""
+        masterdata = {}
+
+        if not first_page_text:
+            return masterdata
+
+        # Split into lines and process
+        lines = first_page_text.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Try to find key-value pairs (with colon separator)
+            if ':' in line:
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    raw_key = parts[0].strip()
+                    raw_value = parts[1].strip()
+
+                    if raw_key and raw_value:
+                        self._match_master_data_field(raw_key, raw_value, masterdata)
+            else:
+                # Handle cases where key-value might be on separate lines or different format
+                # Look for standalone parameter names
+                for param in self.master_data_parameters:
+                    if fuzz.ratio(param.lower(), line.lower()) >= self.fuzzy_threshold:
+                        # Look for value in next few lines
+                        line_idx = lines.index(line)
+                        for next_idx in range(line_idx + 1, min(line_idx + 3, len(lines))):
+                            if next_idx < len(lines):
+                                potential_value = lines[next_idx].strip()
+                                if potential_value and not any(p in potential_value.lower() for p in [':', 'seite', 'page']):
+                                    masterdata[param] = potential_value
+                                    break
+
+        return masterdata
+
+    def _match_master_data_field(self, raw_key: str, raw_value: str, masterdata: Dict[str, str]):
+        """Match a raw key-value pair to master data parameters using fuzzy matching"""
+        best_match = None
+        best_score = 0
+
+        for param in self.master_data_parameters:
+            score = fuzz.ratio(param.lower(), raw_key.lower())
+            if score >= self.fuzzy_threshold and score > best_score:
+                best_score = score
+                best_match = param
+
+        if best_match:
+            masterdata[best_match] = raw_value
+
+    def _extract_checksum(self, page_texts: List[str]) -> Optional[str]:
+        """Extract checksum from page footers using regex"""
+        # MD5 hash pattern (32 hexadecimal characters)
+        checksum_pattern = r'\b[a-f0-9]{32}\b'
+
+        checksums = []
+
+        for page_num, page_text in enumerate(page_texts, 1):
+            matches = re.findall(checksum_pattern, page_text.lower())
+            if matches:
+                checksums.extend(matches)
+
+        if not checksums:
+            return None
+
+        # Check if all checksums are the same
+        unique_checksums = list(set(checksums))
+        if len(unique_checksums) == 1:
+            return unique_checksums[0]
+        else:
+            return None
+
+    def _map_date_from_master_data(self, masterdata: Dict[str, str]) -> Optional[str]:
+        """Extract and convert date from master data using fuzzy matching"""
+        for date_field in self.date_mapping:
+            for key, value in masterdata.items():
+                if fuzz.ratio(date_field.lower(), key.lower()) >= self.fuzzy_threshold:
+                    converted_date = self._convert_to_date_format(value)
+                    if converted_date:
+                        return converted_date
+
+        return None
+
+    def _map_consultant_from_master_data(self, masterdata: Dict[str, str]) -> Optional[str]:
+        """Extract consultant name from master data using fuzzy matching"""
+        for consultant_field in self.consultant_mapping:
+            for key, value in masterdata.items():
+                if fuzz.ratio(consultant_field.lower(), key.lower()) >= self.fuzzy_threshold:
+                    return value
+
+        return None
+
+    def _convert_to_date_format(self, date_str: str) -> Optional[str]:
+        """Convert various date formats to dd.mm.yyyy"""
+        if not date_str:
+            return None
+
+        date_str = date_str.strip()
+
+        # Already in dd.mm.yyyy format
+        if re.match(r'^\d{2}\.\d{2}\.\d{4}$', date_str):
+            return date_str
+
+        # Month Year format (e.g., "August 2025", "September 2025")
+        month_year_match = re.match(r'^(\w+)\s+(\d{4})$', date_str)
+        if month_year_match:
+            month_str, year = month_year_match.groups()
+            month_map = {
+                'januar': '01', 'january': '01',
+                'februar': '02', 'february': '02',
+                'märz': '03', 'march': '03',
+                'april': '04',
+                'mai': '05', 'may': '05',
+                'juni': '06', 'june': '06',
+                'juli': '07', 'july': '07',
+                'august': '08',
+                'september': '09',
+                'oktober': '10', 'october': '10',
+                'november': '11',
+                'dezember': '12', 'december': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        # Sep 25, Aug 25 format (space-separated)
+        month_year_space = re.match(r'^(\w{3})\s+(\d{2})$', date_str)
+        if month_year_space:
+            month_str, year_short = month_year_space.groups()
+            year = f"20{year_short}"
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'mai': '05', 'jun': '06', 'jul': '07',
+                'aug': '08', 'sep': '09', 'oct': '10', 'okt': '10',
+                'nov': '11', 'dec': '12', 'dez': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        # Sep-25, Aug-25 format (hyphen-separated)
+        month_year_hyphen = re.match(r'^(\w{3})-(\d{2})$', date_str)
+        if month_year_hyphen:
+            month_str, year_short = month_year_hyphen.groups()
+            year = f"20{year_short}"
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'mai': '05', 'jun': '06', 'jul': '07',
+                'aug': '08', 'sep': '09', 'oct': '10', 'okt': '10',
+                'nov': '11', 'dec': '12', 'dez': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        return None
+
+    def _extract_hours_data(self, pdf, all_text: str) -> Dict[str, Optional[float]]:
+        """Extract hours data from PDF tables"""
+        result = {
+            "total_hours": None,
+            "onsite_hours": None,
+            "remote_hours": None
+        }
+
+        # Extract tables from all pages but with improved first-row data detection
+        all_tables = []
+        for page_num, page in enumerate(pdf.pages, 1):
+            tables = page.extract_tables()
+            if tables:
+                for table_idx, table in enumerate(tables):
+                    if table and len(table) >= 1:  # Accept single row tables (KBS format)
+                        # For single-row tables, use the row as both header and data
+                        if len(table) == 1:
+                            # Single row - treat as data with positional columns
+                            df = pd.DataFrame([table[0]], columns=[f"col_{i}" for i in range(len(table[0]))])
+                        else:
+                            # ENHANCED: Check for working data in first row before treating as headers
+                            df = self._create_dataframe_from_table_enhanced(table)
+
+                        all_tables.append({
+                            'page': page_num,
+                            'table_index': table_idx,
+                            'dataframe': df,
+                            'raw_table': table  # Keep raw table for sub-header analysis
+                        })
+
+        # Find timesheet table and extract hours
+        hours_data = self._find_and_process_timesheet_table(all_tables, all_text)
+        result.update(hours_data)
+
+        return result
+
+    def _create_dataframe_from_table_enhanced(self, table: List[List]) -> pd.DataFrame:
+        """Enhanced DataFrame creation that handles both traditional headers and first-row data"""
+        if len(table) <= 1:
+            return pd.DataFrame([table[0]], columns=[f"col_{i}" for i in range(len(table[0]))])
+
+        # STEP 1: Check if first row contains working day data (KBS issue fix)
+        first_row = table[0]
+        if len(first_row) >= 5:  # Need at least date, times, hours columns
+            first_cell = str(first_row[0]).strip() if first_row[0] else ""
+            hours_cell = str(first_row[4]).strip() if len(first_row) > 4 and first_row[4] else ""
+
+            # Check if first cell is a date and we have hours data
+            is_date = re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell)
+            has_hours = re.match(r'^\d+[,.]?\d*$', hours_cell) and hours_cell not in ['0,00', '0.00', '']
+
+            if is_date and has_hours:
+                # First row contains data - treat entire table as data with positional columns
+                df = pd.DataFrame(table, columns=[f"col_{i}" for i in range(len(first_row))])
+                return df
+
+        # STEP 1.5: Special case for EVIDEN_10/EVIDEN_8-SVA with headers+data in same table
+        # Pattern: [None, None, None, None, None, '']
+        #          ['Datum', 'Aufwand (Stunden)*', None, 'AMIF', 'GEAS', 'Meilenstein/Task/Beschreibung']
+        #          [None, 'vor Ort', 'Homeoffice**', None, None, None]
+        #          ['', '', '', '', '', '']
+        #          ['01.10.2025', '8,00', '', 'x', '', 'Description...']
+        if len(table) >= 5:  # Need at least 5 rows for this pattern
+            # Check if row 1 (index 1) has "Datum" and "Aufwand" or "Stunden"
+            main_header_row = table[1] if len(table) > 1 else []
+            sub_header_row = table[2] if len(table) > 2 else []
+
+            if main_header_row and sub_header_row:
+                main_header_str = ' '.join([str(cell) for cell in main_header_row if cell]).lower()
+                sub_header_str = ' '.join([str(cell) for cell in sub_header_row if cell]).lower()
+
+                # Check for EVIDEN pattern
+                has_datum_main = 'datum' in main_header_str
+                has_stunden_main = ('aufwand' in main_header_str or 'stunden' in main_header_str)
+                has_vor_ort_sub = 'vor ort' in sub_header_str
+                has_homeoffice_sub = ('homeoffice' in sub_header_str or 'remote' in sub_header_str)
+
+                if has_datum_main and has_stunden_main and has_vor_ort_sub and has_homeoffice_sub:
+                    # This is the EVIDEN pattern - merge main and sub headers
+                    merged_headers = []
+
+                    for i in range(len(main_header_row)):
+                        main_cell = str(main_header_row[i]) if main_header_row[i] and str(main_header_row[i]).strip() else ""
+                        sub_cell = str(sub_header_row[i]) if i < len(sub_header_row) and sub_header_row[i] and str(sub_header_row[i]).strip() else ""
+
+                        # Create merged header
+                        if sub_cell:
+                            merged_headers.append(sub_cell)  # Use sub-header as primary
+                        elif main_cell:
+                            merged_headers.append(main_cell)  # Use main header if no sub
+                        else:
+                            merged_headers.append(f"col_{i}")  # Fallback
+
+                    # Find the first data row (skip empty rows)
+                    data_start_idx = 3  # Start after headers
+                    while data_start_idx < len(table):
+                        row = table[data_start_idx]
+                        row_str = ' '.join([str(cell) for cell in row if cell and str(cell).strip()])
+                        if row_str.strip():  # Non-empty row
+                            # Check if it looks like data (has a date in first column)
+                            first_cell = str(row[0]).strip() if row[0] else ""
+                            if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell):
+                                break
+                        data_start_idx += 1
+
+                    # Create DataFrame with data rows only
+                    if data_start_idx < len(table):
+                        data_rows = table[data_start_idx:]
+                        df = pd.DataFrame(data_rows, columns=merged_headers)
+                        return df
+
+        # STEP 2: Traditional multi-row header detection (for Template-2, Oracle, etc.)
+        return self._create_dataframe_from_table_original(table)
+
+    def _create_dataframe_from_table_original(self, table: List[List]) -> pd.DataFrame:
+        """Create DataFrame handling multi-row headers (like Oracle template) - ORIGINAL LOGIC"""
+        if len(table) <= 1:
+            return pd.DataFrame([table[0]], columns=[f"col_{i}" for i in range(len(table[0]))])
+
+        # Check if we have multi-row headers by looking for sub-headers in row 1
+        first_row = table[0]
+        second_row = table[1] if len(table) > 1 else None
+
+        # Detect Oracle-style multi-row headers
+        has_multi_row_headers = False
+        if second_row:
+            # Check if second row contains header-like content (not data)
+            # Real sub-headers contain terms like "vor Ort", "Remote", "Stunden", etc.
+            # Data rows contain dates, numbers, or specific task descriptions
+            header_like_cells = 0
+
+            for cell in second_row:
+                if cell and str(cell).strip():
+                    cell_str = str(cell).strip().lower()
+
+                    # Check if this looks like a sub-header (not data)
+                    is_date = re.match(r'\d{2}\.\d{2}\.\d{4}', cell_str)  # dd.mm.yyyy format
+                    is_number = re.match(r'^\d+[,.]?\d*$', cell_str)     # numbers like 8,00
+                    is_slt_code = 'slt' in cell_str                      # SLT codes
+                    is_long_text = len(cell_str) > 50                    # Long descriptions
+
+                    # If it's not data-like, it might be a header
+                    if not (is_date or is_number or is_slt_code or is_long_text):
+                        # Check for common header terms
+                        header_terms = ['vor ort', 'remote', 'stunden', 'homeoffice', 'geleistete']
+                        if any(term in cell_str for term in header_terms):
+                            header_like_cells += 1
+
+            # Only consider it multi-row headers if we found actual header-like content
+            if header_like_cells >= 2:
+                has_multi_row_headers = True
+
+        if has_multi_row_headers:
+            # Merge main headers with sub-headers
+            merged_headers = []
+            for i, (main_header, sub_header) in enumerate(zip(first_row, second_row)):
+                if sub_header and str(sub_header).strip():
+                    # Use sub-header as the actual column name
+                    merged_headers.append(str(sub_header).strip())
+                elif main_header and str(main_header).strip():
+                    # Use main header if no sub-header
+                    merged_headers.append(str(main_header).strip())
+                else:
+                    # Fallback to column position
+                    merged_headers.append(f"col_{i}")
+
+            # Data starts from row 2 (skip both header rows)
+            data_rows = table[2:] if len(table) > 2 else []
+            df = pd.DataFrame(data_rows, columns=merged_headers)
+        else:
+            # Traditional single header row
+            df = pd.DataFrame(table[1:], columns=table[0])
+
+        return df
+
+    def _find_and_process_timesheet_table(self, all_tables: List[Dict], all_text: str) -> Dict[str, Optional[float]]:
+        """Find the timesheet table and process hours data"""
+        result = {"total_hours": None, "onsite_hours": 0.0, "remote_hours": 0.0}
+        found_timesheet_tables = False
+        overall_column_structure = None
+
+        # Look for tables with date columns
+        for table_info in all_tables:
+            df = table_info['dataframe']
+
+            # Check if this table has date-like content
+            has_dates = self._table_has_dates(df)
+
+            if has_dates:
+                # Identify column structure from first timesheet table
+                if overall_column_structure is None:
+                    overall_column_structure = self._identify_column_structure(df)
+
+                    # If no structure found, try to infer from header tables and data patterns
+                    if not overall_column_structure or not any(overall_column_structure.values()):
+                        overall_column_structure = self._infer_structure_from_separated_headers(all_tables, df)
+
+                # For location-based calculation, we need to process each table
+                if overall_column_structure and overall_column_structure['total_hours'] and overall_column_structure['location']:
+                    table_hours = self._calculate_hours_by_location(df, overall_column_structure)
+
+                    # Accumulate hours from all tables
+                    if table_hours['onsite_hours'] and table_hours['onsite_hours'] > 0:
+                        result['onsite_hours'] += table_hours['onsite_hours']
+
+                    if table_hours['remote_hours'] and table_hours['remote_hours'] > 0:
+                        result['remote_hours'] += table_hours['remote_hours']
+
+                    if table_hours['total_hours'] and not (table_hours['onsite_hours'] or table_hours['remote_hours']):
+                        # This handles cases where location matching failed
+                        if result['total_hours'] is None:
+                            result['total_hours'] = table_hours['total_hours']
+                        else:
+                            result['total_hours'] += table_hours['total_hours']
+
+                    found_timesheet_tables = True
+
+                else:
+                    # For other types (single column, split columns), extract hours
+                    hours = self._extract_hours_from_table(df, overall_column_structure or {}, all_text)
+
+                    # Check if this is a split columns template that needs multi-page accumulation
+                    if overall_column_structure and overall_column_structure.get('onsite') and overall_column_structure.get('remote'):
+
+                        # PRIORITY: If we found final totals (concatenated "Summe**"), use them and STOP
+                        if hours.get('total_hours', 0) > 100:  # Final totals are usually much larger than individual pages
+                            # This looks like final summary totals - use these and stop processing
+                            result.update(hours)
+                            found_timesheet_tables = True
+                            break
+
+                        # Template-2 style: accumulate across individual pages (only if no final totals found yet)
+                        else:
+                            if not found_timesheet_tables:
+                                # First table - initialize
+                                result['onsite_hours'] = 0.0
+                                result['remote_hours'] = 0.0
+                                result['total_hours'] = 0.0
+                                found_timesheet_tables = True
+
+                            # Accumulate hours from this table
+                            if hours['onsite_hours'] and hours['onsite_hours'] > 0:
+                                result['onsite_hours'] += hours['onsite_hours']
+                            if hours['remote_hours'] and hours['remote_hours'] > 0:
+                                result['remote_hours'] += hours['remote_hours']
+                            if hours['total_hours'] and hours['total_hours'] > 0:
+                                result['total_hours'] += hours['total_hours']
+
+                    elif not found_timesheet_tables:
+                        # Single table processing (Oracle style with concatenated totals)
+                        result.update(hours)
+                        found_timesheet_tables = True
+                        break
+
+        # Calculate total if we accumulated onsite/remote hours
+        if (result['onsite_hours'] is not None and result['onsite_hours'] > 0) or \
+           (result['remote_hours'] is not None and result['remote_hours'] > 0):
+            onsite = result['onsite_hours'] if result['onsite_hours'] is not None else 0.0
+            remote = result['remote_hours'] if result['remote_hours'] is not None else 0.0
+            result['total_hours'] = onsite + remote
+
+        return result
+
+    def _table_has_dates(self, df: pd.DataFrame) -> bool:
+        """Check if table contains date information"""
+        # Check column names
+        for col in df.columns:
+            if col and 'datum' in str(col).lower():
+                return True
+
+        # Check first few cells for date patterns
+        for i in range(min(3, len(df))):
+            for j in range(min(3, len(df.columns))):
+                cell_value = str(df.iloc[i, j]) if not pd.isna(df.iloc[i, j]) else ""
+                if re.match(r'\d{2}\.\d{2}\.\d{4}', cell_value):
+                    return True
+
+        return False
+
+    def _infer_structure_from_separated_headers(self, all_tables: List[Dict], data_df: pd.DataFrame) -> Dict[str, List[int]]:
+        """Infer column structure when headers are in separate tables from data"""
+        # Look for header tables (tables without dates but with header-like content)
+        for table_info in all_tables:
+            df = table_info['dataframe']
+
+            # Skip if this table has dates (it's a data table)
+            if self._table_has_dates(df):
+                continue
+
+            # Enhanced multi-row header detection for EVIDEN_10 and EVIDEN_8-SVA templates
+            if len(df) >= 2:  # Need at least 2 rows for main + sub headers
+                # Check for the specific pattern: ['Datum', 'Aufwand (Stunden)*', None, 'AMIF', 'GEAS']
+                #                                 [None, 'vor Ort', 'Homeoffice**', None, None]
+
+                main_row_found = False
+                sub_row_found = False
+                main_row_idx = -1
+                sub_row_idx = -1
+
+                # Look for main header row with "Datum" and "Aufwand" or "Stunden"
+                for row_idx in range(len(df)):
+                    row_content = []
+                    for col_idx in range(len(df.columns)):
+                        cell_value = str(df.iloc[row_idx, col_idx]) if not pd.isna(df.iloc[row_idx, col_idx]) else ""
+                        row_content.append(cell_value.strip())
+
+                    # Check if this is the main header row
+                    has_datum = any('datum' in cell.lower() for cell in row_content)
+                    has_stunden = any('stunden' in cell.lower() or 'aufwand' in cell.lower() for cell in row_content)
+
+                    if has_datum and has_stunden:
+                        main_row_found = True
+                        main_row_idx = row_idx
+                        break
+
+                # Look for sub-header row with "vor Ort" and "Homeoffice"
+                if main_row_found:
+                    for row_idx in range(main_row_idx + 1, min(main_row_idx + 3, len(df))):
+                        row_content = []
+                        for col_idx in range(len(df.columns)):
+                            cell_value = str(df.iloc[row_idx, col_idx]) if not pd.isna(df.iloc[row_idx, col_idx]) else ""
+                            row_content.append(cell_value.strip())
+
+                        # Check if this is the sub-header row
+                        has_vor_ort = any('vor ort' in cell.lower() for cell in row_content)
+                        has_homeoffice = any('homeoffice' in cell.lower() or 'remote' in cell.lower() for cell in row_content)
+
+                        if has_vor_ort and has_homeoffice:
+                            sub_row_found = True
+                            sub_row_idx = row_idx
+                            break
+
+                # If we found both header rows, map the structure
+                if main_row_found and sub_row_found:
+                    structure = {'date': [], 'total_hours': [], 'onsite': [], 'remote': [], 'location': [], 'descriptions': []}
+
+                    # Get both row contents
+                    main_row_content = []
+                    sub_row_content = []
+
+                    for col_idx in range(len(df.columns)):
+                        main_cell = str(df.iloc[main_row_idx, col_idx]) if not pd.isna(df.iloc[main_row_idx, col_idx]) else ""
+                        sub_cell = str(df.iloc[sub_row_idx, col_idx]) if not pd.isna(df.iloc[sub_row_idx, col_idx]) else ""
+                        main_row_content.append(main_cell.strip())
+                        sub_row_content.append(sub_cell.strip())
+
+                    # Map columns based on content
+                    for col_idx in range(min(len(main_row_content), len(sub_row_content), len(data_df.columns))):
+                        main_cell = main_row_content[col_idx].lower()
+                        sub_cell = sub_row_content[col_idx].lower()
+
+                        # Date column
+                        if 'datum' in main_cell:
+                            structure['date'].append(col_idx)
+
+                        # Onsite hours column
+                        elif 'vor ort' in sub_cell:
+                            structure['onsite'].append(col_idx)
+                            # Also check if this column has hour data in the data tables
+                            if col_idx < len(data_df.columns):
+                                sample_values = data_df.iloc[:5, col_idx].astype(str)
+                                has_hours = any(re.match(r'^\d+[,.]?\d*$', str(val)) and str(val) not in ['0,00', '0.00', ''] for val in sample_values)
+                                if not has_hours:
+                                    structure['onsite'].remove(col_idx)  # Remove if no hour data
+
+                        # Remote hours column
+                        elif 'homeoffice' in sub_cell or 'remote' in sub_cell:
+                            structure['remote'].append(col_idx)
+                            # Also check if this column has hour data in the data tables
+                            if col_idx < len(data_df.columns):
+                                sample_values = data_df.iloc[:5, col_idx].astype(str)
+                                has_hours = any(re.match(r'^\d+[,.]?\d*$', str(val)) and str(val) not in ['0,00', '0.00', ''] for val in sample_values)
+                                if not has_hours:
+                                    structure['remote'].remove(col_idx)  # Remove if no hour data
+
+                        # Total hours column (under "Aufwand (Stunden)" but no sub-header)
+                        elif ('aufwand' in main_cell or 'stunden' in main_cell) and not sub_cell:
+                            # Check if this column has hour data
+                            if col_idx < len(data_df.columns):
+                                sample_values = data_df.iloc[:5, col_idx].astype(str)
+                                has_hours = any(re.match(r'^\d+[,.]?\d*$', str(val)) and str(val) not in ['0,00', '0.00', ''] for val in sample_values)
+                                if has_hours:
+                                    structure['total_hours'].append(col_idx)
+
+                    # If we found a good structure, return it
+                    if structure['date'] and (structure['onsite'] or structure['remote'] or structure['total_hours']):
+                        return structure
+
+            # FALLBACK: Original single-row header detection logic
+            for row_idx in range(len(df)):
+                row_content = []
+                for col_idx in range(len(df.columns)):
+                    cell_value = str(df.iloc[row_idx, col_idx]) if not pd.isna(df.iloc[row_idx, col_idx]) else ""
+                    row_content.append(cell_value.strip().lower())
+
+                # Check if this row looks like headers
+                header_terms = ['datum', 'aufwand', 'stunden', 'vor ort', 'remote', 'homeoffice']
+                header_matches = sum(1 for cell in row_content if any(term in cell for term in header_terms))
+
+                if header_matches >= 2:  # Found a header row
+                    # Try to map to data table structure
+                    structure = {'date': [], 'total_hours': [], 'onsite': [], 'remote': [], 'location': [], 'descriptions': []}
+
+                    # Check main header row
+                    for col_idx, cell in enumerate(row_content):
+                        if 'datum' in cell:
+                            structure['date'].append(col_idx)
+                        elif any(term in cell for term in ['aufwand', 'stunden']) and col_idx < len(data_df.columns):
+                            # Check if this looks like a total hours column by examining data
+                            sample_values = data_df.iloc[:3, col_idx].astype(str)
+                            if any(re.match(r'^\d+[,.]?\d*$', str(val)) and str(val) not in ['0,00', '0.00', ''] for val in sample_values):
+                                structure['total_hours'].append(col_idx)
+                        elif 'vor ort' in cell:
+                            structure['onsite'].append(col_idx)
+                        elif any(term in cell for term in ['remote', 'homeoffice']):
+                            structure['remote'].append(col_idx)
+                        elif any(term in cell for term in ['beschreibung', 'task', 'meilenstein']):
+                            structure['descriptions'].append(col_idx)
+
+                    if any(structure.values()):
+                        return structure
+
+        # If no clear headers found, try to infer from data patterns (improved fallback)
+        if len(data_df.columns) >= 6:  # Typical structure has at least 6 columns
+            structure = {'date': [0], 'total_hours': [], 'onsite': [1], 'remote': [2], 'location': [], 'descriptions': [5]}
+
+            # Check if columns 1 and 2 have hour-like data
+            for col_idx in [1, 2]:
+                if col_idx < len(data_df.columns):
+                    sample_values = data_df.iloc[:5, col_idx].astype(str)  # Check more rows
+                    has_hours = any(re.match(r'^\d+[,.]?\d*$', str(val)) and str(val) not in ['0,00', '0.00', ''] for val in sample_values)
+                    if has_hours:
+                        if col_idx == 1:
+                            structure['onsite'] = [col_idx]
+                        elif col_idx == 2:
+                            structure['remote'] = [col_idx]
+
+            return structure
+
+        return {'date': [], 'total_hours': [], 'onsite': [], 'remote': [], 'location': [], 'descriptions': []}
+
+    def _identify_column_structure(self, df: pd.DataFrame) -> Dict[str, List[int]]:
+        """Identify which columns contain which type of data"""
+        structure = {
+            'date': [],
+            'total_hours': [],
+            'onsite': [],
+            'remote': [],
+            'location': [],
+            'descriptions': []
+        }
+
+        # Check if this is a single-row data format (KBS style)
+        is_single_row_format = len(df) == 1 and any(str(df.columns[0]).startswith('col_') for col_idx in range(len(df.columns)))
+
+        if is_single_row_format:
+            # For KBS template: [Date, Start_Time, End_Time, Pause, Hours, Description, Location, Status]
+            if len(df.columns) >= 5:  # Minimum columns needed
+                structure['date'].append(0)      # Date
+                structure['total_hours'].append(4)  # Hours
+                if len(df.columns) >= 7:
+                    structure['descriptions'].append(5)  # Description
+                    structure['location'].append(6)     # Location
+            return structure
+
+        # Traditional approach: analyze column headers
+        for col_idx, col_name in enumerate(df.columns):
+            if not col_name:
+                continue
+
+            col_str = str(col_name).lower()
+
+            # Match column types using fuzzy matching
+            for category, keywords in self.table_categories.items():
+                for keyword in keywords:
+                    if fuzz.ratio(keyword.lower(), col_str) >= self.fuzzy_threshold:
+                        structure[category].append(col_idx)
+                        break
+
+        return structure
+
+    def _extract_hours_from_table(self, df: pd.DataFrame, column_structure: Dict, all_text: str) -> Dict[str, Optional[float]]:
+        """Extract hours based on STRICT prioritization logic"""
+        result = {"total_hours": None, "onsite_hours": None, "remote_hours": None}
+
+        # First: Look for "Summe" or total rows for concatenated values
+        totals = self._find_total_rows(df, all_text, column_structure)
+
+        # STRICT LOGIC IMPLEMENTATION
+        # Check if total_hours column was matched
+        if column_structure['total_hours']:
+            # RULE 1: If total_hours exists, STILL look for vor Ort/Remote columns
+            if column_structure['onsite'] and column_structure['remote']:
+                # Check if we have concatenated totals from total rows
+                if totals and 'onsite' in totals and 'remote' in totals:
+                    # Use totals from concatenated total row (Oracle case)
+                    result['onsite_hours'] = totals.get('onsite', None)
+                    result['remote_hours'] = totals.get('remote', None)
+                    # Always calculate total from onsite + remote (ignore total_hours column)
+                    if result['onsite_hours'] is not None and result['remote_hours'] is not None:
+                        result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+                else:
+                    # Accumulate from individual cells (Template-2 case)
+                    result['onsite_hours'] = 0.0
+                    result['remote_hours'] = 0.0
+
+                    onsite_col = column_structure['onsite'][0]
+                    remote_col = column_structure['remote'][0]
+
+                    for idx, row in df.iterrows():
+                        try:
+                            # Get onsite hours
+                            onsite_value = row.iloc[onsite_col] if onsite_col < len(row) else None
+                            if onsite_value and not pd.isna(onsite_value):
+                                onsite_str = str(onsite_value).strip()
+                                if onsite_str and onsite_str != '0,00' and onsite_str != '0.00' and onsite_str != '':
+                                    onsite_hours = float(onsite_str.replace(',', '.'))
+                                    result['onsite_hours'] += onsite_hours
+
+                            # Get remote hours
+                            remote_value = row.iloc[remote_col] if remote_col < len(row) else None
+                            if remote_value and not pd.isna(remote_value):
+                                remote_str = str(remote_value).strip()
+                                if remote_str and remote_str != '0,00' and remote_str != '0.00' and remote_str != '':
+                                    remote_hours = float(remote_str.replace(',', '.'))
+                                    result['remote_hours'] += remote_hours
+
+                        except (ValueError, TypeError):
+                            continue
+
+                    # Always calculate total from onsite + remote (never use total_hours column)
+                    result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+
+            # RULE 2: If total_hours exists but NO onsite/remote, check for location column
+            elif column_structure['location']:
+                # Hours column + location column - calculate split based on location values
+                split_hours = self._calculate_hours_by_location(df, column_structure)
+                result.update(split_hours)
+
+            # RULE 3: Only total_hours column exists (no onsite/remote, no location)
+            else:
+                # Use single hours column
+                if totals and 'total' in totals:
+                    result['total_hours'] = totals.get('total', None)
+                else:
+                    # Accumulate from total_hours column
+                    total_hours = 0.0
+                    for col_idx in column_structure['total_hours']:
+                        for idx, row in df.iterrows():
+                            try:
+                                cell_value = row.iloc[col_idx] if col_idx < len(row) else None
+                                if cell_value and not pd.isna(cell_value):
+                                    hours_str = str(cell_value).strip()
+                                    if hours_str and hours_str != '0,00' and hours_str != '0.00' and hours_str != '':
+                                        total_hours += float(hours_str.replace(',', '.'))
+                            except (ValueError, TypeError):
+                                continue
+                    result['total_hours'] = total_hours
+
+        # FALLBACK: Only onsite/remote columns exist (no total_hours column)
+        elif column_structure['onsite'] and column_structure['remote']:
+            if totals and 'onsite' in totals and 'remote' in totals:
+                # Use totals from concatenated total row
+                result['onsite_hours'] = totals.get('onsite', None)
+                result['remote_hours'] = totals.get('remote', None)
+                if result['onsite_hours'] is not None and result['remote_hours'] is not None:
+                    result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+            else:
+                # Accumulate from individual cells
+                result['onsite_hours'] = 0.0
+                result['remote_hours'] = 0.0
+
+                onsite_col = column_structure['onsite'][0]
+                remote_col = column_structure['remote'][0]
+
+                for idx, row in df.iterrows():
+                    try:
+                        # Get onsite hours
+                        onsite_value = row.iloc[onsite_col] if onsite_col < len(row) else None
+                        if onsite_value and not pd.isna(onsite_value):
+                            onsite_str = str(onsite_value).strip()
+                            if onsite_str and onsite_str != '0,00' and onsite_str != '0.00' and onsite_str != '':
+                                onsite_hours = float(onsite_str.replace(',', '.'))
+                                result['onsite_hours'] += onsite_hours
+
+                        # Get remote hours
+                        remote_value = row.iloc[remote_col] if remote_col < len(row) else None
+                        if remote_value and not pd.isna(remote_value):
+                            remote_str = str(remote_value).strip()
+                            if remote_str and remote_str != '0,00' and remote_str != '0.00' and remote_str != '':
+                                remote_hours = float(remote_str.replace(',', '.'))
+                                result['remote_hours'] += remote_hours
+
+                    except (ValueError, TypeError):
+                        continue
+
+                result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+
+        return result
+
+    def _find_total_rows(self, df: pd.DataFrame, all_text: str, column_structure: Dict = None) -> Dict[str, float]:
+        """Find total/sum rows in the table and extract totals"""
+        totals = {}
+
+        # Look for rows containing "Summe" or similar
+        for idx, row in df.iterrows():
+            row_text = ' '.join([str(cell) for cell in row if not pd.isna(cell)]).lower()
+
+            if 'summe' in row_text or 'total' in row_text:
+                # Check if all values are in the first column (concatenated case)
+                first_cell = str(row.iloc[0]) if not pd.isna(row.iloc[0]) else ""
+                if 'summe' in first_cell.lower() and any(pd.isna(row.iloc[i]) for i in range(1, min(4, len(row)))):
+                    # Parse concatenated totals from first column
+                    totals_from_text = self._parse_concatenated_totals(first_cell, column_structure)
+                    totals.update(totals_from_text)
+                else:
+                    # Extract numeric values from individual cells
+                    for col_idx, cell in enumerate(row):
+                        if pd.isna(cell):
+                            continue
+
+                        # Try to parse as number
+                        try:
+                            # Handle German decimal format (comma as decimal separator)
+                            cell_str = str(cell).replace(',', '.')
+                            value = float(cell_str)
+
+                            # Match based on column headers instead of position
+                            if col_idx < len(df.columns):
+                                col_name = str(df.columns[col_idx]).lower()
+
+                                # Check if this column matches onsite/remote/total patterns
+                                if any(keyword in col_name for keyword in ['vor ort', 'onsite']):
+                                    totals['onsite'] = value
+                                elif any(keyword in col_name for keyword in ['remote', 'homeoffice']):
+                                    totals['remote'] = value
+                                elif any(keyword in col_name for keyword in ['geleistete', 'stunden', 'total']):
+                                    totals['total'] = value
+                                else:
+                                    # Fallback to positional matching
+                                    if col_idx == 1 and 'onsite' not in totals:
+                                        totals['onsite'] = value
+                                    elif col_idx == 2 and 'remote' not in totals:
+                                        totals['remote'] = value
+                                    elif col_idx == 3 and 'total' not in totals:
+                                        totals['total'] = value
+
+                        except (ValueError, TypeError):
+                            continue
+
+        # Alternative: look for totals in text using regex
+        if not totals:
+            totals = self._extract_totals_from_text(all_text)
+
+        return totals
+
+    def _parse_concatenated_totals(self, text: str, column_structure: Dict = None) -> Dict[str, float]:
+        """Parse concatenated totals like "Summe**: 80,00 80,00 0,00 Stunden"""
+        totals = {}
+
+        # Extract numeric values using regex
+        numbers = re.findall(r'\d+[,.]?\d*', text)
+
+        if len(numbers) >= 2:
+            try:
+                # Convert German decimal format
+                values = [float(num.replace(',', '.')) for num in numbers]
+
+                if len(values) >= 3 and column_structure:
+                    # Oracle format: "Summe**: 80,00 80,00 0,00 Stunden"
+                    # Map values based on column order
+                    onsite_col = column_structure.get('onsite', [None])[0] if column_structure.get('onsite') else None
+                    remote_col = column_structure.get('remote', [None])[0] if column_structure.get('remote') else None
+                    total_col = column_structure.get('total_hours', [None])[0] if column_structure.get('total_hours') else None
+
+                    if onsite_col is not None and remote_col is not None:
+                        # Position-aware concatenated format parsing
+                        if len(values) >= 3:
+                            # Create position mapping: {column_index: value_index}
+                            positions = []
+
+                            # Add onsite column position
+                            positions.append(('onsite', onsite_col))
+                            # Add remote column position
+                            positions.append(('remote', remote_col))
+                            # Add total_hours column position if it exists
+                            if total_col is not None:
+                                positions.append(('total_hours', total_col))
+
+                            # Sort by column position
+                            positions.sort(key=lambda x: x[1])
+
+                            # Map values to columns based on sorted positions
+                            # ALWAYS ignore total_hours values and only map onsite/remote
+                            for i, (col_type, col_pos) in enumerate(positions):
+                                if col_type in ['onsite', 'remote'] and i < len(values):
+                                    totals[col_type] = values[i]
+
+                            # Always calculate total from onsite + remote (ignore any concatenated total)
+                            if 'onsite' in totals and 'remote' in totals:
+                                totals['total'] = totals['onsite'] + totals['remote']
+
+                        elif len(values) == 2:
+                            # 2 values: map based on relative positions of onsite/remote
+                            if onsite_col < remote_col:
+                                totals['onsite'] = values[0]
+                                totals['remote'] = values[1]
+                            else:
+                                totals['remote'] = values[0]
+                                totals['onsite'] = values[1]
+
+                            totals['total'] = totals['onsite'] + totals['remote']
+                    else:
+                        # Fallback: assume first is onsite, last is remote
+                        totals['onsite'] = values[0]
+                        totals['remote'] = values[-1]
+                        if len(values) >= 3:
+                            totals['total'] = values[1]  # Middle value as total
+
+                    # Calculate total if not present but we have onsite/remote
+                    if 'total' not in totals and 'onsite' in totals and 'remote' in totals:
+                        totals['total'] = totals['onsite'] + totals['remote']
+
+                elif len(values) >= 2:
+                    # Two values format: assume onsite, remote
+                    totals['onsite'] = values[0]
+                    totals['remote'] = values[1] if len(values) > 1 else 0.0
+                    totals['total'] = totals['onsite'] + totals['remote']
+
+            except (ValueError, TypeError):
+                pass
+
+        return totals
+
+    def _extract_totals_from_text(self, all_text: str) -> Dict[str, float]:
+        """Extract totals from text using regex patterns"""
+        totals = {}
+
+        # Look for patterns like "Summe**: 168,00 Stunden"
+        summe_pattern = r'summe[^:]*:\s*(\d+[,.]?\d*)'
+        matches = re.findall(summe_pattern, all_text.lower())
+
+        if matches:
+            try:
+                total_value = float(matches[0].replace(',', '.'))
+                totals['total'] = total_value
+            except ValueError:
+                pass
+
+        return totals
+
+    def _calculate_hours_by_location(self, df: pd.DataFrame, column_structure: Dict) -> Dict[str, Optional[float]]:
+        """Calculate onsite/remote hours based on location column values"""
+        result = {"total_hours": None, "onsite_hours": 0.0, "remote_hours": 0.0}
+
+        if not column_structure['location'] or not column_structure['total_hours']:
+            return result
+
+        location_col = column_structure['location'][0]
+        hours_col = column_structure['total_hours'][0]
+
+        # In KBS template, each page has a single "table" where the first row might actually be the data
+        # Check if this is a single-row table with date in first position OR if first row contains working data
+        is_single_row_data = False
+        contains_first_row_data = False
+
+        if len(df) >= 1:
+            first_cell = str(df.iloc[0, 0]) if not pd.isna(df.iloc[0, 0]) else ""
+            first_row_hours = str(df.iloc[0, hours_col]) if hours_col < len(df.columns) and not pd.isna(df.iloc[0, hours_col]) else ""
+
+            # Check if first row has working hours data
+            if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell):  # Date pattern
+                if re.match(r'^\d+[,.]?\d*$', first_row_hours) and first_row_hours not in ['0,00', '0.00', '']:
+                    contains_first_row_data = True
+
+            if len(df) == 1:
+                is_single_row_data = True
+
+        processed_rows = 0
+
+        # Process all rows - including first row if it contains working data
+        start_idx = 0 if (is_single_row_data or contains_first_row_data) else 1
+
+        for idx in range(start_idx, len(df)):
+            row = df.iloc[idx]
+
+            location_value = str(row.iloc[location_col]) if location_col < len(row) and not pd.isna(row.iloc[location_col]) else ""
+            hours_value = row.iloc[hours_col] if hours_col < len(row) else None
+
+            if pd.isna(hours_value) or not hours_value:
+                continue
+
+            try:
+                # Handle German decimal format and convert to float
+                hours_str = str(hours_value).strip()
+                if not hours_str or hours_str == '0,00' or hours_str == '0.00':
+                    continue
+
+                hours = float(hours_str.replace(',', '.'))
+
+                # Determine if onsite or remote using fuzzy matching
+                is_onsite = any(fuzz.ratio(location_value.lower(), onsite.lower()) >= 80  # Lower threshold for location matching
+                               for onsite in self.onsite_values)
+                is_remote = any(fuzz.ratio(location_value.lower(), remote.lower()) >= 80
+                               for remote in self.remote_values)
+
+                if is_onsite:
+                    result['onsite_hours'] += hours
+                elif is_remote:
+                    result['remote_hours'] += hours
+                else:
+                    # If location doesn't match onsite/remote patterns, add to total anyway
+                    if result['total_hours'] is None:
+                        result['total_hours'] = hours
+                    else:
+                        result['total_hours'] += hours
+
+                processed_rows += 1
+
+            except (ValueError, TypeError):
+                continue
+
+        # Calculate total if we have onsite/remote breakdown
+        if result['onsite_hours'] > 0 or result['remote_hours'] > 0:
+            result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+
+        return result
+
+    def _perform_health_check(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform health check on extraction results and return health status
+
+        Args:
+            result: Dictionary containing extracted data
+
+        Returns:
+            Dictionary containing healthy (bool), healthy_status_reason (list or None)
+        """
+        health_result = {
+            "healthy": True,
+            "healthy_status_reason": None
+        }
+
+        reasons = []
+
+        # Check if all hours are null/empty
+        total_hours = result.get("total_hours")
+        onsite_hours = result.get("onsite_hours")
+        remote_hours = result.get("remote_hours")
+
+        # Check if all three hours fields are null/empty
+        if (total_hours is None or total_hours == 0) and \
+           (onsite_hours is None or onsite_hours == 0) and \
+           (remote_hours is None or remote_hours == 0):
+            reasons.append("failed to extract hours")
+
+        # Check if date is null
+        if result.get("date") is None:
+            reasons.append("failed to extract date")
+
+        # Check if consultant name is null
+        if result.get("consultant_name") is None:
+            reasons.append("failed to extract consultant name, name could still be in Masterdata")
+
+        # Set health status
+        if reasons:
+            health_result["healthy"] = False
+            health_result["healthy_status_reason"] = reasons
+
+        return health_result
+
+
+def lambda_handler(event, context):
+    """AWS Lambda handler function"""
+    try:
+        # Parse request body
+        if 'body' not in event:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Missing request body',
+                    'success': False
+                })
+            }
+
+        # Handle base64-encoded body
+        body = event['body']
+        if event.get('isBase64Encoded', False):
+            body = base64.b64decode(body).decode('utf-8')
+
+        # Parse JSON body
+        try:
+            request_data = json.loads(body)
+        except json.JSONDecodeError:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Invalid JSON in request body',
+                    'success': False
+                })
+            }
+
+        # Extract PDF data from base64
+        if 'pdf_base64' not in request_data:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Missing pdf_base64 field in request',
+                    'success': False
+                })
+            }
+
+        # Decode PDF from base64
+        try:
+            pdf_bytes = base64.b64decode(request_data['pdf_base64'])
+        except Exception as e:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': f'Invalid base64 PDF data: {str(e)}',
+                    'success': False
+                })
+            }
+
+        # Extract filename from request (optional)
+        filename = request_data.get('filename', 'uploaded_pdf')
+
+        # Initialize extractor and process PDF
+        extractor = PDFTimesheetExtractor()
+        result = extractor.extract_pdf_data(pdf_bytes, filename)
+
+        # Return result
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            'body': json.dumps(result)
+        }
+
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': f'Internal server error: {str(e)}',
+                'success': False,
+                'traceback': traceback.format_exc()
+            })
+        }
+
+
+# For local testing
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python lambda.py <pdf_file>")
+        sys.exit(1)
+
+    pdf_path = sys.argv[1]
+
+    try:
+        with open(pdf_path, 'rb') as f:
+            pdf_bytes = f.read()
+
+        # Extract filename from path
+        import os
+        filename = os.path.basename(pdf_path)
+
+        extractor = PDFTimesheetExtractor()
+        result = extractor.extract_pdf_data(pdf_bytes, filename)
+
+        print(json.dumps(result, indent=2))
+
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

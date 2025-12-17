@@ -1,0 +1,349 @@
+"""
+HC_01: Absence Blocking Analyzer
+Analyzes blocked assignments due to resource absences (HARD CONSTRAINT)
+
+This analyzer tracks:
+- Total assignments blocked by absences
+- Requests that became uncoverable due to all resources being on absence
+- Resources with high absence rates
+- Time periods with concentrated absences
+"""
+from .base_analyzer import ConstraintAnalyzer
+from datetime import datetime, timezone
+import sys
+sys.path.append('../..')
+from config import ENFORCE_ABSENCE_BLOCKING
+
+
+class HC_01_Analyzer(ConstraintAnalyzer):
+    """
+    Analyzer for HC_01 (absence blocking)
+
+    Note: This is a HARD constraint, so it doesn't have soft violations.
+    Instead, it analyzes blocked assignments and absence patterns.
+    """
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='HC_01',
+            constraint_name='absence_blocking'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze absence blocking impact on solution
+
+        Since this is a hard constraint, there are no soft violations.
+        Instead, we analyze which requests couldn't be covered due to
+        resource absences.
+        """
+        if not ENFORCE_ABSENCE_BLOCKING:
+            return {
+                "constraint_id": "HC_01",
+                "constraint_name": "absence_blocking",
+                "constraint_type": "HARD",
+                "status": "DISABLED",
+                "message": "Absence blocking is disabled in config"
+            }
+
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        # Get covered and uncovered requests
+        covered_ids = {a.get('demand_id', a.get('request_id')) for a in assignments}
+        uncovered_requests = [
+            req for req in data.requests
+            if req['id'] not in covered_ids
+        ]
+
+        # Analyze absence impact
+        blocked_by_absence = []
+        potentially_uncoverable = []
+
+        for request in uncovered_requests:
+            req_id = request['id']
+            req_start = self._parse_datetime(request['shift_start_time'])
+            req_end = self._parse_datetime(request['shift_finish_time'])
+
+            if req_start is None or req_end is None:
+                continue
+
+            # Check how many resources are blocked by absence
+            blocked_resources = []
+            available_resources = []
+
+            for resource_id in data.resource_ids:
+                blocking_absence = data.get_blocking_absence(resource_id, req_start, req_end)
+                if blocking_absence:
+                    blocked_resources.append({
+                        'resource_id': resource_id,
+                        'absence_type': blocking_absence.get('type'),
+                        'absence_start': str(blocking_absence.get('start')),
+                        'absence_end': str(blocking_absence.get('end'))
+                    })
+                else:
+                    available_resources.append(resource_id)
+
+            if blocked_resources:
+                blocked_by_absence.append({
+                    'request_id': req_id,
+                    'request_period': f"{req_start.strftime('%Y-%m-%d %H:%M')} to {req_end.strftime('%Y-%m-%d %H:%M')}",
+                    'blocked_resources': len(blocked_resources),
+                    'available_resources': len(available_resources),
+                    'blocked_details': blocked_resources[:5]  # Top 5
+                })
+
+                # Check if ALL resources are blocked (uncoverable)
+                if len(available_resources) == 0:
+                    potentially_uncoverable.append({
+                        'request_id': req_id,
+                        'request_period': f"{req_start.strftime('%Y-%m-%d %H:%M')} to {req_end.strftime('%Y-%m-%d %H:%M')}",
+                        'reason': 'ALL_RESOURCES_ON_ABSENCE',
+                        'blocked_resources_count': len(blocked_resources)
+                    })
+
+        # Analyze resources by absence burden
+        resources_most_blocked = self._analyze_resource_absence_burden(data, violation_metadata)
+
+        # Analyze time periods with high absence concentration
+        absence_concentration = self._analyze_absence_concentration(data)
+
+        # Calculate blocked assignments from metadata
+        total_blocked = len([m for m in violation_metadata if m.get('constraint_id') == 'HC_01'])
+
+        return {
+            "constraint_id": "HC_01",
+            "constraint_name": "absence_blocking",
+            "constraint_type": "HARD",
+            "total_blocked_assignments": total_blocked,
+            "absence_stats": {
+                "total_absences": data.absences_stats.get('filtered', 0),
+                "resources_with_absences": data.absences_stats.get('resources_with_absences', 0)
+            },
+            "impact_analysis": {
+                "requests_affected": len(blocked_by_absence),
+                "potentially_uncoverable": len(potentially_uncoverable),
+                "uncoverable_details": potentially_uncoverable[:10]  # Top 10
+            },
+            "blocked_requests": {
+                "total": len(blocked_by_absence),
+                "details": blocked_by_absence[:20]  # Top 20
+            },
+            "resource_analysis": {
+                "most_affected_resources": resources_most_blocked[:10],
+                "absence_concentration": absence_concentration
+            },
+            "recommendations": self._generate_recommendations(
+                blocked_by_absence,
+                potentially_uncoverable,
+                resources_most_blocked,
+                absence_concentration
+            )
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check if resource is available (not on absence) for this assignment
+
+        For hard constraints, this either completely blocks (legal violation)
+        or allows the assignment.
+        """
+        if not ENFORCE_ABSENCE_BLOCKING:
+            return {
+                "would_violate": False,
+                "violation_type": "none",
+                "reason": "Absence blocking is disabled"
+            }
+
+        res_id = simulated_assignment.get('resource_id')
+        start = simulated_assignment.get('start')
+        end = simulated_assignment.get('end')
+
+        # Parse dates
+        if isinstance(start, str):
+            start = self._parse_datetime(start)
+        if isinstance(end, str):
+            end = self._parse_datetime(end)
+
+        if not res_id or not start or not end:
+            return {
+                "would_violate": False,
+                "violation_type": "none",
+                "reason": "Missing required fields"
+            }
+
+        # Check for blocking absence
+        blocking_absence = data.get_blocking_absence(res_id, start, end)
+
+        if blocking_absence:
+            return {
+                "would_violate": True,
+                "violation_type": "legal",  # Hard constraint = legal
+                "violation_amount": 1,
+                "reason": f"Resource {res_id} is on {blocking_absence.get('type', 'absence')} during this period",
+                "details": {
+                    "absence_type": blocking_absence.get('type'),
+                    "absence_start": str(blocking_absence.get('start')),
+                    "absence_end": str(blocking_absence.get('end')),
+                    "absence_status": blocking_absence.get('status')
+                }
+            }
+
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "reason": "Resource is available (no absence overlap)"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """
+        Not applicable for hard constraints
+
+        Hard constraints cannot be violated - they completely block assignments.
+        Weight adjustment doesn't apply.
+        """
+        return {
+            "constraint_id": "HC_01",
+            "constraint_type": "HARD",
+            "message": "Weight adjustment not applicable for hard constraints",
+            "suggested_adjustments": [],
+            "alternative_actions": [
+                "Consider adjusting absence approval policies",
+                "Hire temporary/external resources for high-absence periods",
+                "Cross-train resources to increase coverage flexibility"
+            ]
+        }
+
+    def _parse_datetime(self, dt_string):
+        """Parse datetime string to timezone-aware datetime"""
+        if not dt_string:
+            return None
+
+        try:
+            if dt_string.endswith('Z'):
+                dt_string = dt_string.replace('Z', '+00:00')
+
+            dt = datetime.fromisoformat(dt_string)
+
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+
+            return dt
+        except (ValueError, AttributeError):
+            return None
+
+    def _analyze_resource_absence_burden(self, data, violation_metadata):
+        """Analyze which resources have the most absence-blocked assignments"""
+        resource_blocked_count = {}
+
+        for meta in violation_metadata:
+            if meta.get('constraint_id') != 'HC_01':
+                continue
+            res_id = meta.get('resource_id')
+            if res_id:
+                resource_blocked_count[res_id] = resource_blocked_count.get(res_id, 0) + 1
+
+        # Sort by blocked count
+        sorted_resources = sorted(
+            [
+                {
+                    'resource_id': res_id,
+                    'blocked_assignments': count,
+                    'absence_periods': len(data.resource_absences.get(res_id, []))
+                }
+                for res_id, count in resource_blocked_count.items()
+            ],
+            key=lambda x: -x['blocked_assignments']
+        )
+
+        return sorted_resources
+
+    def _analyze_absence_concentration(self, data):
+        """Analyze time periods with highest absence concentration"""
+        # Group absences by date
+        date_counts = {}
+
+        for res_id, absences in data.resource_absences.items():
+            for absence in absences:
+                start = absence.get('start')
+                end = absence.get('end')
+                if not start or not end:
+                    continue
+
+                # Count each day in the absence period
+                current = start
+                while current <= end:
+                    date_key = current.strftime('%Y-%m-%d')
+                    if date_key not in date_counts:
+                        date_counts[date_key] = {'count': 0, 'resources': []}
+                    date_counts[date_key]['count'] += 1
+                    date_counts[date_key]['resources'].append(res_id)
+                    current = current.replace(day=current.day + 1) if current.day < 28 else current
+
+        # Find peak absence dates
+        sorted_dates = sorted(
+            [
+                {
+                    'date': date,
+                    'absent_resources': info['count'],
+                    'percentage_absent': round(info['count'] / len(data.resource_ids) * 100, 1) if data.resource_ids else 0
+                }
+                for date, info in date_counts.items()
+            ],
+            key=lambda x: -x['absent_resources']
+        )
+
+        return {
+            'peak_dates': sorted_dates[:10],
+            'total_absence_days': len(date_counts)
+        }
+
+    def _generate_recommendations(self, blocked_by_absence, potentially_uncoverable,
+                                   resources_most_blocked, absence_concentration):
+        """Generate recommendations based on absence analysis"""
+        recommendations = []
+
+        # Critical: Uncoverable requests
+        if potentially_uncoverable:
+            recommendations.append({
+                'type': 'CRITICAL',
+                'priority': 'HIGH',
+                'action': f"{len(potentially_uncoverable)} requests cannot be covered due to absences",
+                'details': [r['request_id'] for r in potentially_uncoverable[:5]],
+                'suggested_actions': [
+                    "Consider hiring external/temporary resources",
+                    "Reschedule requests if possible",
+                    "Review absence approvals for the affected period"
+                ]
+            })
+
+        # High absence concentration periods
+        if absence_concentration.get('peak_dates'):
+            peak = absence_concentration['peak_dates'][0]
+            if peak['percentage_absent'] > 20:
+                recommendations.append({
+                    'type': 'CAPACITY_WARNING',
+                    'priority': 'MEDIUM',
+                    'action': f"High absence concentration on {peak['date']}: {peak['percentage_absent']}% of resources absent",
+                    'suggested_actions': [
+                        "Review absence approval policy for peak periods",
+                        "Ensure adequate cross-training for coverage",
+                        "Consider blackout periods for non-essential absences"
+                    ]
+                })
+
+        # Resources with many blocked assignments
+        if resources_most_blocked and resources_most_blocked[0]['blocked_assignments'] > 5:
+            recommendations.append({
+                'type': 'RESOURCE_PLANNING',
+                'priority': 'LOW',
+                'action': f"Resource {resources_most_blocked[0]['resource_id']} has {resources_most_blocked[0]['blocked_assignments']} blocked assignments due to absences",
+                'suggested_actions': [
+                    "Review if absence period is correctly entered",
+                    "Consider temporary coverage for long absences",
+                    "Cross-train backup resources"
+                ]
+            })
+
+        return recommendations

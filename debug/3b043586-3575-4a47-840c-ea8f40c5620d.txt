@@ -1,0 +1,242 @@
+2025-12-16T08:50:42.815Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json...
+2025-12-16T08:50:42.859Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-16T08:50:42.859Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-16T08:50:42.859Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-16T08:50:42.859Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-12-16T08:50:42.859Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-12-16T08:50:42.873Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-16T08:50:42.875Z [DEBUG] Total LSP servers loaded: 0
+2025-12-16T08:50:42.875Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-12-16T08:50:42.875Z [DEBUG] LSP manager initialized with 0 servers
+2025-12-16T08:50:42.875Z [DEBUG] LSP server manager initialized successfully
+2025-12-16T08:50:42.876Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-16T08:50:42.893Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults (12.4ms): ldd /bin/ls 2>/dev/null
+2025-12-16T08:50:42.900Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=[]
+2025-12-16T08:50:42.901Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-12-16T08:50:42.908Z [DEBUG] Loaded 0 installed plugins from V2 file at /home/javiervel/.claude/plugins/installed_plugins.json
+2025-12-16T08:50:42.908Z [DEBUG] Official marketplace auto-install already attempted, skipping
+2025-12-16T08:50:43.169Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-12-16T08:50:43.169Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-12-16T08:50:43.169Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-12-16T08:50:43.171Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765875043169-g78ie7.sh
+2025-12-16T08:50:43.171Z [DEBUG] Shell binary exists: true
+2025-12-16T08:50:43.171Z [DEBUG] Execution timeout: 10000ms
+2025-12-16T08:50:43.182Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/3b043586-3575-4a47-840c-ea8f40c5620d-agent-3b043586-3575-4a47-840c-ea8f40c5620d.json.tmp.3749.1765875043182
+2025-12-16T08:50:43.192Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.1ms)
+2025-12-16T08:50:43.192Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-16T08:50:43.192Z [DEBUG] Renaming /home/javiervel/.claude/todos/3b043586-3575-4a47-840c-ea8f40c5620d-agent-3b043586-3575-4a47-840c-ea8f40c5620d.json.tmp.3749.1765875043182 to /home/javiervel/.claude/todos/3b043586-3575-4a47-840c-ea8f40c5620d-agent-3b043586-3575-4a47-840c-ea8f40c5620d.json
+2025-12-16T08:50:43.192Z [DEBUG] File /home/javiervel/.claude/todos/3b043586-3575-4a47-840c-ea8f40c5620d-agent-3b043586-3575-4a47-840c-ea8f40c5620d.json written atomically
+2025-12-16T08:50:43.219Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-16T08:50:43.219Z [DEBUG] Total plugin skills loaded: 0
+2025-12-16T08:50:43.219Z [DEBUG] Total plugin commands loaded: 0
+2025-12-16T08:50:43.219Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-16T08:50:43.531Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-16T08:50:44.184Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills
+2025-12-16T08:50:44.274Z [DEBUG] Git remote URL: null
+2025-12-16T08:50:44.274Z [DEBUG] No git remote URL found
+2025-12-16T08:50:44.274Z [DEBUG] Not in a GitHub repository, skipping path mapping update
+2025-12-16T08:50:44.275Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-12-16T08:50:44.280Z [DEBUG] Shell snapshot created successfully (4898 bytes)
+2025-12-16T08:50:44.293Z [DEBUG] Total plugin agents loaded: 0
+2025-12-16T08:50:44.365Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875044365
+2025-12-16T08:50:44.365Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:44.375Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.9ms)
+2025-12-16T08:50:44.375Z [DEBUG] Temp file written successfully, size: 88284 bytes
+2025-12-16T08:50:44.375Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:44.375Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875044365 to /home/javiervel/.claude.json
+2025-12-16T08:50:44.375Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:44.415Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875044415
+2025-12-16T08:50:44.415Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:44.423Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.0ms)
+2025-12-16T08:50:44.423Z [DEBUG] Temp file written successfully, size: 88284 bytes
+2025-12-16T08:50:44.423Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:44.423Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875044415 to /home/javiervel/.claude.json
+2025-12-16T08:50:44.423Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:44.530Z [ERROR] AxiosError: AxiosError: Request failed with status code 401
+    at AP (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:186:1137)
+    at IncomingMessage.<anonymous> (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:187:9852)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at UWA.request (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:189:2130)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async maB (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:1925:6675)
+2025-12-16T08:50:44.539Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875044539
+2025-12-16T08:50:44.539Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:44.546Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.5ms)
+2025-12-16T08:50:44.546Z [DEBUG] Temp file written successfully, size: 88284 bytes
+2025-12-16T08:50:44.546Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:44.546Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875044539 to /home/javiervel/.claude.json
+2025-12-16T08:50:44.546Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:44.549Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875044549
+2025-12-16T08:50:44.549Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:44.557Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.8ms)
+2025-12-16T08:50:44.557Z [DEBUG] Temp file written successfully, size: 88287 bytes
+2025-12-16T08:50:44.557Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:44.557Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875044549 to /home/javiervel/.claude.json
+2025-12-16T08:50:44.557Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:47.479Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875047479
+2025-12-16T08:50:47.479Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:47.489Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.2ms)
+2025-12-16T08:50:47.489Z [DEBUG] Temp file written successfully, size: 88696 bytes
+2025-12-16T08:50:47.489Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:47.489Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875047479 to /home/javiervel/.claude.json
+2025-12-16T08:50:47.490Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:47.520Z [DEBUG] Creating installed_plugins_v2.json from V1 and settings.json files
+2025-12-16T08:50:47.522Z [DEBUG] Failed to migrate V1 data: [
+  {
+    "received": 2,
+    "code": "invalid_literal",
+    "expected": 1,
+    "path": [
+      "version"
+    ],
+    "message": "Invalid literal value, expected 1"
+  }
+]
+2025-12-16T08:50:47.532Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.8ms)
+2025-12-16T08:50:47.532Z [DEBUG] Saved 0 installed plugins to V2 file at /home/javiervel/.claude/plugins/installed_plugins_v2.json
+2025-12-16T08:50:47.532Z [DEBUG] Sync completed: 0 added, 0 updated in installed_plugins_v2.json
+2025-12-16T08:50:47.542Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.0ms)
+2025-12-16T08:50:47.542Z [DEBUG] Saved 0 installed plugins to /home/javiervel/.claude/plugins/installed_plugins.json (schema version 1)
+2025-12-16T08:50:47.542Z [DEBUG] V1 file updated with 0 user-scope plugins
+2025-12-16T08:50:47.553Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2025-12-16T08:50:47.558Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875047558
+2025-12-16T08:50:47.558Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:47.567Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.6ms)
+2025-12-16T08:50:47.567Z [DEBUG] Temp file written successfully, size: 88696 bytes
+2025-12-16T08:50:47.567Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:47.567Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875047558 to /home/javiervel/.claude.json
+2025-12-16T08:50:47.568Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:47.582Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-12-16T08:50:47.582Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:47.582Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-12-16T08:50:48.317Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-16T08:50:48.319Z [DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-12-16T08:50:48.415Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875048415
+2025-12-16T08:50:48.416Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:48.423Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.0ms)
+2025-12-16T08:50:48.423Z [DEBUG] Temp file written successfully, size: 88623 bytes
+2025-12-16T08:50:48.423Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:48.423Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875048415 to /home/javiervel/.claude.json
+2025-12-16T08:50:48.423Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:48.429Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875048429
+2025-12-16T08:50:48.429Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:48.440Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.5ms)
+2025-12-16T08:50:48.440Z [DEBUG] Temp file written successfully, size: 88623 bytes
+2025-12-16T08:50:48.440Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:48.440Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875048429 to /home/javiervel/.claude.json
+2025-12-16T08:50:48.440Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:48.444Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875048444
+2025-12-16T08:50:48.444Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:48.455Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.1ms)
+2025-12-16T08:50:48.455Z [DEBUG] Temp file written successfully, size: 88623 bytes
+2025-12-16T08:50:48.455Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:48.455Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875048444 to /home/javiervel/.claude.json
+2025-12-16T08:50:48.455Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:48.469Z [DEBUG] performStartupChecks called
+2025-12-16T08:50:48.470Z [DEBUG] Starting background plugin installations
+2025-12-16T08:50:48.470Z [DEBUG] performBackgroundPluginInstallations called
+2025-12-16T08:50:48.869Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults (397.6ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T08:50:48.891Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (7.7ms)
+2025-12-16T08:50:48.898Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (7.4ms)
+2025-12-16T08:50:48.911Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875048911
+2025-12-16T08:50:48.911Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:48.921Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.9ms)
+2025-12-16T08:50:48.921Z [DEBUG] Temp file written successfully, size: 88696 bytes
+2025-12-16T08:50:48.921Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:48.921Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875048911 to /home/javiervel/.claude.json
+2025-12-16T08:50:48.921Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:49.300Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults (377.1ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T08:50:49.326Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (8.7ms)
+2025-12-16T08:50:49.333Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (7.6ms)
+2025-12-16T08:50:49.333Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-12-16T08:50:49.333Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-12-16T08:50:49.355Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-16T08:50:49.355Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:49.355Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-16T08:50:49.359Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-16T08:50:49.359Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:49.359Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-16T08:50:49.364Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T08:50:49.393Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-16T08:50:49.409Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.1ms)
+2025-12-16T08:50:49.421Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875049421
+2025-12-16T08:50:49.421Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:49.431Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.6ms)
+2025-12-16T08:50:49.431Z [DEBUG] Temp file written successfully, size: 88877 bytes
+2025-12-16T08:50:49.431Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:49.431Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875049421 to /home/javiervel/.claude.json
+2025-12-16T08:50:49.431Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:49.433Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875049433
+2025-12-16T08:50:49.433Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:49.442Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.0ms)
+2025-12-16T08:50:49.442Z [DEBUG] Temp file written successfully, size: 88877 bytes
+2025-12-16T08:50:49.442Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:49.442Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875049433 to /home/javiervel/.claude.json
+2025-12-16T08:50:49.442Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:49.446Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 71ms
+2025-12-16T08:50:49.447Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.62"}}
+2025-12-16T08:50:49.463Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (8.2ms)
+2025-12-16T08:50:49.470Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.4ms)
+2025-12-16T08:50:49.521Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875049521
+2025-12-16T08:50:49.521Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:49.530Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.5ms)
+2025-12-16T08:50:49.530Z [DEBUG] Temp file written successfully, size: 88877 bytes
+2025-12-16T08:50:49.530Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:49.530Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875049521 to /home/javiervel/.claude.json
+2025-12-16T08:50:49.530Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:50.341Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-16T08:50:50.341Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-16T08:50:50.676Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875050676
+2025-12-16T08:50:50.676Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:50.687Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (11.2ms)
+2025-12-16T08:50:50.687Z [DEBUG] Temp file written successfully, size: 88877 bytes
+2025-12-16T08:50:50.687Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:50.687Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875050676 to /home/javiervel/.claude.json
+2025-12-16T08:50:50.687Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:51.986Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T08:50:51.986Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T08:50:51.987Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T08:50:51.987Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T08:50:51.996Z [DEBUG] [TeammateMailbox] getTeammateMailboxAttachments called: envAgentName=undefined, isTeamLead=false, resolved agentName=undefined, teamName=undefined
+2025-12-16T08:50:51.996Z [DEBUG] [TeammateMailbox] Not checking inbox - not a teammate or team lead
+2025-12-16T08:50:52.016Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-16T08:50:52.016Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:52.016Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T08:50:52.017Z [DEBUG] FileHistory: Added snapshot for 4365520b-587f-4d60-af2d-1570bddf31cd, tracking 0 files
+2025-12-16T08:50:52.029Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-16T08:50:52.044Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-16T08:50:52.053Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 24ms
+2025-12-16T08:50:52.432Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3749.1765875052432
+2025-12-16T08:50:52.432Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T08:50:52.442Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.3ms)
+2025-12-16T08:50:52.442Z [DEBUG] Temp file written successfully, size: 88877 bytes
+2025-12-16T08:50:52.442Z [DEBUG] Applied original permissions to temp file
+2025-12-16T08:50:52.442Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.3749.1765875052432 to /home/javiervel/.claude.json
+2025-12-16T08:50:52.442Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T08:50:52.517Z [DEBUG] Stream started - received first chunk
+2025-12-16T08:50:53.249Z [DEBUG] Stream started - received first chunk
+2025-12-16T08:50:53.349Z [DEBUG] Stream started - received first chunk
+2025-12-16T08:50:54.901Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T08:50:54.901Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:54.901Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T08:50:55.249Z [DEBUG] Stream started - received first chunk
+2025-12-16T08:50:55.436Z [DEBUG] Getting matching hook commands for SessionEnd with query: prompt_input_exit
+2025-12-16T08:50:55.436Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:55.436Z [DEBUG] Matched 0 unique hooks for query "prompt_input_exit" (0 before deduplication)
+2025-12-16T08:50:55.438Z [DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765875043169-g78ie7.sh
+2025-12-16T08:50:55.440Z [DEBUG] MCP server "ide": WebSocket transport closed/disconnected, attempting automatic reconnection
+2025-12-16T08:50:55.441Z [DEBUG] LSP server manager shut down successfully
+2025-12-16T08:50:55.444Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-16T08:50:55.455Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 14ms
+2025-12-16T08:50:55.455Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.62"}}
+2025-12-16T08:50:55.459Z [DEBUG] MCP server "ide": WebSocket reconnection successful after 19ms (attempt 1)
+2025-12-16T08:50:55.761Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T08:50:55.761Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T08:50:55.761Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T08:50:56.236Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults (388.1ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T08:50:56.259Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (7.8ms)
+2025-12-16T08:50:56.268Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (8.3ms)
+2025-12-16T08:50:56.681Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults (413.1ms): powershell.exe -Command '$env:USERPROFILE'

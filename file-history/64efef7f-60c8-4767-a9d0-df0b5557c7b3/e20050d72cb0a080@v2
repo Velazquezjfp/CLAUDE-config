@@ -1,0 +1,630 @@
+# CFF Workforce Planning System - Constraint Specification
+# Company Policy 02: Resource-Demand Qualification Matching
+# Based on CONSTRAINTS_DOCUMENTATION.md Section 7
+
+constraint_metadata:
+  name: "qualification_matching"
+  category: "Company Policy - Resource-Demand Matching"
+  layer: 2                                   # Company Policy layer
+  type: "soft_constraint"                    # Soft constraint with penalties
+  description: "Ensures resources have required qualifications for assigned requests"
+  legal_reference: "N/A - Company Policy"
+  modifiable: true                           # Can be adjusted via MCP
+  constraint_id: "CP_02"                     # Company policy identifier
+  implementation_status: "Phase 1 - Qualification Matching Only"
+
+# IMPORTANT: Two-Tier Matching System (from Section 7)
+# Tier 1: CATEGORY MATCH (HARD) - NOT-IMPLEMENTED
+#   - resource.resource_category == request.resource_category
+#   - MISSING FIELD: resource.resource_category does not exist in database
+#   - TODO: Implement when database schema is updated
+#   - Can be added as separate constraint or update to this spec
+#
+# Tier 2: QUALIFICATION MATCH (SOFT) - IMPLEMENTED
+#   - resource.qualifications ⊇ request.required_qualifications
+#   - If required_qualifications is empty, no check needed
+#   - Mismatch generates penalty (can be overridden)
+
+constraint_parameters:
+  - name: "require_qualification_match"
+    description: "Whether to enforce qualification matching - DYNAMIC"
+    type: "boolean"
+    unit: "boolean"
+    default_value: true                      # Current value from API (DYNAMIC!)
+    source: "company_policy_constraints.policy_name='require_qualification_match'"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=require_qualification_match"
+    dynamic: true
+    notes: |
+      DYNAMIC value that can vary based on:
+      - Planning mode (Conservative: strict, Aggressive: more flexible)
+      - Request priority (high-priority may relax requirements)
+      - Emergency situations (may be disabled for urgent coverage)
+
+  - name: "qualification_mismatch_penalty"
+    description: "Penalty weight for missing qualifications - DYNAMIC"
+    type: "float"
+    unit: "cost_per_missing_qualification"
+    default_value: 100.0                     # High penalty (DYNAMIC!)
+    min_value: 0.0
+    max_value: 1000.0
+    source: "operational_preferences.preference_name='qualification_mismatch_penalty'"
+    api_endpoint: "GET /api/v1/operational-preferences/?preference_name=qualification_mismatch_penalty"
+    dynamic: true
+    notes: |
+      DYNAMIC weight in objective function:
+      - Higher weight = stricter qualification enforcement
+      - Weight of 0 = disabled (qualification matching not enforced)
+      - Can vary by request type, priority, planning mode
+
+  - name: "allow_partial_match"
+    description: "Allow assignment if some (not all) qualifications match - DYNAMIC"
+    type: "boolean"
+    unit: "boolean"
+    default_value: false                     # Require ALL qualifications by default
+    source: "company_policy_constraints.policy_name='allow_partial_qualification_match'"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=allow_partial_qualification_match"
+    dynamic: true
+    notes: |
+      If true: Resource can be assigned with partial qualification match
+      If false: Resource must have ALL required qualifications (strict)
+
+data_inputs_from_database:
+  - name: "resources"
+    description: "Resource data with qualifications - VERIFIED FIELDS"
+    source_table: "resources"
+    api_endpoint: "GET /api/v1/resources/"
+    required_fields:
+      - "resource_id"                        # VARCHAR(20) - PK
+      - "qualifications"                     # JSONB array - ✅ EXISTS
+      # MISSING FIELD: "resource_category" - ❌ NOT in database (null)
+
+  - name: "requests"
+    description: "Request data with qualification requirements - VERIFIED FIELDS"
+    source_table: "requests"
+    api_endpoint: "GET /api/v1/requests/"
+    required_fields:
+      - "request_id"                         # VARCHAR - PK
+      - "resource_category"                  # String - ✅ EXISTS (e.g., "Monteur VF")
+      - "required_qualifications"            # JSONB array - ✅ EXISTS (can be empty [])
+
+preprocessed_data:
+  - name: "qualification_match_matrix"
+    description: "For each resource-request pair, check if qualifications match"
+    type: "dict[(resource_id, request_id), (bool, int)]"
+    calculation: |
+      def check_qualification_match(resource, request):
+          """
+          Check if resource has all required qualifications for request
+
+          Returns:
+              (matches: bool, missing_count: int)
+          """
+          req_quals = set(request.get('required_qualifications', []))
+          res_quals = set(resource.get('qualifications', []))
+
+          # If no qualifications required, automatic match
+          if not req_quals:
+              return (True, 0)
+
+          # Check if resource has all required qualifications
+          missing_quals = req_quals - res_quals
+          matches = len(missing_quals) == 0
+
+          return (matches, len(missing_quals))
+
+      def build_qualification_matrix(resources, requests):
+          """Build match matrix for all resource-request pairs"""
+          match_matrix = {}
+
+          for resource in resources:
+              res_id = resource['resource_id']
+
+              for request in requests:
+                  req_id = request['request_id']
+
+                  matches, missing_count = check_qualification_match(resource, request)
+                  match_matrix[(res_id, req_id)] = (matches, missing_count)
+
+          return match_matrix
+
+  - name: "requests_with_qualifications"
+    description: "Filter requests that actually require qualifications"
+    type: "list[request_id]"
+    calculation: |
+      def get_requests_with_quals(requests):
+          """Return list of request IDs that have non-empty required_qualifications"""
+          return [
+              req['request_id']
+              for req in requests
+              if req.get('required_qualifications', [])
+          ]
+
+  - name: "missing_qualifications_detail"
+    description: "Detailed list of missing qualifications per resource-request pair"
+    type: "dict[(resource_id, request_id), list[str]]"
+    calculation: |
+      def get_missing_qualifications(resource, request):
+          """Return list of qualifications that resource is missing"""
+          req_quals = set(request.get('required_qualifications', []))
+          res_quals = set(resource.get('qualifications', []))
+
+          missing = req_quals - res_quals
+          return list(missing)
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req] = 1 if resource r assigned to request req"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "qual_mismatch"
+    description: "Binary: qual_mismatch[r][req] = 1 if assigned with qualification mismatch"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "missing_qual_count"
+    description: "Number of missing qualifications per assignment"
+    type: "integer"
+    dimensions: "[resources, requests]"
+    domain: "[0, 20]"                        # Max 20 qualifications
+
+  - name: "total_qual_mismatches"
+    description: "Total number of assignments with qualification mismatches"
+    type: "integer"
+    dimensions: "scalar"
+    domain: "[0, num_assignments]"
+
+mathematical_formulation:
+  equation: |
+    Preprocessing:
+    For each resource r and request req:
+        req_quals = set(req.required_qualifications)
+        res_quals = set(r.qualifications)
+
+        IF req_quals is empty:
+            has_all_quals[r][req] = True
+            missing_count[r][req] = 0
+        ELSE:
+            missing_quals = req_quals - res_quals
+            has_all_quals[r][req] = (len(missing_quals) == 0)
+            missing_count[r][req] = len(missing_quals)
+
+    Qualification Matching Constraint (SOFT):
+    For each resource r and request req where required_qualifications is NOT empty:
+
+        IF x[r][req] = 1 (assigned) AND NOT has_all_quals[r][req]:
+            qual_mismatch[r][req] = 1
+            missing_qual_count[r][req] = missing_count[r][req]
+        ELSE:
+            qual_mismatch[r][req] = 0
+            missing_qual_count[r][req] = 0
+
+    Implementation in CP-SAT:
+        # Link qual_mismatch to assignment and qualification match
+        IF NOT has_all_quals[r][req]:
+            model.Add(qual_mismatch[r][req] == x[r][req])
+            model.Add(missing_qual_count[r][req] == missing_count[r][req] * x[r][req])
+        ELSE:
+            model.Add(qual_mismatch[r][req] == 0)
+            model.Add(missing_qual_count[r][req] == 0)
+
+    Count Total Mismatches:
+        total_qual_mismatches = Σ(qual_mismatch[r][req])
+                                for all r, req
+
+    Objective Function (Soft Constraint):
+    Minimize:
+        qualification_mismatch_penalty × Σ(missing_qual_count[r][req])
+
+    OR (if penalizing per mismatch, not per missing qualification):
+        qualification_mismatch_penalty × total_qual_mismatches
+
+  explanation: |
+    Qualification matching ensures resources have necessary skills for tasks:
+
+    1. **Empty Qualifications Check**:
+       - IF request.required_qualifications is empty: automatic match, no check needed
+       - This is common for basic tasks that don't require special qualifications
+
+    2. **Set-Based Matching**:
+       - Required qualifications: set from request
+       - Resource qualifications: set from resource
+       - Match if: resource.qualifications ⊇ request.required_qualifications
+       - Missing qualifications: required_quals - resource_quals
+
+    3. **Soft Constraint Implementation**:
+       - Mismatch detected when assigned AND qualifications don't match
+       - Generates penalty in objective function
+       - Allows override for high-priority/emergency situations
+       - Penalty can be per-mismatch OR per-missing-qualification
+
+    4. **Future Enhancement (NOT-IMPLEMENTED)**:
+       - Category matching: resource.resource_category == request.resource_category
+       - Would be HARD constraint (blocks assignment if category mismatch)
+       - Requires database schema update to add resource_category field
+       - Priority: Category first (hard), then qualifications (soft)
+
+    Benefits:
+    - Ensures quality and safety (qualified workers)
+    - Flexibility for emergencies (soft constraint)
+    - Tracks skill gaps (missing qualifications)
+    - Supports training/development planning
+
+cp_sat_implementation:
+  scaling_factor: 1                          # No scaling needed for counts
+
+  implementation_notes: |
+    # Step 1: Fetch DYNAMIC policy values
+    async def fetch_qualification_matching_policy(planning_mode=None):
+        async with httpx.AsyncClient() as client:
+            BASE_URL = "http://150.241.245.65:8002"
+
+            # Get qualification matching policy
+            policy_response = await client.get(
+                f"{BASE_URL}/api/v1/company-policy-constraints/",
+                params={"policy_name": "require_qualification_match"}
+            )
+            policy = policy_response.json()[0] if policy_response.json() else None
+
+            # Get penalty weight
+            params = {"preference_name": "qualification_mismatch_penalty"}
+            if planning_mode:
+                params["planning_mode"] = planning_mode
+
+            weight_response = await client.get(
+                f"{BASE_URL}/api/v1/operational-preferences/",
+                params=params
+            )
+            weight = weight_response.json()[0] if weight_response.json() else None
+
+            return policy, weight
+
+    # Step 2: Fetch and preprocess qualification data
+    async def fetch_resources_and_requests():
+        """Fetch resources and requests with qualification data"""
+        async with httpx.AsyncClient() as client:
+            BASE_URL = "http://150.241.245.65:8002"
+
+            # Fetch resources (paginated)
+            resources = []
+            page = 1
+            while True:
+                res_response = await client.get(
+                    f"{BASE_URL}/api/v1/resources/",
+                    params={"page": page, "per_page": 100}
+                )
+                data = res_response.json()
+                resources.extend(data['data'])
+                if page >= data['total_pages']:
+                    break
+                page += 1
+
+            # Fetch requests (paginated)
+            requests = []
+            page = 1
+            while True:
+                req_response = await client.get(
+                    f"{BASE_URL}/api/v1/requests/",
+                    params={"page": page, "per_page": 100}
+                )
+                data = req_response.json()
+                requests.extend(data['data'])
+                if page >= data['total_pages']:
+                    break
+                page += 1
+
+            return resources, requests
+
+    def preprocess_qualification_matching(resources, requests):
+        """Build qualification match matrix"""
+
+        def check_match(resource, request):
+            """Check if resource has all required qualifications"""
+            req_quals = set(request.get('required_qualifications', []))
+            res_quals = set(resource.get('qualifications', []))
+
+            # Empty requirements = automatic match
+            if not req_quals:
+                return True, 0, []
+
+            # Check for missing qualifications
+            missing = req_quals - res_quals
+            has_all = len(missing) == 0
+
+            return has_all, len(missing), list(missing)
+
+        # Build match matrix
+        match_matrix = {}
+        missing_details = {}
+
+        for resource in resources:
+            res_id = resource['resource_id']
+
+            for request in requests:
+                req_id = request['request_id']
+
+                has_all, missing_count, missing_list = check_match(resource, request)
+
+                match_matrix[(res_id, req_id)] = (has_all, missing_count)
+                if missing_list:
+                    missing_details[(res_id, req_id)] = missing_list
+
+        return match_matrix, missing_details
+
+    # Step 3: Add qualification matching constraints
+    def add_qualification_matching_constraints(model, x, resources, requests,
+                                                match_matrix, enforce_matching=True):
+        """Add soft constraint for qualification matching"""
+
+        if not enforce_matching:
+            return [], None  # Policy disabled
+
+        qual_mismatch_vars = []
+        missing_qual_counts = []
+
+        for resource in resources:
+            res_id = resource['resource_id']
+
+            for request in requests:
+                req_id = request['request_id']
+                x_var = x[(res_id, req_id)]
+
+                # Get precomputed match info
+                has_all_quals, missing_count = match_matrix.get(
+                    (res_id, req_id), (True, 0)
+                )
+
+                # Create mismatch indicator
+                qual_mismatch = model.NewBoolVar(f'qual_mismatch_{res_id}_{req_id}')
+
+                # Create missing count variable
+                missing_var = model.NewIntVar(
+                    0, 20, f'missing_quals_{res_id}_{req_id}'
+                )
+
+                if not has_all_quals and missing_count > 0:
+                    # Qualification mismatch: qual_mismatch = x_var (if assigned, then mismatch)
+                    model.Add(qual_mismatch == x_var)
+
+                    # Track number of missing qualifications
+                    model.Add(missing_var == missing_count).OnlyEnforceIf(x_var)
+                    model.Add(missing_var == 0).OnlyEnforceIf(x_var.Not())
+                else:
+                    # Qualifications match: qual_mismatch = 0
+                    model.Add(qual_mismatch == 0)
+                    model.Add(missing_var == 0)
+
+                qual_mismatch_vars.append(qual_mismatch)
+                missing_qual_counts.append(missing_var)
+
+        # Calculate total mismatches
+        total_mismatches = model.NewIntVar(
+            0, len(resources) * len(requests),
+            'total_qual_mismatches'
+        )
+        model.Add(total_mismatches == sum(qual_mismatch_vars))
+
+        return qual_mismatch_vars, missing_qual_counts, total_mismatches
+
+    # Step 4: Add to objective function
+    def add_qualification_matching_objective(qual_mismatch_vars, missing_qual_counts,
+                                              penalty_weight, penalty_per_missing=True):
+        """Add qualification matching cost to objective"""
+
+        # DYNAMIC weight from API
+        PENALTY_WEIGHT = int(penalty_weight)  # e.g., 100
+
+        if penalty_per_missing:
+            # Penalty per missing qualification (more granular)
+            qualification_penalty_cost = sum(
+                missing_count * PENALTY_WEIGHT
+                for missing_count in missing_qual_counts
+            )
+        else:
+            # Penalty per mismatch (simpler)
+            qualification_penalty_cost = sum(
+                qual_mismatch * PENALTY_WEIGHT
+                for qual_mismatch in qual_mismatch_vars
+            )
+
+        return qualification_penalty_cost
+
+    # Example usage in main solver:
+    async def build_model_with_qualification_matching():
+        model = cp_model.CpModel()
+
+        # Fetch data
+        policy, weight = await fetch_qualification_matching_policy(
+            planning_mode="Balanced"
+        )
+        resources, requests = await fetch_resources_and_requests()
+
+        # Preprocess
+        match_matrix, missing_details = preprocess_qualification_matching(
+            resources, requests
+        )
+
+        # Create assignment variables
+        x = {}
+        for resource in resources:
+            for request in requests:
+                x[(resource['resource_id'], request['request_id'])] = \
+                    model.NewBoolVar(
+                        f"x_{resource['resource_id']}_{request['request_id']}"
+                    )
+
+        # Add qualification matching constraints
+        enforce = policy['parameter_value']['enabled'] if policy else True
+        penalty_weight_value = weight['parameter_value']['value'] if weight else 100.0
+
+        qual_mismatch_vars, missing_qual_counts, total_mismatches = \
+            add_qualification_matching_constraints(
+                model, x, resources, requests,
+                match_matrix, enforce
+            )
+
+        # Build objective
+        objective_terms = []
+
+        # Add qualification matching cost
+        if enforce and qual_mismatch_vars:
+            qual_cost = add_qualification_matching_objective(
+                qual_mismatch_vars, missing_qual_counts,
+                penalty_weight_value, penalty_per_missing=True
+            )
+            objective_terms.append(qual_cost)
+
+        # ... add other objective terms ...
+
+        model.Minimize(sum(objective_terms))
+
+        return model
+
+validation_rules:
+  - rule: "required_qualifications must be a list"
+    condition: "isinstance(request['required_qualifications'], list)"
+  - rule: "qualifications must be a list"
+    condition: "isinstance(resource['qualifications'], list)"
+  - rule: "Empty required_qualifications means no qualification check"
+    condition: "if not required_qualifications: match = True"
+  - rule: "Penalty weight must be non-negative"
+    condition: "qualification_mismatch_penalty >= 0"
+  - rule: "Qualification strings should be normalized"
+    condition: "consistent format for matching"
+
+interaction_with_other_constraints:
+  - related_constraint: "category_matching (FUTURE)"
+    relationship: "Category match is tier 1 (hard), qualification match is tier 2 (soft)"
+  - related_constraint: "resource_availability"
+    relationship: "Qualification match only matters if resource is available"
+  - related_constraint: "team_composition"
+    relationship: "Team must collectively have all required qualifications"
+
+dynamic_value_examples:
+  - planning_mode: "Conservative"
+    require_qualification_match: true
+    qualification_mismatch_penalty: 200      # Very high penalty
+    allow_partial_match: false               # Must have ALL qualifications
+    notes: "Strict qualification enforcement for safety"
+
+  - planning_mode: "Balanced"
+    require_qualification_match: true
+    qualification_mismatch_penalty: 100      # Moderate penalty
+    allow_partial_match: false
+
+  - planning_mode: "Aggressive"
+    require_qualification_match: true
+    qualification_mismatch_penalty: 50       # Lower penalty
+    allow_partial_match: true                # Partial match allowed
+    notes: "More flexibility during high-demand periods"
+
+  - context: "Emergency"
+    require_qualification_match: false       # Disabled
+    qualification_mismatch_penalty: 0
+    notes: "Skip qualification checks for urgent coverage"
+
+  - request_priority: "low"
+    qualification_mismatch_penalty: 75       # Lower penalty for routine tasks
+
+  - request_priority: "high"
+    qualification_mismatch_penalty: 150      # Higher penalty for critical tasks
+
+penalty_configuration:
+  applicable: true
+  penalty_weight: 100.0                      # Default (DYNAMIC from API)
+  penalty_calculation: "linear_per_missing"  # Per missing qualification
+  alternative: "linear_per_mismatch"         # Per assignment with any mismatch
+  notes: |
+    - Penalty weight is DYNAMIC and fetched from API
+    - Weight of 0 disables qualification matching
+    - Can penalize per-missing-qualification OR per-mismatch
+    - Per-missing is more granular and accurate
+
+examples:
+  - scenario: "Perfect qualification match"
+    input:
+      resource: "RES-INT-0001"
+      resource_qualifications: ["Chef de la sécurité CR", "Protecteur CR avec cat B"]
+      request: "REQ-828796-40"
+      required_qualifications: ["Chef de la sécurité CR"]
+      penalty_weight: 100
+    output:
+      has_all_qualifications: true
+      missing_qualifications: []
+      qual_mismatch: false
+      penalty_cost: 0
+      notes: "Resource has required qualification - perfect match"
+
+  - scenario: "No qualifications required"
+    input:
+      resource: "RES-INT-0002"
+      resource_qualifications: ["Méc. de locomotive catégorie B100 / EP"]
+      request: "REQ-828796-41"
+      required_qualifications: []              # Empty!
+      penalty_weight: 100
+    output:
+      has_all_qualifications: true             # Automatic match
+      missing_qualifications: []
+      qual_mismatch: false
+      penalty_cost: 0
+      notes: "Empty required_qualifications = automatic match, no check needed"
+
+  - scenario: "Missing one qualification"
+    input:
+      resource: "RES-INT-0003"
+      resource_qualifications: ["Protecteur CR avec cat B"]
+      request: "REQ-999999-01"
+      required_qualifications: ["Chef de la sécurité CR", "Protecteur CR avec cat B"]
+      penalty_weight: 100
+    output:
+      has_all_qualifications: false
+      missing_qualifications: ["Chef de la sécurité CR"]
+      missing_count: 1
+      qual_mismatch: true
+      penalty_cost: 100                        # 1 missing * 100 weight
+      notes: "Resource missing 1 required qualification"
+
+  - scenario: "Missing multiple qualifications"
+    input:
+      resource: "RES-INT-0004"
+      resource_qualifications: []              # No qualifications!
+      request: "REQ-888888-01"
+      required_qualifications: ["Qual A", "Qual B", "Qual C"]
+      penalty_weight: 100
+    output:
+      has_all_qualifications: false
+      missing_qualifications: ["Qual A", "Qual B", "Qual C"]
+      missing_count: 3
+      qual_mismatch: true
+      penalty_cost: 300                        # 3 missing * 100 weight
+      notes: "High penalty for missing multiple qualifications"
+
+  - scenario: "Emergency mode - qualification check disabled"
+    input:
+      resource: "RES-INT-0005"
+      resource_qualifications: []
+      request: "REQ-URGENT-01"
+      required_qualifications: ["Qual A", "Qual B"]
+      planning_mode: "Emergency"
+      require_qualification_match: false
+      penalty_weight: 0
+    output:
+      qualification_check_enforced: false
+      penalty_cost: 0
+      notes: "Emergency mode - skip qualification checks for urgent coverage"
+
+notes:
+  - "VERIFIED FIELDS: resource.qualifications (JSONB array), request.required_qualifications (JSONB array)"
+  - "NOT-IMPLEMENTED: Category matching - resource.resource_category field does not exist"
+  - "Empty required_qualifications array = automatic match, no qualification check"
+  - "Qualification matching is SOFT constraint - generates penalty, can be overridden"
+  - "Future: Add category matching when resource_category field is added to resources table"
+  - "Two-tier system: Category first (hard/FUTURE), Qualifications second (soft/CURRENT)"
+  - "Set-based matching: resource.qualifications ⊇ request.required_qualifications"
+  - "Penalty can be per-missing-qualification OR per-mismatch-assignment"
+  - "Per-missing-qualification is more accurate and fair"
+  - "DYNAMIC penalty weight allows context-sensitive enforcement"
+  - "Can be disabled completely by setting penalty weight to 0"
+  - "Qualification string matching should be exact (consider normalization if needed)"

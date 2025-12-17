@@ -1,0 +1,421 @@
+"""
+Demands router - Full CRUD for demands table with pagination
+Connects to EXTERNAL database (data tables)
+Note: This table was previously called 'requests' - renamed to 'demands' in v2
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional
+import math
+import json
+
+from database import get_external_db
+from models import PaginatedResponse
+from config import settings
+
+
+router = APIRouter(prefix="/demands", tags=["Demands"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_demands(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    bsa_id: Optional[str] = Query(None, description="Filter by BSA ID"),
+    assignment_status: Optional[str] = Query(None, description="Filter by assignment status"),
+    priority: Optional[str] = Query(None, description="Filter by priority"),
+    branch: Optional[str] = Query(None, description="Filter by branch"),
+    team_id: Optional[int] = Query(None, description="Filter by team ID"),
+    locked: Optional[bool] = Query(None, description="Filter by locked status"),
+    region_code: Optional[str] = Query(None, description="Filter by region code"),
+    division_code: Optional[str] = Query(None, description="Filter by division code"),
+    location_code: Optional[str] = Query(None, description="Filter by location code"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all demands with pagination and optional filters.
+    Data comes from external database.
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause dynamically
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if bsa_id:
+            where_clauses.append("bsa_id = :bsa_id")
+            params["bsa_id"] = bsa_id
+
+        if assignment_status:
+            where_clauses.append("assignment_status = :assignment_status")
+            params["assignment_status"] = assignment_status
+
+        if priority:
+            where_clauses.append("priority = :priority")
+            params["priority"] = priority
+
+        if branch:
+            where_clauses.append("branch = :branch")
+            params["branch"] = branch
+
+        if team_id:
+            where_clauses.append("team_id = :team_id")
+            params["team_id"] = team_id
+
+        if locked is not None:
+            where_clauses.append("locked = :locked")
+            params["locked"] = locked
+
+        if region_code:
+            where_clauses.append("region_code = :region_code")
+            params["region_code"] = region_code
+
+        if division_code:
+            where_clauses.append("division_code = :division_code")
+            params["division_code"] = division_code
+
+        if location_code:
+            where_clauses.append("location_code = :location_code")
+            params["location_code"] = location_code
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM demands {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch demands - updated columns for external DB
+        query = text(f"""
+            SELECT
+                id, bsa_id, task_name, assignment_status, resource_category,
+                resource_category_group, technical_service, branch,
+                shift_start_time, shift_finish_time, shift,
+                start_location, end_location, start_location_code, end_location_code,
+                region_code, division_code, location_code,
+                people_needed, personnel, required_qualifications,
+                work_type, work_operation_type1, work_operation_type2,
+                responsible_person, isp_amgt, psp, priority, locked,
+                assigned_resources, ir_er, comments, team_id,
+                created_at, created_by, updated_at, updated_by
+            FROM demands
+            {where_sql}
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        demands = [dict(row._mapping) for row in rows]
+
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=demands,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching demands: {str(e)}",
+        )
+
+
+@router.get("/{demand_id}")
+async def get_demand(
+    demand_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single demand by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                id, bsa_id, task_name, assignment_status, resource_category,
+                resource_category_group, technical_service, branch,
+                shift_start_time, shift_finish_time, shift,
+                start_location, end_location, start_location_code, end_location_code,
+                region_code, division_code, location_code,
+                people_needed, personnel, required_qualifications,
+                work_type, work_operation_type1, work_operation_type2,
+                responsible_person, isp_amgt, psp, priority, locked,
+                assigned_resources, ir_er, comments, team_id,
+                created_at, created_by, updated_at, updated_by
+            FROM demands
+            WHERE id = :demand_id
+        """)
+
+        result = await db.execute(query, {"demand_id": demand_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Demand with ID {demand_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching demand: {str(e)}",
+        )
+
+
+@router.get("/bsa/{bsa_id}")
+async def get_demands_by_bsa(
+    bsa_id: str,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get all demands for a specific BSA ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                id, bsa_id, task_name, assignment_status, resource_category,
+                resource_category_group, technical_service, branch,
+                shift_start_time, shift_finish_time, shift,
+                start_location, end_location, start_location_code, end_location_code,
+                people_needed, personnel, required_qualifications,
+                work_type, work_operation_type1, work_operation_type2,
+                responsible_person, isp_amgt, psp, priority, locked,
+                assigned_resources, ir_er, comments, team_id,
+                created_at, created_by, updated_at, updated_by
+            FROM demands
+            WHERE bsa_id = :bsa_id
+            ORDER BY id
+        """)
+
+        result = await db.execute(query, {"bsa_id": bsa_id})
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching demands by BSA ID: {str(e)}",
+        )
+
+
+@router.post("/", status_code=201)
+async def create_demand(
+    demand: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new demand in external database.
+    Required fields: bsa_id
+    """
+    try:
+        # Validate required fields
+        if "bsa_id" not in demand or not demand["bsa_id"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required field: bsa_id",
+            )
+
+        # Convert JSONB fields
+        required_qualifications_json = json.dumps(demand.get("required_qualifications")) if demand.get("required_qualifications") else None
+        assigned_resources_json = json.dumps(demand.get("assigned_resources")) if demand.get("assigned_resources") else None
+
+        insert_query = text("""
+            INSERT INTO demands (
+                bsa_id, task_name, assignment_status, resource_category,
+                resource_category_group, technical_service, branch,
+                shift_start_time, shift_finish_time, shift,
+                start_location, end_location, start_location_code, end_location_code,
+                people_needed, personnel, required_qualifications,
+                work_type, work_operation_type1, work_operation_type2,
+                responsible_person, isp_amgt, psp, priority, locked,
+                assigned_resources, ir_er, comments, team_id, created_by
+            ) VALUES (
+                :bsa_id, :task_name, :assignment_status, :resource_category,
+                :resource_category_group, :technical_service, :branch,
+                :shift_start_time, :shift_finish_time, :shift,
+                :start_location, :end_location, :start_location_code, :end_location_code,
+                :people_needed, :personnel, :required_qualifications::jsonb,
+                :work_type, :work_operation_type1, :work_operation_type2,
+                :responsible_person, :isp_amgt, :psp, :priority, :locked,
+                :assigned_resources::jsonb, :ir_er, :comments, :team_id, :created_by
+            )
+            RETURNING *
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "bsa_id": demand.get("bsa_id"),
+                "task_name": demand.get("task_name"),
+                "assignment_status": demand.get("assignment_status"),
+                "resource_category": demand.get("resource_category"),
+                "resource_category_group": demand.get("resource_category_group"),
+                "technical_service": demand.get("technical_service"),
+                "branch": demand.get("branch"),
+                "shift_start_time": demand.get("shift_start_time"),
+                "shift_finish_time": demand.get("shift_finish_time"),
+                "shift": demand.get("shift"),
+                "start_location": demand.get("start_location"),
+                "end_location": demand.get("end_location"),
+                "start_location_code": demand.get("start_location_code"),
+                "end_location_code": demand.get("end_location_code"),
+                "people_needed": demand.get("people_needed"),
+                "personnel": demand.get("personnel"),
+                "required_qualifications": required_qualifications_json,
+                "work_type": demand.get("work_type"),
+                "work_operation_type1": demand.get("work_operation_type1"),
+                "work_operation_type2": demand.get("work_operation_type2"),
+                "responsible_person": demand.get("responsible_person"),
+                "isp_amgt": demand.get("isp_amgt"),
+                "psp": demand.get("psp"),
+                "priority": demand.get("priority"),
+                "locked": demand.get("locked"),
+                "assigned_resources": assigned_resources_json,
+                "ir_er": demand.get("ir_er"),
+                "comments": demand.get("comments"),
+                "team_id": demand.get("team_id"),
+                "created_by": demand.get("created_by", "api"),
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating demand: {str(e)}",
+        )
+
+
+@router.put("/{demand_id}")
+async def update_demand(
+    demand_id: int,
+    demand: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing demand in external database.
+    """
+    try:
+        # Check if demand exists
+        check_query = text("SELECT id FROM demands WHERE id = :demand_id")
+        check_result = await db.execute(check_query, {"demand_id": demand_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Demand with ID {demand_id} not found",
+            )
+
+        # Build UPDATE clause dynamically
+        update_fields = []
+        params = {"demand_id": demand_id}
+
+        # Simple fields
+        simple_fields = [
+            "bsa_id", "task_name", "assignment_status", "resource_category",
+            "resource_category_group", "technical_service", "branch",
+            "shift_start_time", "shift_finish_time", "shift",
+            "start_location", "end_location", "start_location_code", "end_location_code",
+            "people_needed", "personnel", "work_type", "work_operation_type1",
+            "work_operation_type2", "responsible_person", "isp_amgt", "psp",
+            "priority", "locked", "ir_er", "comments", "team_id"
+        ]
+
+        for field in simple_fields:
+            if field in demand and demand[field] is not None:
+                update_fields.append(f"{field} = :{field}")
+                params[field] = demand[field]
+
+        # Handle JSONB fields
+        if "required_qualifications" in demand:
+            update_fields.append("required_qualifications = :required_qualifications::jsonb")
+            params["required_qualifications"] = json.dumps(demand["required_qualifications"]) if demand["required_qualifications"] else None
+
+        if "assigned_resources" in demand:
+            update_fields.append("assigned_resources = :assigned_resources::jsonb")
+            params["assigned_resources"] = json.dumps(demand["assigned_resources"]) if demand["assigned_resources"] else None
+
+        # Add updated_by
+        update_fields.append("updated_by = :updated_by")
+        params["updated_by"] = demand.get("updated_by", "api")
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE demands
+            SET {', '.join(update_fields)}
+            WHERE id = :demand_id
+            RETURNING *
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating demand: {str(e)}",
+        )
+
+
+@router.delete("/{demand_id}", status_code=204)
+async def delete_demand(
+    demand_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete a demand from external database.
+    """
+    try:
+        # Check if demand exists
+        check_query = text("SELECT id FROM demands WHERE id = :demand_id")
+        check_result = await db.execute(check_query, {"demand_id": demand_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Demand with ID {demand_id} not found",
+            )
+
+        delete_query = text("DELETE FROM demands WHERE id = :demand_id")
+        await db.execute(delete_query, {"demand_id": demand_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting demand: {str(e)}",
+        )

@@ -1,0 +1,193 @@
+"""
+CFF Workforce Planning Solver - MVP Entry Point
+Fetches data from live database and solves with OR-tools CP-SAT
+"""
+import sys
+from api.client import get_client
+from preprocessing.constraints import fetch_constraint_values
+from preprocessing.data_processor import preprocess_data
+from solver.model import create_and_solve_model
+from config import (
+    TEST_MODE,
+    TEST_NUM_REQUESTS,
+    TEST_NUM_RESOURCES,
+    PLANNING_MODE,
+    ENABLED_CONSTRAINTS
+)
+
+
+def main():
+    """Main entry point for the solver"""
+
+    print("\n" + "="*70)
+    print(" CFF WORKFORCE PLANNING SOLVER - MVP")
+    print("="*70)
+    print(f"Mode: {'TEST (small dataset)' if TEST_MODE else 'FULL DATABASE'}")
+    print(f"Planning Mode: {PLANNING_MODE}")
+    print(f"Enabled Constraints: {', '.join(ENABLED_CONSTRAINTS)}")
+    print("="*70 + "\n")
+
+    # ========== Step 1: Fetch Data from Live Database ==========
+    print("[STEP 1] Fetching data from live database...")
+    print("-" * 70)
+
+    client = get_client()
+
+    if TEST_MODE:
+        # Test mode: fetch small dataset
+        print(f"TEST MODE: Fetching {TEST_NUM_REQUESTS} requests and {TEST_NUM_RESOURCES} resources")
+        dataset = client.fetch_test_dataset(
+            num_requests=TEST_NUM_REQUESTS,
+            num_resources=TEST_NUM_RESOURCES
+        )
+        requests_data = dataset['requests']
+        resources_data = dataset['resources']
+        absences_data = dataset['absences']
+    else:
+        # Full mode: fetch all data
+        print("FULL MODE: Fetching all requests and resources")
+        requests_data = client.get_requests()
+        resources_data = client.get_resources()
+        absences_data = client.get_absences()
+
+    print(f"Fetched {len(requests_data['data'])} requests")
+    print(f"Fetched {len(resources_data['data'])} resources")
+    print(f"Fetched {len(absences_data['data'])} absences")
+
+    # ========== Step 2: Fetch Constraint Values ==========
+    print("\n[STEP 2] Fetching constraint values from database...")
+    print("-" * 70)
+
+    constraint_values = fetch_constraint_values(planning_mode=PLANNING_MODE)
+    constraint_values.print_summary()
+
+    # ========== Step 3: Preprocess Data ==========
+    print("\n[STEP 3] Preprocessing data...")
+    print("-" * 70)
+
+    preprocessed_data = preprocess_data(
+        requests_data,
+        resources_data,
+        absences_data
+    )
+    preprocessed_data.print_summary()
+
+    # ========== Step 4: Build and Solve Model ==========
+    print("\n[STEP 4] Building and solving CP-SAT model...")
+    print("-" * 70)
+
+    model = create_and_solve_model(preprocessed_data, constraint_values)
+
+    # ========== Step 5: Run Analysis ==========
+    from ortools.sat.python import cp_model
+    if model.status in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
+        print("\n" + "="*70)
+        print(" POST-SOLVE ANALYSIS")
+        print("="*70)
+
+        from analysis.solution_analyzer import SolutionAnalyzer
+        import json
+
+        try:
+            analyzer = SolutionAnalyzer(
+                solution=model,
+                data=preprocessed_data,
+                constraints=constraint_values
+            )
+
+            analysis_report = analyzer.analyze()
+
+            # Save analysis report
+            with open('solver_v2/output/analysis_report.json', 'w') as f:
+                json.dump(analysis_report, f, indent=2, default=str)
+
+            print("\n✓ Analysis complete: solver_v2/output/analysis_report.json")
+
+            # Print summary
+            print("\n" + "-"*70)
+            print("ANALYSIS SUMMARY:")
+            print("-"*70)
+            summary = analysis_report['summary']
+            print(f"Overall Status: {summary['overall_status']}")
+            print(f"\nCoverage: {summary['coverage']['rate']}% ({summary['coverage']['category']})")
+            print(f"  - Covered: {summary['coverage']['requests_covered']}/{summary['coverage']['requests_total']} requests")
+            print(f"  - Uncovered: {summary['coverage']['requests_uncovered']} requests")
+
+            if 'workload_balance' in summary:
+                print(f"\nWorkload Balance: {summary['workload_balance']['rate']}% ({summary['workload_balance']['category']})")
+                print(f"  - Variance: {summary['workload_balance']['variance_hours']}h")
+
+            print(f"\nViolations: {summary['violations']['severity']}")
+            print(f"  - Total Count: {summary['violations']['total_count']}")
+            print(f"  - Total Amount: {summary['violations']['total_amount_hours']:.1f}h over limits")
+            print(f"  - Affected Resources: {summary['violations']['affected_resources']}")
+
+            if summary.get('key_insights'):
+                print("\nKey Insights:")
+                for insight in summary['key_insights'][:3]:
+                    print(f"  • {insight}")
+
+            if summary.get('top_recommendations'):
+                print("\nTop Recommendations:")
+                for rec in summary['top_recommendations'][:3]:
+                    priority = rec.get('priority', 'MEDIUM')
+                    action = rec.get('action', '')
+                    print(f"  • [{priority}] {action}")
+
+        except Exception as e:
+            print(f"\n⚠️  Analysis failed: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # ========== Step 6: Summary ==========
+    print("\n" + "="*70)
+    print(" EXECUTION SUMMARY")
+    print("="*70)
+
+    if model.status is not None:
+        status_name = {
+            4: "OPTIMAL",
+            2: "FEASIBLE",
+            3: "INFEASIBLE",
+            0: "UNKNOWN"
+        }.get(model.status, "UNKNOWN")
+
+        print(f"Solver Status: {status_name}")
+        if model.solution_assignments:
+            print(f"Assignments Found: {len(model.solution_assignments)}")
+            print(f"Solve Time: {model.solver.WallTime():.2f} seconds")
+
+            # Calculate some statistics
+            total_hours = sum(a['duration_hours'] for a in model.solution_assignments)
+            print(f"Total Work Hours: {total_hours:.2f}h")
+
+            # Group by resource
+            resource_workload = {}
+            for assignment in model.solution_assignments:
+                res_id = assignment['resource_id']
+                if res_id not in resource_workload:
+                    resource_workload[res_id] = 0
+                resource_workload[res_id] += assignment['duration_hours']
+
+            print("\nResource Workload:")
+            for res_id, hours in resource_workload.items():
+                print(f"  {res_id}: {hours:.2f}h")
+        else:
+            print("No solution found - problem is infeasible!")
+    else:
+        print("Model was not solved")
+
+    print("="*70 + "\n")
+
+    return model
+
+
+if __name__ == "__main__":
+    try:
+        model = main()
+        sys.exit(0 if model.status in [2, 4] else 1)  # 0 = success
+    except Exception as e:
+        print(f"\n[ERROR] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)

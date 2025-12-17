@@ -1,0 +1,232 @@
+# Required API Changes for Solver v2
+
+## Analysis Date
+December 10, 2025
+
+## Overview
+The solver v2 needs to be updated to work with the new API structure. The main issues are:
+1. Endpoint name changed from `/requests/` to `/demands/`
+2. Field names in the API response have changed
+3. New columns added to resources and demands tables
+
+---
+
+## 1. Endpoint Changes
+
+### Current (Broken):
+```python
+# In api/client.py line 36
+response = self.client.get(f"{self.base_url}/requests/", params=params)
+```
+
+### Required (Fixed):
+```python
+response = self.client.get(f"{self.base_url}/demands/", params=params)
+```
+
+**Files to Update:**
+- `/solver_v2/api/client.py` - lines 36, 42 (all `/requests/` → `/demands/`)
+
+---
+
+## 2. Field Name Mapping - Demands/Requests
+
+The demands endpoint returns different field names than what the solver expects.
+
+### API Response Fields (from `/api/v1/demands/`):
+```json
+{
+  "id": 25448,
+  "bsa_id": "834177",
+  "task_name": "TEST pilote GE",
+  "shift_start_time": "2026-12-23 08:00:00+00",
+  "shift_finish_time": "2026-12-23 14:00:00+00",
+  "assignment_status": "Pré-réservé",
+  "resource_category": "CVM",
+  "required_qualifications": "Aem 940,Méc. de locomotive...",
+  "region_code": null,
+  "division_code": null,
+  "location_code": null
+}
+```
+
+### Solver Expected Fields:
+```python
+req['request_id']        # NOT FOUND - API returns 'id'
+req['start_datetime']    # NOT FOUND - API returns 'shift_start_time'
+req['end_datetime']      # NOT FOUND - API returns 'shift_finish_time'
+```
+
+### Required Field Mapping:
+| Solver Expects | API Returns | Action |
+|----------------|-------------|--------|
+| `request_id` | `id` | Map or rename |
+| `start_datetime` | `shift_start_time` | Map or rename |
+| `end_datetime` | `shift_finish_time` | Map or rename |
+
+**Files to Update:**
+- `/solver_v2/api/client.py` - Add field mapping in `get_requests()` method (rename to `get_demands()`)
+- OR update all references in:
+  - `/solver_v2/preprocessing/data_processor.py` - line 66, 113, 117, 118
+  - `/solver_v2/preprocessing/time_windows.py` - lines 21, 22, 132, 133, 155, 156, 181, 182, 203, 204, 238, 239
+
+---
+
+## 3. New Columns in Resources Table
+
+### New Fields Available:
+```json
+{
+  "region_code": "RWT",
+  "division_code": "FB",
+  "location_code": "ALL"
+}
+```
+
+**Current Status:** These fields are returned by the API but NOT used by the solver.
+
+**Potential Usage:**
+- Could be used for geographical matching constraints
+- Could filter resources by region/division/location
+- Currently stored in database but not leveraged by solver logic
+
+**Action Required:**
+- Document for future use (no immediate action needed)
+- Consider adding geographical matching constraints in future iterations
+
+---
+
+## 4. New Columns in Demands Table
+
+### New Fields Available:
+```json
+{
+  "region_code": null,
+  "division_code": null,
+  "location_code": null
+}
+```
+
+**Current Status:** These fields are returned by the API but are mostly NULL and NOT used by the solver.
+
+**Action Required:**
+- Document for future use (no immediate action needed)
+- Will be useful when implementing regional/geographical constraints
+
+---
+
+## 5. Recommended Implementation Strategy
+
+### Option A: Field Mapping in API Client (RECOMMENDED)
+**Pros:**
+- Minimal changes to solver logic
+- Centralized transformation
+- Easy to maintain
+
+**Implementation:**
+```python
+# In api/client.py - modify get_requests() → get_demands()
+
+def get_demands(self, limit: Optional[int] = None,
+                 status: Optional[str] = None) -> Dict:
+    """Fetch demands/tasks from database"""
+    params = {}
+    if limit:
+        params['per_page'] = limit  # API uses 'per_page', not 'limit'
+    if status:
+        params['assignment_status'] = status
+
+    response = self.client.get(f"{self.base_url}/demands/", params=params)
+    response.raise_for_status()
+    data = response.json()
+
+    # MAP FIELDS to match solver expectations
+    for demand in data['data']:
+        demand['request_id'] = demand['id']  # Map id → request_id
+        demand['start_datetime'] = demand['shift_start_time']  # Map shift_start_time → start_datetime
+        demand['end_datetime'] = demand['shift_finish_time']  # Map shift_finish_time → end_datetime
+
+    return data
+
+def get_demand_by_id(self, demand_id: str) -> Dict:
+    """Fetch specific demand by ID"""
+    response = self.client.get(f"{self.base_url}/demands/{demand_id}")
+    response.raise_for_status()
+    demand = response.json()
+
+    # MAP FIELDS
+    demand['request_id'] = demand['id']
+    demand['start_datetime'] = demand['shift_start_time']
+    demand['end_datetime'] = demand['shift_finish_time']
+
+    return demand
+```
+
+### Option B: Update All Solver References (NOT RECOMMENDED)
+**Cons:**
+- Many files to change
+- Higher risk of missing a reference
+- Harder to maintain
+
+---
+
+## 6. Files That Need Changes
+
+### Critical (Must Fix):
+1. **`/solver_v2/api/client.py`**
+   - Line 27: Rename `get_requests()` → `get_demands()`
+   - Line 36: Change endpoint `/requests/` → `/demands/`
+   - Line 40: Rename `get_request_by_id()` → `get_demand_by_id()`
+   - Line 42: Change endpoint `/requests/{id}` → `/demands/{id}`
+   - Line 32: Change `limit` → `per_page` in params
+   - Add field mapping logic (as shown in Option A above)
+
+2. **`/solver_v2/main.py`**
+   - Line 49: Update call `client.get_requests()` → `client.get_demands()`
+
+3. **`/solver_v2/api/client.py` - `fetch_test_dataset()`**
+   - Line 162: Update call `self.get_requests()` → `self.get_demands()`
+
+### Optional (Future Enhancements):
+4. **Add regional/geographical constraints** (when needed)
+   - Use `region_code`, `division_code`, `location_code` for matching
+   - Implement geographical proximity constraints
+   - Filter resources by location
+
+---
+
+## 7. Testing Checklist
+
+After making changes, verify:
+- [ ] Solver can fetch demands from `/api/v1/demands/`
+- [ ] Field mapping works (`id` → `request_id`, etc.)
+- [ ] Datetime parsing works with `shift_start_time` and `shift_finish_time`
+- [ ] Resources endpoint still works (`/api/v1/resources/`)
+- [ ] Test mode works (TEST_MODE=True in config.py)
+- [ ] Full mode works (TEST_MODE=False)
+- [ ] Constraint fetching still works
+- [ ] Solver produces valid solutions
+
+---
+
+## 8. Backward Compatibility Note
+
+These changes are **NOT backward compatible** with the old API structure. If you need to support both old and new API:
+- Create a version flag in config.py
+- Keep both field mapping options
+- Use conditional logic based on API version
+
+However, since the API has been permanently changed in production, full migration is recommended.
+
+---
+
+## Summary
+
+**Minimal Changes Required:**
+1. Rename endpoint: `requests` → `demands` (2 places in client.py)
+2. Add field mapping in `get_demands()` method (3 field mappings)
+3. Update method name calls in main.py (1 place)
+
+**Estimated Time:** 15-30 minutes
+**Risk Level:** Low (isolated to API client layer)
+**Testing Time:** 10-15 minutes

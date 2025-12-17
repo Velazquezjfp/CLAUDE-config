@@ -1,0 +1,266 @@
+"""
+Main FastAPI application for CFF Personnel Planning API
+"""
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, HTMLResponse
+from datetime import datetime
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from config import settings
+from database import check_internal_db_connection, check_external_db_connection
+from models import HealthCheck
+
+# Import routers
+from routers import (
+    resources_router,
+    regions_router,
+    teams_router,
+    groups_router,
+    divisions_router,
+    absences_router,
+    demands_router,
+    demands_list_router,
+    assignments_router,
+    locations_router,
+    qualifications_router,
+    constraints_router,
+    company_policies_router,
+    objective_weights_router,
+    utilization_targets_router,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
+    print("=" * 70)
+    print(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}")
+    print("=" * 70)
+
+    # Check database connections
+    internal_ok = await check_internal_db_connection()
+    external_ok = await check_external_db_connection()
+
+    if internal_ok:
+        print("✓ Internal database connection successful (parameters)")
+    else:
+        print("✗ Internal database connection failed")
+
+    if external_ok:
+        print("✓ External database connection successful (data)")
+    else:
+        print("✗ External database connection failed")
+
+    print(f"✓ API running on {settings.API_V1_STR}")
+    print("=" * 70)
+
+    yield
+
+    # Shutdown
+    print("\nShutting down...")
+
+
+# Create FastAPI application
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description=settings.DESCRIPTION,
+    version=settings.VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=".*",  # Allow all origins using regex
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============================================================================
+# Root and Health Check Endpoints
+# ============================================================================
+
+@app.get("/", tags=["root"])
+async def root():
+    """Root endpoint"""
+    return {
+        "message": f"Welcome to {settings.PROJECT_NAME}",
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "schema_docs": "/schema-docs",
+        "api": settings.API_V1_STR,
+    }
+
+
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Health check endpoint showing both database connection statuses"""
+    internal_ok = await check_internal_db_connection()
+    external_ok = await check_external_db_connection()
+    all_ok = internal_ok and external_ok
+
+    return {
+        "status": "healthy" if all_ok else "unhealthy",
+        "internal_database": "connected" if internal_ok else "disconnected",
+        "external_database": "connected" if external_ok else "disconnected",
+        "version": settings.VERSION,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@app.get("/schema-docs", response_class=HTMLResponse, tags=["documentation"])
+async def schema_docs():
+    """
+    Serve the SQL database schema documentation with interactive ER diagram.
+
+    This endpoint serves a self-contained HTML file that includes:
+    - Interactive Entity-Relationship diagram
+    - Complete table and column listings
+    - Data type definitions and constraints
+    - Searchable documentation interface
+    """
+    # Path to the SQL diagram HTML file
+    html_file = Path(__file__).parent / "sql_diagram" / "output" / "index.html"
+
+    try:
+        # Read and return the HTML content
+        with open(html_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="SQL schema documentation not found. Please ensure the diagram has been generated."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error loading schema documentation: {str(e)}"
+        )
+
+
+# ============================================================================
+# Include API Routers
+# ============================================================================
+
+# Hierarchy endpoints
+app.include_router(
+    regions_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+app.include_router(
+    teams_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+app.include_router(
+    groups_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+app.include_router(
+    divisions_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Resource endpoints
+app.include_router(
+    resources_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Absence endpoints
+app.include_router(
+    absences_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Demand endpoints (renamed from requests in v2)
+app.include_router(
+    demands_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Historical demands list endpoints
+app.include_router(
+    demands_list_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Assignment endpoints
+app.include_router(
+    assignments_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Location endpoints
+app.include_router(
+    locations_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Qualification endpoints
+app.include_router(
+    qualifications_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Constraint endpoints (read-only for legal constraints)
+app.include_router(
+    constraints_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Company policy constraints endpoints (optimization configuration)
+app.include_router(
+    company_policies_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Objective weights endpoints (multi-objective optimization)
+app.include_router(
+    objective_weights_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# Utilization targets endpoints (resource efficiency goals)
+app.include_router(
+    utilization_targets_router,
+    prefix=f"{settings.API_V1_STR}",
+)
+
+# ============================================================================
+# Global Exception Handler
+# ============================================================================
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Global exception handler"""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error": str(exc),
+        },
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level=settings.LOG_LEVEL.lower(),
+    )

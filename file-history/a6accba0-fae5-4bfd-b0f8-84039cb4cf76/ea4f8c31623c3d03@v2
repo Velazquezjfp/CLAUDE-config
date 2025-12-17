@@ -1,0 +1,144 @@
+"""
+Workload Balancing Objective
+Operational Soft Constraint (Layer 3)
+
+Based on: CONSTRAINTS_DOCUMENTATION.md Section 3.3 & 5
+- Preference: balance_hours_across_resources
+- Default weight: 1.5
+- Target: Even distribution of work hours across all resources
+- Penalty: Minimize maximum workload deviation from average
+
+This ensures fair distribution and prevents some resources from being overworked
+while others remain idle.
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, ENABLE_WORKLOAD_BALANCING, WORKLOAD_BALANCE_WEIGHT
+
+
+def add_workload_balance_objective(model: cp_model.CpModel,
+                                   x_vars: dict,
+                                   data) -> list:
+    """
+    Add workload balancing objective to minimize max workload variance
+
+    Strategy: Minimize the maximum workload across all resources
+    This creates a "min-max" fairness - prevents any single resource
+    from being overloaded
+
+    Args:
+        model: CP-SAT model instance
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with requests, resources, task durations
+
+    Returns:
+        List containing the max_workload variable (for objective)
+    """
+    if not ENABLE_WORKLOAD_BALANCING:
+        print("\n[WORKLOAD BALANCE] Disabled in config")
+        return []
+
+    print(f"\n[WORKLOAD BALANCE] Adding workload balancing objective...")
+    print(f"  Weight: {WORKLOAD_BALANCE_WEIGHT}")
+    print(f"  Strategy: Minimize maximum workload across resources")
+
+    # Calculate total work hours available
+    total_hours = sum(data.task_duration[req_id] for req_id in data.request_ids)
+    num_resources = len(data.resource_ids)
+    avg_hours = total_hours / num_resources if num_resources > 0 else 0
+
+    print(f"  Total work: {total_hours:.1f}h across {num_resources} resources")
+    print(f"  Average per resource: {avg_hours:.1f}h")
+
+    # Create a variable to track the maximum workload
+    max_workload = model.NewIntVar(
+        0,
+        int(total_hours * SCALING_FACTOR),
+        'max_workload'
+    )
+
+    # For each resource, calculate total assigned hours
+    resource_workload_vars = []
+    for resource_id in data.resource_ids:
+        # Sum of all task durations assigned to this resource
+        assigned_hours_expr = sum(
+            x_vars[(resource_id, req_id)] * int(data.task_duration[req_id] * SCALING_FACTOR)
+            for req_id in data.request_ids
+        )
+
+        # Create an IntVar to hold this resource's workload
+        resource_workload = model.NewIntVar(
+            0,
+            int(total_hours * SCALING_FACTOR),
+            f'workload_{resource_id}'
+        )
+
+        # Link the variable to the expression
+        model.Add(resource_workload == assigned_hours_expr)
+
+        # Ensure max_workload is >= this resource's workload
+        model.Add(max_workload >= resource_workload)
+
+        resource_workload_vars.append(resource_workload)
+
+    print(f"  Created {len(resource_workload_vars)} resource workload variables")
+    print(f"  Max workload variable range: [0, {int(total_hours * SCALING_FACTOR)}]")
+
+    # Return the max_workload variable for the objective function
+    # The solver will minimize this, which minimizes the peak workload
+    return [max_workload]
+
+
+def add_alternative_workload_balance(model: cp_model.CpModel,
+                                     x_vars: dict,
+                                     data) -> list:
+    """
+    Alternative strategy: Minimize sum of deviations from average
+
+    This is more balanced than min-max but allows larger peak loads
+    Use this if min-max is too restrictive
+
+    Args:
+        model: CP-SAT model instance
+        x_vars: Assignment variables
+        data: PreprocessedData object
+
+    Returns:
+        List of deviation variables (for objective)
+    """
+    if not ENABLE_WORKLOAD_BALANCING:
+        return []
+
+    print(f"\n[WORKLOAD BALANCE - ALTERNATIVE] Adding average deviation minimization...")
+
+    total_hours = sum(data.task_duration[req_id] for req_id in data.request_ids)
+    num_resources = len(data.resource_ids)
+    avg_hours_scaled = int((total_hours / num_resources) * SCALING_FACTOR) if num_resources > 0 else 0
+
+    print(f"  Target average: {avg_hours_scaled / SCALING_FACTOR:.1f}h per resource")
+
+    deviations = []
+
+    for resource_id in data.resource_ids:
+        # Calculate this resource's workload
+        assigned_hours = sum(
+            x_vars[(resource_id, req_id)] * int(data.task_duration[req_id] * SCALING_FACTOR)
+            for req_id in data.request_ids
+        )
+
+        # Create deviation variable (absolute value)
+        deviation_pos = model.NewIntVar(0, int(total_hours * SCALING_FACTOR), f'dev_pos_{resource_id}')
+        deviation_neg = model.NewIntVar(0, int(total_hours * SCALING_FACTOR), f'dev_neg_{resource_id}')
+
+        # deviation_pos - deviation_neg = assigned_hours - avg_hours
+        model.Add(assigned_hours == avg_hours_scaled + deviation_pos - deviation_neg)
+
+        # Track total deviation (will be minimized)
+        total_deviation = model.NewIntVar(0, int(total_hours * SCALING_FACTOR), f'dev_total_{resource_id}')
+        model.Add(total_deviation == deviation_pos + deviation_neg)
+
+        deviations.append(total_deviation)
+
+    print(f"  Created {len(deviations)} deviation variables")
+    return deviations

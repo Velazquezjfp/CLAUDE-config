@@ -1,0 +1,679 @@
+2025-12-04T09:20:16.229Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json...
+2025-12-04T09:20:16.266Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-04T09:20:16.266Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-04T09:20:16.266Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-04T09:20:16.266Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-12-04T09:20:16.266Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-12-04T09:20:16.274Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-04T09:20:16.275Z [DEBUG] Total LSP servers loaded: 0
+2025-12-04T09:20:16.353Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-12-04T09:20:16.353Z [DEBUG] LSP manager initialized with 0 servers
+2025-12-04T09:20:16.441Z [DEBUG] LSP server manager initialized successfully
+2025-12-04T09:20:16.441Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-04T09:20:16.491Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/air-production/model-compare/.claude/skills
+2025-12-04T09:20:16.492Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-12-04T09:20:16.495Z [DEBUG] installed_plugins.json doesn't exist yet at /home/javiervel/.claude/plugins/installed_plugins.json, returning empty object
+2025-12-04T09:20:16.588Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-12-04T09:20:16.588Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-12-04T09:20:16.588Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-12-04T09:20:16.588Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1764840016588-udpu9k.sh
+2025-12-04T09:20:16.588Z [DEBUG] Shell binary exists: true
+2025-12-04T09:20:16.588Z [DEBUG] Execution timeout: 10000ms
+2025-12-04T09:20:16.591Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/8d47c2d8-1617-462a-85b2-41c468147c4b-agent-8d47c2d8-1617-462a-85b2-41c468147c4b.json.tmp.13982.1764840016591
+2025-12-04T09:20:16.597Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-04T09:20:16.597Z [DEBUG] Renaming /home/javiervel/.claude/todos/8d47c2d8-1617-462a-85b2-41c468147c4b-agent-8d47c2d8-1617-462a-85b2-41c468147c4b.json.tmp.13982.1764840016591 to /home/javiervel/.claude/todos/8d47c2d8-1617-462a-85b2-41c468147c4b-agent-8d47c2d8-1617-462a-85b2-41c468147c4b.json
+2025-12-04T09:20:16.597Z [DEBUG] File /home/javiervel/.claude/todos/8d47c2d8-1617-462a-85b2-41c468147c4b-agent-8d47c2d8-1617-462a-85b2-41c468147c4b.json written atomically
+2025-12-04T09:20:16.609Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-04T09:20:16.609Z [DEBUG] Total plugin skills loaded: 0
+2025-12-04T09:20:16.609Z [DEBUG] Total plugin commands loaded: 0
+2025-12-04T09:20:16.609Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-04T09:20:16.611Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-04T09:20:16.613Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills
+2025-12-04T09:20:16.644Z [DEBUG] Git remote URL: null
+2025-12-04T09:20:16.644Z [DEBUG] No git remote URL found
+2025-12-04T09:20:16.644Z [DEBUG] Not in a GitHub repository, skipping path mapping update
+2025-12-04T09:20:16.644Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-12-04T09:20:16.645Z [DEBUG] Shell snapshot created successfully (4968 bytes)
+2025-12-04T09:20:16.650Z [DEBUG] Total plugin agents loaded: 0
+2025-12-04T09:20:16.781Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840016781
+2025-12-04T09:20:16.781Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:16.786Z [DEBUG] Temp file written successfully, size: 77190 bytes
+2025-12-04T09:20:16.786Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:16.786Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840016781 to /home/javiervel/.claude.json
+2025-12-04T09:20:16.786Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:16.788Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840016788
+2025-12-04T09:20:16.788Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:16.791Z [DEBUG] Temp file written successfully, size: 77190 bytes
+2025-12-04T09:20:16.791Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:16.791Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840016788 to /home/javiervel/.claude.json
+2025-12-04T09:20:16.791Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:16.793Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840016793
+2025-12-04T09:20:16.793Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:16.796Z [DEBUG] Temp file written successfully, size: 77190 bytes
+2025-12-04T09:20:16.796Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:16.796Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840016793 to /home/javiervel/.claude.json
+2025-12-04T09:20:16.796Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:16.881Z [ERROR] AxiosError: AxiosError: Request failed with status code 401
+    at kj (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:24:1137)
+    at IncomingMessage.<anonymous> (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:29:9858)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at SVA.request (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:31:2130)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async _S2 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:2147:5280)
+2025-12-04T09:20:18.244Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840018244
+2025-12-04T09:20:18.244Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:18.248Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:18.248Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:18.248Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840018244 to /home/javiervel/.claude.json
+2025-12-04T09:20:18.248Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:18.267Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840018267
+2025-12-04T09:20:18.267Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:18.270Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:18.270Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:18.270Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840018267 to /home/javiervel/.claude.json
+2025-12-04T09:20:18.270Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:18.275Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840018275
+2025-12-04T09:20:18.275Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:18.279Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:18.279Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:18.279Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840018275 to /home/javiervel/.claude.json
+2025-12-04T09:20:18.279Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:18.280Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-12-04T09:20:18.280Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:20:18.280Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-12-04T09:20:18.390Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-04T09:20:18.390Z [DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-12-04T09:20:18.414Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840018414
+2025-12-04T09:20:18.414Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:18.419Z [DEBUG] Temp file written successfully, size: 77513 bytes
+2025-12-04T09:20:18.419Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:18.419Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840018414 to /home/javiervel/.claude.json
+2025-12-04T09:20:18.419Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:18.427Z [DEBUG] performStartupChecks called
+2025-12-04T09:20:18.428Z [DEBUG] Starting background plugin installations
+2025-12-04T09:20:18.428Z [DEBUG] performBackgroundPluginInstallations called
+2025-12-04T09:20:18.778Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840018778
+2025-12-04T09:20:18.778Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:18.782Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:18.782Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:18.782Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840018778 to /home/javiervel/.claude.json
+2025-12-04T09:20:18.782Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:19.051Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-12-04T09:20:19.055Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-12-04T09:20:19.075Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-04T09:20:19.085Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-04T09:20:19.085Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:20:19.085Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-04T09:20:19.092Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-04T09:20:19.092Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:20:19.092Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-04T09:20:19.098Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:20:19.111Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 48ms
+2025-12-04T09:20:19.111Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.57"}}
+2025-12-04T09:20:19.735Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840019735
+2025-12-04T09:20:19.735Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:19.740Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:19.740Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:19.740Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840019735 to /home/javiervel/.claude.json
+2025-12-04T09:20:19.740Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:19.750Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840019750
+2025-12-04T09:20:19.750Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:19.754Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:19.754Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:19.754Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840019750 to /home/javiervel/.claude.json
+2025-12-04T09:20:19.754Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:19.803Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:20:19.803Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:20:21.199Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840021199
+2025-12-04T09:20:21.199Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:21.204Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:21.204Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:21.204Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840021199 to /home/javiervel/.claude.json
+2025-12-04T09:20:21.204Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:21.683Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840021683
+2025-12-04T09:20:21.683Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:20:21.687Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:20:21.687Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:20:21.687Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840021683 to /home/javiervel/.claude.json
+2025-12-04T09:20:21.687Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:20:23.834Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:20:25.809Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-04T09:20:25.809Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:20:25.809Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:20:27.392Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:20:30.562Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-04T09:20:30.562Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:20:30.562Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:23:50.977Z [ERROR] Error: Error: Command failed: xclip -selection clipboard -t text/plain -o 2>/dev/null || wl-paste 2>/dev/null
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:882:11)
+    at execSync (node:child_process:954:15)
+    at oL6 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:917:85335)
+    at OjB (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:917:86379)
+    at file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:967:3970
+    at Hx (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:20241)
+    at Cx (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:20724)
+    at Object.useState (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:27291)
+2025-12-04T09:23:53.759Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:23:53.760Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:23:53.764Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:23:53.764Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:23:53.790Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-04T09:23:53.790Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:23:53.790Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:23:53.792Z [DEBUG] FileHistory: Added snapshot for 13851ac9-e5ef-4ffa-8d4d-167d090d59c4, tracking 0 files
+2025-12-04T09:23:53.807Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-04T09:23:53.816Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-04T09:23:53.822Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 15ms
+2025-12-04T09:23:55.045Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:23:57.366Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:01.502Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:24:01.505Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:24:01.508Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:24:01.508Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:01.508Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:01.508Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:24:01.508Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:01.508Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:01.524Z [DEBUG] tree-sitter: WASM files not found
+2025-12-04T09:24:01.539Z [DEBUG] No session environment scripts found
+2025-12-04T09:24:01.589Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:24:01.589Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:01.589Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:01.618Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:24:01.618Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:01.618Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:01.642Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:24:01.643Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:24:01.643Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:24:01.647Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:24:01.647Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:24:01.655Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+2025-12-04T09:24:02.478Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:03.104Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:04.368Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:14.132Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-04T09:24:14.135Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-04T09:24:14.135Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:14.135Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-04T09:24:14.146Z [DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-04T09:24:14.157Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-04T09:24:14.160Z [DEBUG] executePermissionRequestHooks called for tool: Write
+2025-12-04T09:24:14.164Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Write
+2025-12-04T09:24:14.164Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:14.164Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-04T09:24:19.609Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:24:19.622Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:24:19.627Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-04T09:24:19.628Z [DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/air-production/model-compare/detect.py
+2025-12-04T09:24:19.647Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 38ms
+2025-12-04T09:24:19.666Z [DEBUG] Writing to temp file: /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764840259666
+2025-12-04T09:24:19.671Z [DEBUG] Temp file written successfully, size: 2133 bytes
+2025-12-04T09:24:19.671Z [DEBUG] Renaming /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764840259666 to /home/javiervel/clients/air-production/model-compare/detect.py
+2025-12-04T09:24:19.671Z [DEBUG] File /home/javiervel/clients/air-production/model-compare/detect.py written atomically
+2025-12-04T09:24:19.678Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-04T09:24:19.678Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:19.678Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-04T09:24:19.710Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:24:19.711Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:24:19.711Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:24:19.715Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:24:19.715Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:24:19.726Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 16ms
+2025-12-04T09:24:19.745Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 5s
+2025-12-04T09:24:19.745Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:24:19.746Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:24:19.749Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 4ms
+2025-12-04T09:24:20.249Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:24:20.249Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:24:21.119Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840261119
+2025-12-04T09:24:21.119Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:24:21.124Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:24:21.124Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:24:21.124Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840261119 to /home/javiervel/.claude.json
+2025-12-04T09:24:21.124Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:24:22.910Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:24.496Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:24:24.499Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:24:24.499Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:24.499Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:25.741Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:24:25.912Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "pip install:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-04T09:24:25.924Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-04T09:24:25.927Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-04T09:24:25.927Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:25.927Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:24:31.927Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:24:31.927Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:24:31.927Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:25:16.525Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=false
+2025-12-04T09:25:16.855Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:25:16.855Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 16,
+  "rejected_count": 0
+}
+2025-12-04T09:26:15.621Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:26:16.181Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:26:16.181Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:26:17.753Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840377753
+2025-12-04T09:26:17.753Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:26:17.758Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:26:17.758Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:26:17.758Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840377753 to /home/javiervel/.claude.json
+2025-12-04T09:26:17.758Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:26:20.155Z [DEBUG] Writing to temp file: /home/javiervel/.claude/settings.json.tmp.13982.1764840380155
+2025-12-04T09:26:20.155Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:26:20.159Z [DEBUG] Temp file written successfully, size: 37 bytes
+2025-12-04T09:26:20.159Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:26:20.159Z [DEBUG] Renaming /home/javiervel/.claude/settings.json.tmp.13982.1764840380155 to /home/javiervel/.claude/settings.json
+2025-12-04T09:26:20.160Z [DEBUG] File /home/javiervel/.claude/settings.json written atomically
+2025-12-04T09:26:20.258Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:26:20.258Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:20.258Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:20.284Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:26:20.285Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:26:20.285Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:26:20.288Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:26:20.288Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:26:20.298Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+2025-12-04T09:26:21.477Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:22.956Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:25.001Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:26:25.004Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:26:25.004Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:25.004Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:26.805Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:27.136Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "python detect.py:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-04T09:26:27.146Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-04T09:26:27.149Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-04T09:26:27.149Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:27.149Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:33.177Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:26:33.554Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:26:33.554Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:33.554Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:33.577Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:26:33.577Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:26:33.577Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:26:33.580Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:26:33.580Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:26:33.587Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 10ms
+2025-12-04T09:26:33.657Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:26:33.657Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:26:34.477Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840394477
+2025-12-04T09:26:34.477Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:26:34.481Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:26:34.481Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:26:34.481Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840394477 to /home/javiervel/.claude.json
+2025-12-04T09:26:34.481Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:26:35.247Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:36.319Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:37.940Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:26:37.943Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:26:37.943Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:37.943Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:38.044Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:26:38.044Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:38.044Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:26:38.067Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:26:38.067Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:26:38.067Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:26:38.072Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:26:38.072Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:26:38.082Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 15ms
+2025-12-04T09:26:39.669Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:41.240Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:26:44.052Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2025-12-04T09:26:44.052Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:26:44.052Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:28:03.496Z [ERROR] Error: Error: Command failed: xclip -selection clipboard -t text/plain -o 2>/dev/null || wl-paste 2>/dev/null
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:882:11)
+    at execSync (node:child_process:954:15)
+    at oL6 (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:917:85335)
+    at OjB (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:917:86379)
+    at file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:967:3970
+    at Hx (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:20241)
+    at Cx (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:20724)
+    at Object.useState (file:///home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/cli.js:762:27291)
+2025-12-04T09:30:16.660Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:30:16.661Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 12,
+  "rejected_count": 0
+}
+2025-12-04T09:30:43.307Z [DEBUG] Writing to temp file: /home/javiervel/.claude/settings.json.tmp.13982.1764840643307
+2025-12-04T09:30:43.307Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:30:43.313Z [DEBUG] Temp file written successfully, size: 36 bytes
+2025-12-04T09:30:43.313Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:30:43.313Z [DEBUG] Renaming /home/javiervel/.claude/settings.json.tmp.13982.1764840643307 to /home/javiervel/.claude/settings.json
+2025-12-04T09:30:43.313Z [DEBUG] File /home/javiervel/.claude/settings.json written atomically
+2025-12-04T09:30:52.952Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:30:52.953Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:30:52.953Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:30:52.958Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:30:52.958Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:30:52.963Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 11ms
+2025-12-04T09:30:52.970Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-04T09:30:52.970Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:30:52.970Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:30:52.971Z [DEBUG] FileHistory: Making snapshot for message 69a0dd0d-2c19-4db3-8629-0b4fb131cbdb
+2025-12-04T09:30:52.976Z [DEBUG] FileHistory: Added snapshot for 69a0dd0d-2c19-4db3-8629-0b4fb131cbdb, tracking 1 files
+2025-12-04T09:30:52.990Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-04T09:30:53.008Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 18ms
+2025-12-04T09:30:53.049Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:30:53.592Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:30:53.592Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:30:54.251Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:30:54.451Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764840654451
+2025-12-04T09:30:54.451Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:30:54.456Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:30:54.456Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:30:54.456Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764840654451 to /home/javiervel/.claude.json
+2025-12-04T09:30:54.456Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:30:55.543Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:30:58.314Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-04T09:30:58.319Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-04T09:30:58.319Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:30:58.319Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-04T09:30:58.910Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-04T09:30:58.910Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:30:58.910Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-04T09:30:58.934Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:30:58.938Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:30:58.938Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:30:58.938Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:30:59.836Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:31:00.465Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:31:00.600Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "python:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-04T09:31:00.613Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-04T09:31:00.616Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-04T09:31:00.616Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:31:00.616Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:31:06.611Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:31:06.611Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:31:06.611Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:35:16.519Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:35:16.519Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 12,
+  "rejected_count": 0
+}
+2025-12-04T09:37:09.940Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-04T09:37:10.248Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:37:10.248Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:37:10.248Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:37:10.278Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:37:10.278Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:37:10.279Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:37:10.283Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:37:10.283Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:37:10.291Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+2025-12-04T09:37:10.455Z [DEBUG] AutoUpdater: Detected installation type: unknown
+2025-12-04T09:37:10.455Z [DEBUG] AutoUpdater: Unknown installation type, falling back to config
+2025-12-04T09:37:11.278Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:37:11.519Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.13982.1764841031519
+2025-12-04T09:37:11.519Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:37:11.523Z [DEBUG] Temp file written successfully, size: 77618 bytes
+2025-12-04T09:37:11.523Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:37:11.523Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.13982.1764841031519 to /home/javiervel/.claude.json
+2025-12-04T09:37:11.523Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-04T09:37:13.403Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:37:33.991Z [DEBUG] executePreToolHooks called for tool: Edit
+2025-12-04T09:37:33.993Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2025-12-04T09:37:33.993Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:37:33.993Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:37:34.004Z [DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-04T09:37:34.013Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-04T09:37:34.015Z [DEBUG] executePermissionRequestHooks called for tool: Edit
+2025-12-04T09:37:34.018Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Edit
+2025-12-04T09:37:34.018Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:37:34.018Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:37:40.015Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:37:40.015Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:37:40.015Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:38:04.014Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (30s elapsed)
+2025-12-04T09:38:34.014Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (60s elapsed)
+2025-12-04T09:39:04.014Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (90s elapsed)
+2025-12-04T09:39:34.014Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (120s elapsed)
+2025-12-04T09:40:04.015Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (150s elapsed)
+2025-12-04T09:40:16.605Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:40:16.605Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}
+2025-12-04T09:40:34.015Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (180s elapsed)
+2025-12-04T09:41:04.015Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (210s elapsed)
+2025-12-04T09:41:09.494Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:41:09.504Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:41:09.508Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-04T09:41:09.510Z [DEBUG] Writing to temp file: /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841269510
+2025-12-04T09:41:09.510Z [DEBUG] Preserving file permissions: 100600
+2025-12-04T09:41:09.515Z [DEBUG] Temp file written successfully, size: 2810 bytes
+2025-12-04T09:41:09.515Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:41:09.515Z [DEBUG] Renaming /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841269510 to /home/javiervel/clients/air-production/model-compare/detect.py
+2025-12-04T09:41:09.515Z [DEBUG] File /home/javiervel/clients/air-production/model-compare/detect.py written atomically
+2025-12-04T09:41:09.523Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2025-12-04T09:41:09.523Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:41:09.523Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:41:09.579Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:41:09.580Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:41:09.580Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:41:09.585Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:41:09.585Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:41:09.599Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 105ms
+2025-12-04T09:41:09.599Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 3m 35s
+2025-12-04T09:41:09.599Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 20ms
+2025-12-04T09:41:09.599Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:41:09.625Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 26ms
+2025-12-04T09:41:12.459Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:41:16.995Z [DEBUG] executePreToolHooks called for tool: Edit
+2025-12-04T09:41:17.001Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2025-12-04T09:41:17.001Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:41:17.001Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:41:17.009Z [DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-04T09:41:17.017Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-04T09:41:17.020Z [DEBUG] executePermissionRequestHooks called for tool: Edit
+2025-12-04T09:41:17.023Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Edit
+2025-12-04T09:41:17.023Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:41:17.023Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:41:23.019Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:41:23.019Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:41:23.019Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:41:47.019Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (30s elapsed)
+2025-12-04T09:42:17.020Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (60s elapsed)
+2025-12-04T09:42:47.020Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (90s elapsed)
+2025-12-04T09:42:48.617Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:42:48.630Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:42:48.638Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 8ms
+2025-12-04T09:42:48.640Z [DEBUG] Writing to temp file: /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841368640
+2025-12-04T09:42:48.640Z [DEBUG] Preserving file permissions: 100600
+2025-12-04T09:42:48.644Z [DEBUG] Temp file written successfully, size: 2958 bytes
+2025-12-04T09:42:48.644Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:42:48.644Z [DEBUG] Renaming /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841368640 to /home/javiervel/clients/air-production/model-compare/detect.py
+2025-12-04T09:42:48.645Z [DEBUG] File /home/javiervel/clients/air-production/model-compare/detect.py written atomically
+2025-12-04T09:42:48.656Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2025-12-04T09:42:48.656Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:42:48.656Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:42:48.710Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:42:48.711Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:42:48.711Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:42:48.715Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:42:48.715Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:42:48.725Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 108ms
+2025-12-04T09:42:48.725Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 15ms
+2025-12-04T09:42:48.726Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 1m 31s
+2025-12-04T09:42:48.726Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:42:48.764Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 38ms
+2025-12-04T09:42:51.580Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:42:54.622Z [DEBUG] executePreToolHooks called for tool: Edit
+2025-12-04T09:42:54.625Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2025-12-04T09:42:54.625Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:42:54.625Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:42:54.635Z [DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-04T09:42:54.643Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-04T09:42:54.646Z [DEBUG] executePermissionRequestHooks called for tool: Edit
+2025-12-04T09:42:54.648Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Edit
+2025-12-04T09:42:54.648Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:42:54.648Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:43:00.645Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:43:00.645Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:43:00.645Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:43:02.808Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:43:02.816Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:43:02.821Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-04T09:43:02.822Z [DEBUG] Writing to temp file: /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841382822
+2025-12-04T09:43:02.822Z [DEBUG] Preserving file permissions: 100600
+2025-12-04T09:43:02.826Z [DEBUG] Temp file written successfully, size: 3145 bytes
+2025-12-04T09:43:02.826Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:43:02.826Z [DEBUG] Renaming /home/javiervel/clients/air-production/model-compare/detect.py.tmp.13982.1764841382822 to /home/javiervel/clients/air-production/model-compare/detect.py
+2025-12-04T09:43:02.826Z [DEBUG] File /home/javiervel/clients/air-production/model-compare/detect.py written atomically
+2025-12-04T09:43:02.832Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2025-12-04T09:43:02.832Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:43:02.832Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2025-12-04T09:43:02.870Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:43:02.871Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:43:02.871Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:43:02.876Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:43:02.876Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:43:02.884Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 76ms
+2025-12-04T09:43:02.885Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 15ms
+2025-12-04T09:43:02.885Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 8s
+2025-12-04T09:43:02.885Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-04T09:43:02.908Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 23ms
+2025-12-04T09:43:05.970Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:43:08.662Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-04T09:43:08.667Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-04T09:43:08.667Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:43:08.667Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:43:10.058Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:43:10.315Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "python detect.py:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-04T09:43:10.327Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-04T09:43:10.329Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-04T09:43:10.329Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:43:10.329Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:43:16.326Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-04T09:43:16.326Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:43:16.326Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-04T09:45:16.704Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:45:16.704Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 14,
+  "rejected_count": 0
+}
+2025-12-04T09:45:48.969Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-04T09:45:48.969Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:45:48.969Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-04T09:45:49.000Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:45:49.001Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:45:49.001Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:45:49.005Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:45:49.005Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:45:49.016Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 16ms
+2025-12-04T09:45:50.194Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:45:51.389Z [DEBUG] Writing to temp file: /home/javiervel/.claude/settings.json.tmp.13982.1764841551389
+2025-12-04T09:45:51.389Z [DEBUG] Preserving file permissions: 100644
+2025-12-04T09:45:51.393Z [DEBUG] Temp file written successfully, size: 37 bytes
+2025-12-04T09:45:51.393Z [DEBUG] Applied original permissions to temp file
+2025-12-04T09:45:51.393Z [DEBUG] Renaming /home/javiervel/.claude/settings.json.tmp.13982.1764841551389 to /home/javiervel/.claude/settings.json
+2025-12-04T09:45:51.393Z [DEBUG] File /home/javiervel/.claude/settings.json written atomically
+2025-12-04T09:45:52.170Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:45:53.834Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-04T09:45:53.838Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-04T09:45:53.838Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:45:53.838Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-04T09:45:54.378Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-04T09:45:54.378Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:45:54.378Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-04T09:45:54.403Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-04T09:45:54.403Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-04T09:45:54.403Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-04T09:45:54.408Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-04T09:45:54.408Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-04T09:45:54.416Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+2025-12-04T09:45:57.781Z [DEBUG] Stream started - received first chunk
+2025-12-04T09:46:04.432Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2025-12-04T09:46:04.432Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:46:04.432Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-04T09:47:04.511Z [DEBUG] Getting matching hook commands for Notification with query: idle_prompt
+2025-12-04T09:47:04.511Z [DEBUG] Found 0 hook matchers in settings
+2025-12-04T09:47:04.511Z [DEBUG] Matched 0 unique hooks for query "idle_prompt" (0 before deduplication)
+2025-12-04T09:50:16.545Z [DEBUG] BigQuery metrics exported successfully
+2025-12-04T09:50:16.545Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}

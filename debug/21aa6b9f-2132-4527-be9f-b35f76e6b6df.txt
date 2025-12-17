@@ -1,0 +1,1648 @@
+2025-12-16T18:24:42.973Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json...
+2025-12-16T18:24:43.001Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-16T18:24:43.001Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-16T18:24:43.001Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-16T18:24:43.003Z [DEBUG] LSP server manager initialized successfully
+2025-12-16T18:24:43.003Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-16T18:24:43.005Z [DEBUG] Applying permission update: Adding 8 allow rule(s) to destination 'localSettings': ["mcp__knowledge-graph-custom-path__set_graph_path","mcp__knowledge-graph-custom-path__create_entities","mcp__knowledge-graph-custom-path__create_relations","mcp__knowledge-graph-custom-path__get_statistics","mcp__knowledge-graph-custom-path__backup_graph","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion rev-parse HEAD)","Bash(cat:*)","Bash(python3:*)"]
+2025-12-16T18:24:43.010Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-16T18:24:43.020Z [DEBUG] Stats cache is up to date
+2025-12-16T18:24:43.027Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (6.8ms): ldd /bin/ls 2>/dev/null
+2025-12-16T18:24:43.031Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=[]
+2025-12-16T18:24:43.035Z [DEBUG] Loaded 0 installed plugins from /home/javiervel/.claude/plugins/installed_plugins.json
+2025-12-16T18:24:43.129Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-12-16T18:24:43.129Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-12-16T18:24:43.129Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-12-16T18:24:43.130Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765909483129-uqxvre.sh
+2025-12-16T18:24:43.130Z [DEBUG] Shell binary exists: true
+2025-12-16T18:24:43.130Z [DEBUG] Execution timeout: 10000ms
+2025-12-16T18:24:43.134Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765909483134
+2025-12-16T18:24:43.138Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-16T18:24:43.138Z [DEBUG] Renaming /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765909483134 to /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json
+2025-12-16T18:24:43.138Z [DEBUG] File /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json written atomically
+2025-12-16T18:24:43.182Z [DEBUG] Auto-updating 1 installed marketplaces in background
+2025-12-16T18:24:43.182Z [DEBUG] Auto-updating marketplace "claude-plugins-official"
+2025-12-16T18:24:43.187Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-16T18:24:43.187Z [DEBUG] Total plugin skills loaded: 0
+2025-12-16T18:24:43.187Z [DEBUG] Total plugin commands loaded: 0
+2025-12-16T18:24:43.187Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-16T18:24:43.242Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-16T18:24:43.274Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills
+2025-12-16T18:24:43.297Z [DEBUG] Git remote URL: https://github.com/BosenetCodes/bamf-acte-companion.git
+2025-12-16T18:24:43.297Z [DEBUG] Parsed repository: BosenetCodes/bamf-acte-companion from https://github.com/BosenetCodes/bamf-acte-companion.git
+2025-12-16T18:24:43.297Z [DEBUG] Parsed repository: BosenetCodes/bamf-acte-companion from URL: https://github.com/BosenetCodes/bamf-acte-companion.git
+2025-12-16T18:24:43.297Z [DEBUG] Path /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion already tracked for repo bosenetcodes/bamf-acte-companion
+2025-12-16T18:24:43.297Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-12-16T18:24:43.299Z [DEBUG] Shell snapshot created successfully (5017 bytes)
+2025-12-16T18:24:43.302Z [DEBUG] Total plugin agents loaded: 0
+2025-12-16T18:24:43.453Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909483453
+2025-12-16T18:24:43.454Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:43.459Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.1ms)
+2025-12-16T18:24:43.459Z [DEBUG] Temp file written successfully, size: 93752 bytes
+2025-12-16T18:24:43.459Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:43.459Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909483453 to /home/javiervel/.claude.json
+2025-12-16T18:24:43.459Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:43.573Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909483573
+2025-12-16T18:24:43.573Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:43.579Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.2ms)
+2025-12-16T18:24:43.579Z [DEBUG] Temp file written successfully, size: 93752 bytes
+2025-12-16T18:24:43.579Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:43.579Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909483573 to /home/javiervel/.claude.json
+2025-12-16T18:24:43.579Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:43.582Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909483582
+2025-12-16T18:24:43.582Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:43.586Z [DEBUG] Temp file written successfully, size: 93755 bytes
+2025-12-16T18:24:43.586Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:43.586Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909483582 to /home/javiervel/.claude.json
+2025-12-16T18:24:43.586Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:43.703Z [DEBUG] Successfully refreshed marketplace: claude-plugins-official
+2025-12-16T18:24:43.703Z [DEBUG] Successfully auto-updated marketplace "claude-plugins-official"
+2025-12-16T18:24:44.892Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909484892
+2025-12-16T18:24:44.892Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:44.896Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:24:44.897Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:44.897Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909484892 to /home/javiervel/.claude.json
+2025-12-16T18:24:44.897Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:44.922Z [DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+2025-12-16T18:24:44.927Z [DEBUG] MCP server "playwright": Starting connection with timeout of 30000ms
+2025-12-16T18:24:44.930Z [DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+2025-12-16T18:24:44.940Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2025-12-16T18:24:44.941Z [DEBUG] [ColorDiff] Not in bundled mode, using JS fallback
+2025-12-16T18:24:44.945Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909484945
+2025-12-16T18:24:44.945Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:44.951Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.6ms)
+2025-12-16T18:24:44.951Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:24:44.951Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:44.951Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909484945 to /home/javiervel/.claude.json
+2025-12-16T18:24:44.951Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:44.956Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-12-16T18:24:44.956Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:24:44.956Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-12-16T18:24:45.096Z [DEBUG] Official marketplace auto-install skipped: already_attempted
+2025-12-16T18:24:45.097Z [DEBUG] performStartupChecks called
+2025-12-16T18:24:45.097Z [DEBUG] Starting background plugin installations
+2025-12-16T18:24:45.097Z [DEBUG] performBackgroundPluginInstallations called
+2025-12-16T18:24:45.410Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (311.5ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T18:24:45.433Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (11.1ms)
+2025-12-16T18:24:45.444Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (10.2ms)
+2025-12-16T18:24:45.740Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (284.4ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T18:24:45.758Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-12-16T18:24:45.759Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-12-16T18:24:45.765Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: python-dotenv could not parse statement starting at line 1
+2025-12-16T18:24:45.767Z [DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 856ms
+2025-12-16T18:24:45.767Z [DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+2025-12-16T18:24:45.769Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-16T18:24:45.769Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:24:45.769Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-16T18:24:45.770Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-16T18:24:45.770Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:24:45.770Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-16T18:24:45.776Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:24:45.787Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [12/16/25 19:24:45] INFO     Processing request of type            server.py:624
+                             ListToolsRequest                                   
+                    INFO     Processing request of type            server.py:624
+                             ListPromptsRequest                                 
+                    INFO     Processing request of type            server.py:624
+                             ListResourcesRequest
+2025-12-16T18:24:45.806Z [DEBUG] Summarizing all 27 messages (~5703 tokens)
+2025-12-16T18:24:45.818Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909485818
+2025-12-16T18:24:45.818Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:45.822Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:24:45.822Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:45.822Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909485818 to /home/javiervel/.claude.json
+2025-12-16T18:24:45.822Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:45.855Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909485855
+2025-12-16T18:24:45.855Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:24:45.861Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.7ms)
+2025-12-16T18:24:45.861Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:24:45.861Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:24:45.861Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909485855 to /home/javiervel/.claude.json
+2025-12-16T18:24:45.861Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:24:46.178Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (282.6ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T18:24:46.194Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.6ms)
+2025-12-16T18:24:46.199Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.1ms)
+2025-12-16T18:24:46.475Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (274.6ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T18:24:46.494Z [ERROR] MCP server "context7" Server stderr: WARNING: Using default CLIENT_IP_ENCRYPTION_KEY.
+Context7 Documentation MCP Server running on stdio
+2025-12-16T18:24:46.495Z [DEBUG] MCP server "context7": Successfully connected to stdio server in 1566ms
+2025-12-16T18:24:46.495Z [DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.13"}}
+2025-12-16T18:24:46.497Z [DEBUG] MCP server "playwright": Successfully connected to stdio server in 1572ms
+2025-12-16T18:24:46.497Z [DEBUG] MCP server "playwright": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Playwright","version":"0.0.52"}}
+2025-12-16T18:24:46.515Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-16T18:24:46.555Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 41ms
+2025-12-16T18:24:46.555Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.70"}}
+2025-12-16T18:24:47.388Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:24:47.836Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-16T18:24:47.837Z [DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-12-16T18:24:48.559Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:24:49.883Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:24:50.601Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T18:24:50.601Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:24:50.601Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:25:01.969Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T18:25:01.969Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:25:01.969Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:25:06.663Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909506663
+2025-12-16T18:25:06.663Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:25:06.670Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.3ms)
+2025-12-16T18:25:06.670Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:25:06.670Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:25:06.670Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909506663 to /home/javiervel/.claude.json
+2025-12-16T18:25:06.671Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:25:06.675Z [DEBUG] UserCommandMessage rendering: "model" (args: "none")
+2025-12-16T18:25:06.675Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T18:25:06.697Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765909506697
+2025-12-16T18:25:06.697Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:25:06.704Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.0ms)
+2025-12-16T18:25:06.704Z [DEBUG] Temp file written successfully, size: 93754 bytes
+2025-12-16T18:25:06.704Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:25:06.704Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765909506697 to /home/javiervel/.claude.json
+2025-12-16T18:25:06.704Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:25:06.746Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:27:38.714Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:27:38.714Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:27:38.714Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:27:38.714Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:27:38.731Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-16T18:27:38.731Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:27:38.731Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:27:38.732Z [DEBUG] FileHistory: Added snapshot for ea9f9d5e-8093-4422-b58e-518b54413874, tracking 0 files
+2025-12-16T18:27:38.742Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-16T18:27:38.752Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-16T18:27:38.756Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 14ms
+2025-12-16T18:27:39.853Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:27:42.009Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:27:46.360Z [DEBUG] executePreToolHooks called for tool: mcp__knowledge-graph-custom-path__get_current_graph_path
+2025-12-16T18:27:46.364Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__knowledge-graph-custom-path__get_current_graph_path
+2025-12-16T18:27:46.364Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:27:46.364Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__get_current_graph_path" (0 before deduplication)
+2025-12-16T18:27:46.382Z [DEBUG] executePermissionRequestHooks called for tool: mcp__knowledge-graph-custom-path__get_current_graph_path
+2025-12-16T18:27:46.389Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__knowledge-graph-custom-path__get_current_graph_path
+2025-12-16T18:27:46.389Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:27:46.389Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__get_current_graph_path" (0 before deduplication)
+2025-12-16T18:27:57.858Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:27:57.859Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:27:57.859Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:28:17.925Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:28:17.925Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:28:17.929Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909697929
+2025-12-16T18:28:17.929Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:28:17.937Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.8ms)
+2025-12-16T18:28:17.937Z [DEBUG] Temp file written successfully, size: 545 bytes
+2025-12-16T18:28:17.937Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:28:17.937Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909697929 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:28:17.937Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:28:17.941Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__knowledge-graph-custom-path__get_current_graph_path"]
+2025-12-16T18:28:17.944Z [DEBUG] MCP server "knowledge-graph-custom-path": Calling MCP tool: get_current_graph_path
+2025-12-16T18:28:17.956Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [12/16/25 19:28:17] INFO     Processing request of type            server.py:624
+                             CallToolRequest
+2025-12-16T18:28:17.957Z [DEBUG] MCP server "knowledge-graph-custom-path": Tool 'get_current_graph_path' completed successfully in 13ms
+2025-12-16T18:28:17.969Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__knowledge-graph-custom-path__get_current_graph_path
+2025-12-16T18:28:17.969Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:17.969Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__get_current_graph_path" (0 before deduplication)
+2025-12-16T18:28:17.978Z [DEBUG] executePreToolHooks called for tool: Glob
+2025-12-16T18:28:17.985Z [DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+2025-12-16T18:28:17.985Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:17.985Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:28:17.986Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:17.991Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:17.991Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:17.991Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:18.026Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:18.026Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:18.026Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:18.067Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:28:18.359Z [DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+2025-12-16T18:28:18.359Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:18.359Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:28:18.368Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:28:18.369Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:28:18.369Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:28:18.369Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:28:18.369Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:28:18.370Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T18:28:21.618Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:28:26.363Z [DEBUG] executePreToolHooks called for tool: mcp__knowledge-graph-custom-path__set_graph_path
+2025-12-16T18:28:26.369Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__knowledge-graph-custom-path__set_graph_path
+2025-12-16T18:28:26.369Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.369Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__set_graph_path" (0 before deduplication)
+2025-12-16T18:28:26.377Z [DEBUG] MCP server "knowledge-graph-custom-path": Calling MCP tool: set_graph_path
+2025-12-16T18:28:26.379Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [12/16/25 19:28:26] INFO     Processing request of type            server.py:624
+                             CallToolRequest
+2025-12-16T18:28:26.382Z [DEBUG] MCP server "knowledge-graph-custom-path": Tool 'set_graph_path' completed successfully in 5ms
+2025-12-16T18:28:26.388Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__knowledge-graph-custom-path__set_graph_path
+2025-12-16T18:28:26.388Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.388Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__set_graph_path" (0 before deduplication)
+2025-12-16T18:28:26.406Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:26.407Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:26.407Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:26.421Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:26.421Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.421Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.421Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:26.421Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.421Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.421Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:26.421Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.421Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.464Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:26.464Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.464Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.464Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:26.464Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.464Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.464Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:26.464Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:26.464Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:26.475Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:28:26.475Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:28:26.475Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:28:26.475Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:28:26.475Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:28:26.480Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-16T18:28:29.293Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:28:36.713Z [DEBUG] executePreToolHooks called for tool: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:28:36.719Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:28:36.719Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:36.719Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:28:36.746Z [DEBUG] executePermissionRequestHooks called for tool: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:28:36.753Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:28:36.754Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:36.754Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:28:39.088Z [DEBUG] MCP server "knowledge-graph-custom-path": Calling MCP tool: read_graph
+2025-12-16T18:28:39.091Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [12/16/25 19:28:39] INFO     Processing request of type            server.py:624
+                             CallToolRequest
+2025-12-16T18:28:39.095Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: INFO     Warning: PydanticDeprecatedSince20:   server.py:614
+                             The `dict` method is deprecated; use               
+                             `model_dump` instead. Deprecated in                
+                             Pydantic V2.0 to be removed in V3.0.               
+                             See Pydantic V2 Migration Guide at                 
+                             https://errors.pydantic.dev/2.11/migr              
+                             ation/                                             
+                    INFO     Warning: PydanticDeprecatedSince20:   server.py:614
+                             The `dict` method is deprecated; use               
+                             `model_dump` instead. Deprecated in                
+                             Pydantic V2.0 to be removed in V3.0.               
+                             See Pydantic V2 Migration Guide at                 
+                             https://errors.pydantic.dev/2.11/migr              
+                             ation/
+2025-12-16T18:28:39.095Z [DEBUG] MCP server "knowledge-graph-custom-path": Tool 'read_graph' completed successfully in 7ms
+2025-12-16T18:28:39.107Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:28:39.107Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.107Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:28:39.120Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:39.121Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:39.121Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:28:39.125Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:39.125Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.125Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.125Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:39.125Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.125Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.125Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:28:39.125Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.125Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.153Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:28:39.165Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:39.165Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.165Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.165Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:39.165Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.165Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.484Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:28:39.484Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.484Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:28:39.488Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:28:39.497Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:28:39.497Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:39.497Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:28:39.510Z [DEBUG] tree-sitter: WASM files not found
+2025-12-16T18:28:40.632Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:28:40.762Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:28:41.232Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:28:41.493Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "pip install:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-16T18:28:41.508Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-16T18:28:41.517Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-16T18:28:41.517Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:41.517Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:28:47.513Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:28:47.513Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:28:47.513Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:29:39.648Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=false
+2025-12-16T18:29:40.148Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:29:40.148Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 13,
+  "rejected_count": 0
+}
+2025-12-16T18:30:01.505Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:30:01.505Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:30:01.507Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909801507
+2025-12-16T18:30:01.507Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:30:01.516Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.1ms)
+2025-12-16T18:30:01.516Z [DEBUG] Temp file written successfully, size: 574 bytes
+2025-12-16T18:30:01.516Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:30:01.516Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909801507 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:30:01.517Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:30:01.522Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(pip install:*)"]
+2025-12-16T18:30:01.530Z [DEBUG] No session environment scripts found
+2025-12-16T18:30:01.609Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:30:02.773Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:30:02.773Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:02.773Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:30:02.790Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:30:02.790Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:30:02.790Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:30:02.790Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:30:02.790Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:30:02.812Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 22ms
+2025-12-16T18:30:04.112Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:30:06.786Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:30:12.042Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:30:12.042Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:30:12.047Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:30:12.047Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.047Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:30:12.047Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:30:12.047Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.047Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:30:12.078Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:30:12.078Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.078Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:30:12.078Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:30:12.078Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.078Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:30:12.083Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_navigate
+2025-12-16T18:30:12.093Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_navigate
+2025-12-16T18:30:12.093Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.093Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_navigate" (0 before deduplication)
+2025-12-16T18:30:12.117Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_navigate
+2025-12-16T18:30:12.123Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_navigate
+2025-12-16T18:30:12.123Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:12.123Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_navigate" (0 before deduplication)
+2025-12-16T18:30:21.249Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_navigate
+2025-12-16T18:30:21.257Z [DEBUG] MCP server "playwright": Received ListRoots request from server
+2025-12-16T18:30:21.311Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:30:22.494Z [DEBUG] MCP server "playwright": Tool 'browser_navigate' completed successfully in 1s
+2025-12-16T18:30:22.500Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_navigate
+2025-12-16T18:30:22.500Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:22.500Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_navigate" (0 before deduplication)
+2025-12-16T18:30:22.511Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:30:22.511Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:30:22.511Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:30:22.511Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:30:22.511Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:30:22.513Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T18:30:25.870Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:30:26.242Z [DEBUG] [SLOW OPERATION DETECTED] fs.readFileSync (5.9ms)
+2025-12-16T18:30:28.472Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_type
+2025-12-16T18:30:28.474Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_type
+2025-12-16T18:30:28.474Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:28.474Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_type" (0 before deduplication)
+2025-12-16T18:30:28.491Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_type
+2025-12-16T18:30:28.496Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_type
+2025-12-16T18:30:28.496Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:28.496Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_type" (0 before deduplication)
+2025-12-16T18:30:35.316Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:30:35.316Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:30:35.317Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909835317
+2025-12-16T18:30:35.317Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:30:35.323Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.5ms)
+2025-12-16T18:30:35.323Z [DEBUG] Temp file written successfully, size: 613 bytes
+2025-12-16T18:30:35.323Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:30:35.323Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909835317 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:30:35.323Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:30:35.327Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__playwright__browser_type"]
+2025-12-16T18:30:35.328Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_type
+2025-12-16T18:30:35.399Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:30:36.372Z [DEBUG] MCP server "playwright": Tool 'browser_type' completed successfully in 1s
+2025-12-16T18:30:36.379Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_type
+2025-12-16T18:30:36.379Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:36.379Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_type" (0 before deduplication)
+2025-12-16T18:30:36.387Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:30:36.387Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:30:36.387Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:30:36.387Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:30:36.387Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:30:36.388Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 1ms
+2025-12-16T18:30:39.521Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:30:40.617Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_snapshot
+2025-12-16T18:30:40.619Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_snapshot
+2025-12-16T18:30:40.619Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:40.619Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_snapshot" (0 before deduplication)
+2025-12-16T18:30:40.632Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_snapshot
+2025-12-16T18:30:40.637Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_snapshot
+2025-12-16T18:30:40.637Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:40.637Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_snapshot" (0 before deduplication)
+2025-12-16T18:30:46.637Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:30:46.637Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:46.637Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:30:54.843Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:30:54.843Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:30:54.844Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909854844
+2025-12-16T18:30:54.844Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:30:54.854Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.8ms)
+2025-12-16T18:30:54.854Z [DEBUG] Temp file written successfully, size: 656 bytes
+2025-12-16T18:30:54.854Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:30:54.854Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909854844 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:30:54.854Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:30:54.859Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__playwright__browser_snapshot"]
+2025-12-16T18:30:54.861Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_snapshot
+2025-12-16T18:30:54.872Z [DEBUG] MCP server "playwright": Tool 'browser_snapshot' completed successfully in 11ms
+2025-12-16T18:30:54.884Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_snapshot
+2025-12-16T18:30:54.884Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:30:54.884Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_snapshot" (0 before deduplication)
+2025-12-16T18:30:54.892Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:30:54.892Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:30:54.892Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:30:54.892Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:30:54.892Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:30:54.896Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T18:30:54.935Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:30:58.642Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:31:00.794Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:31:00.798Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:31:00.798Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:00.798Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:31:00.812Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:31:00.818Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_click
+2025-12-16T18:31:00.818Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:00.818Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:31:04.436Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_click
+2025-12-16T18:31:04.549Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:31:05.542Z [DEBUG] MCP server "playwright": Tool 'browser_click' completed successfully in 1s
+2025-12-16T18:31:05.547Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:31:05.547Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:05.547Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:31:05.556Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:31:05.556Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:31:05.556Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:31:05.556Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:31:05.556Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:31:05.559Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:31:10.372Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:31:19.738Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:31:19.741Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:31:19.741Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:19.741Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:31:19.754Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:31:19.760Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_click
+2025-12-16T18:31:19.760Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:19.760Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:31:25.762Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:31:25.762Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:31:25.762Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:33:07.075Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:33:07.075Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:33:07.078Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909987078
+2025-12-16T18:33:07.078Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:33:07.084Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.5ms)
+2025-12-16T18:33:07.084Z [DEBUG] Temp file written successfully, size: 696 bytes
+2025-12-16T18:33:07.084Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:33:07.084Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765909987078 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:33:07.084Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:33:07.088Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__playwright__browser_click"]
+2025-12-16T18:33:07.090Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_click
+2025-12-16T18:33:07.164Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:33:07.660Z [DEBUG] MCP server "playwright": Tool 'browser_click' completed successfully in 570ms
+2025-12-16T18:33:07.668Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:07.668Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:07.668Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:07.680Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:33:07.680Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:33:07.680Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:33:07.680Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:33:07.680Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:33:07.682Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T18:33:11.350Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:33:13.138Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:33:13.141Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:13.141Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:13.141Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:13.145Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_click
+2025-12-16T18:33:14.213Z [DEBUG] MCP server "playwright": Tool 'browser_click' completed successfully in 1s
+2025-12-16T18:33:14.219Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:14.219Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:14.219Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:14.228Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:33:14.228Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:33:14.228Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:33:14.228Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:33:14.228Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:33:14.231Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:33:17.052Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:33:20.688Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:33:20.691Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:20.691Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:20.691Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:20.696Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_click
+2025-12-16T18:33:21.746Z [DEBUG] MCP server "playwright": Tool 'browser_click' completed successfully in 1s
+2025-12-16T18:33:21.753Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:21.753Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:21.753Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:21.761Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:33:21.761Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:33:21.761Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:33:21.761Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:33:21.761Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:33:21.767Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+2025-12-16T18:33:25.709Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:33:27.603Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_snapshot
+2025-12-16T18:33:27.606Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_snapshot
+2025-12-16T18:33:27.606Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:27.606Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_snapshot" (0 before deduplication)
+2025-12-16T18:33:27.609Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_snapshot
+2025-12-16T18:33:27.620Z [DEBUG] MCP server "playwright": Tool 'browser_snapshot' completed successfully in 11ms
+2025-12-16T18:33:27.625Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_snapshot
+2025-12-16T18:33:27.625Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:27.625Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_snapshot" (0 before deduplication)
+2025-12-16T18:33:27.633Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:33:27.633Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:33:27.633Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:33:27.633Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:33:27.633Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:33:27.638Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-16T18:33:30.487Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:33:32.070Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_click
+2025-12-16T18:33:32.074Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:32.074Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:32.074Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:32.081Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_click
+2025-12-16T18:33:33.152Z [DEBUG] MCP server "playwright": Tool 'browser_click' completed successfully in 1s
+2025-12-16T18:33:33.159Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_click
+2025-12-16T18:33:33.159Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:33.159Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_click" (0 before deduplication)
+2025-12-16T18:33:33.167Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:33:33.168Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:33:33.168Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:33:33.168Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:33:33.168Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:33:33.169Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T18:33:36.359Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:33:54.481Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_take_screenshot
+2025-12-16T18:33:54.484Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_take_screenshot
+2025-12-16T18:33:54.484Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:54.484Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_take_screenshot" (0 before deduplication)
+2025-12-16T18:33:54.499Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_take_screenshot
+2025-12-16T18:33:54.504Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_take_screenshot
+2025-12-16T18:33:54.504Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:33:54.504Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_take_screenshot" (0 before deduplication)
+2025-12-16T18:34:00.505Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:34:00.505Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:34:00.505Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:34:10.930Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:34:10.930Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:34:10.931Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910050931
+2025-12-16T18:34:10.931Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:34:10.939Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.8ms)
+2025-12-16T18:34:10.939Z [DEBUG] Temp file written successfully, size: 746 bytes
+2025-12-16T18:34:10.939Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:34:10.939Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910050931 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:34:10.939Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:34:10.942Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__playwright__browser_take_screenshot"]
+2025-12-16T18:34:10.944Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_take_screenshot
+2025-12-16T18:34:11.014Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:34:10.663Z [DEBUG] MCP server "playwright": Tool 'browser_take_screenshot' completed successfully in -281ms
+2025-12-16T18:34:10.734Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_take_screenshot
+2025-12-16T18:34:10.734Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:34:10.734Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_take_screenshot" (0 before deduplication)
+2025-12-16T18:34:10.743Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.32809.1765910050743
+2025-12-16T18:34:10.743Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T18:34:10.753Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.5ms)
+2025-12-16T18:34:10.753Z [DEBUG] Temp file written successfully, size: 93797 bytes
+2025-12-16T18:34:10.753Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:34:10.753Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.32809.1765910050743 to /home/javiervel/.claude.json
+2025-12-16T18:34:10.754Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T18:34:10.765Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:34:10.766Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:34:10.766Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:34:10.766Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:34:10.766Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:34:10.778Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 13ms
+2025-12-16T18:34:15.857Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:34:34.522Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:34:34.522Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}
+2025-12-16T18:34:47.984Z [DEBUG] executePreToolHooks called for tool: mcp__playwright__browser_close
+2025-12-16T18:34:47.987Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__playwright__browser_close
+2025-12-16T18:34:47.987Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:34:47.987Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_close" (0 before deduplication)
+2025-12-16T18:34:48.007Z [DEBUG] executePermissionRequestHooks called for tool: mcp__playwright__browser_close
+2025-12-16T18:34:48.013Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__playwright__browser_close
+2025-12-16T18:34:48.013Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:34:48.013Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_close" (0 before deduplication)
+2025-12-16T18:34:54.018Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:34:54.018Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:34:54.018Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:34:59.028Z [DEBUG] [SLOW OPERATION DETECTED] fs.readFileSync (5.3ms)
+2025-12-16T18:35:35.119Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:35:35.119Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:35:35.122Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910135122
+2025-12-16T18:35:35.122Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:35:35.127Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.6ms)
+2025-12-16T18:35:35.127Z [DEBUG] Temp file written successfully, size: 786 bytes
+2025-12-16T18:35:35.128Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:35:35.128Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910135122 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:35:35.128Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:35:35.132Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__playwright__browser_close"]
+2025-12-16T18:35:35.134Z [DEBUG] MCP server "playwright": Calling MCP tool: browser_close
+2025-12-16T18:35:35.220Z [DEBUG] MCP server "playwright": Tool 'browser_close' completed successfully in 86ms
+2025-12-16T18:35:35.226Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__playwright__browser_close
+2025-12-16T18:35:35.226Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:35.226Z [DEBUG] Matched 0 unique hooks for query "mcp__playwright__browser_close" (0 before deduplication)
+2025-12-16T18:35:35.232Z [DEBUG] executePreToolHooks called for tool: Task
+2025-12-16T18:35:35.242Z [DEBUG] Getting matching hook commands for PreToolUse with query: Task
+2025-12-16T18:35:35.242Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:35.242Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2025-12-16T18:35:35.266Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:35:35.301Z [DEBUG] Getting matching hook commands for SubagentStart with query: bone-requirements-agent
+2025-12-16T18:35:35.301Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:35.301Z [DEBUG] Matched 0 unique hooks for query "bone-requirements-agent" (0 before deduplication)
+2025-12-16T18:35:37.961Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:40.922Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:35:40.926Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:35:40.926Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:40.926Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:40.926Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:40.927Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:40.930Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:40.930Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:40.930Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:40.930Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:40.930Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:40.930Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:40.974Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:40.974Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:40.974Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:40.974Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:40.974Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:40.974Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:41.019Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:35:41.019Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:41.019Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:42.882Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:44.771Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:48.360Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:35:48.365Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:35:48.365Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.365Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:48.365Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:48.365Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:48.369Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:48.369Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.369Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:48.369Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:48.369Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.369Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:48.410Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:48.410Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.410Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:48.410Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:48.410Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.410Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:48.458Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:35:48.459Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:48.459Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:49.583Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:51.258Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:55.837Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:35:55.844Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:35:55.844Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.844Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:55.844Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:55.845Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:35:55.849Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:55.849Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.849Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:55.849Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:35:55.849Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.849Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:55.890Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:55.890Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.890Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:55.890Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:35:55.890Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.890Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:35:55.931Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:35:55.931Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:35:55.931Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:35:57.138Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:35:58.818Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:36:02.470Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:36:02.478Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:36:02.478Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:02.478Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:36:02.508Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:36:02.508Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:02.508Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:36:05.795Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:36:09.081Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:36:09.085Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:36:09.085Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:09.085Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:36:09.085Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:36:09.088Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:36:09.088Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:09.088Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:36:09.116Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:36:09.116Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:09.116Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:36:09.137Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-16T18:36:09.144Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-16T18:36:09.144Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:09.144Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:36:15.143Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:36:15.143Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:36:15.143Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:37:00.018Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:37:00.018Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:37:00.018Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:37:00.022Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:37:01.371Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:37:02.958Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:39:30.691Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:39:30.691Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 16,
+  "rejected_count": 0
+}
+2025-12-16T18:40:07.709Z [WARN] Streaming stall detected: 181.1s gap between events (stall #1)
+2025-12-16T18:40:09.633Z [WARN] Streaming completed with 1 stall(s), total stall time: 181.1s
+2025-12-16T18:40:09.644Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:40:09.651Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:40:09.651Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:09.651Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:40:10.899Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:40:11.062Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "mkdir:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-16T18:40:11.077Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-16T18:40:11.084Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-16T18:40:11.084Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:11.084Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:40:16.633Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:40:16.659Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:40:16.659Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:16.659Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:40:16.673Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T18:40:16.681Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T18:40:16.681Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:16.681Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:40:16.691Z [DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-16T18:40:16.705Z [DEBUG] executePermissionRequestHooks called for tool: Write
+2025-12-16T18:40:16.709Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-16T18:40:16.715Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Write
+2025-12-16T18:40:16.715Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:16.715Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:40:18.455Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:40:20.201Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-16T18:40:20.204Z [DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+2025-12-16T18:40:20.205Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:40:20.219Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 14ms
+2025-12-16T18:40:20.248Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 47ms
+2025-12-16T18:40:20.277Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/requirements.md.tmp.32809.1765910420277
+2025-12-16T18:40:20.281Z [DEBUG] Temp file written successfully, size: 35595 bytes
+2025-12-16T18:40:20.281Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/requirements.md.tmp.32809.1765910420277 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/requirements.md
+2025-12-16T18:40:20.281Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/requirements.md written atomically
+2025-12-16T18:40:20.289Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T18:40:20.289Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:40:20.289Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:40:20.293Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:40:20.324Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 3s
+2025-12-16T18:40:20.324Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-16T18:40:20.334Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 10ms
+2025-12-16T18:40:23.840Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:41:09.296Z [WARN] Streaming stall detected: 43.6s gap between events (stall #1)
+2025-12-16T18:41:10.959Z [WARN] Streaming completed with 1 stall(s), total stall time: 43.6s
+2025-12-16T18:41:10.973Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T18:41:10.977Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T18:41:10.977Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:41:10.977Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:41:10.991Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:41:10.995Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T18:41:10.995Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/README.md.tmp.32809.1765910470995
+2025-12-16T18:41:11.000Z [DEBUG] Temp file written successfully, size: 7847 bytes
+2025-12-16T18:41:11.000Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/README.md.tmp.32809.1765910470995 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/README.md
+2025-12-16T18:41:11.000Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/README.md written atomically
+2025-12-16T18:41:11.010Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T18:41:11.010Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:41:11.010Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:41:13.920Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:42:24.942Z [WARN] Streaming stall detected: 69.3s gap between events (stall #1)
+2025-12-16T18:42:25.834Z [WARN] Streaming completed with 1 stall(s), total stall time: 69.3s
+2025-12-16T18:42:25.848Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T18:42:25.855Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T18:42:25.855Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:42:25.855Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:42:25.868Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:42:25.871Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:42:25.871Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/sprint1-implementation-plan.md.tmp.32809.1765910545871
+2025-12-16T18:42:25.875Z [DEBUG] Temp file written successfully, size: 14746 bytes
+2025-12-16T18:42:25.875Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/sprint1-implementation-plan.md.tmp.32809.1765910545871 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/sprint1-implementation-plan.md
+2025-12-16T18:42:25.875Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/sprint1-implementation-plan.md written atomically
+2025-12-16T18:42:25.886Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T18:42:25.886Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:42:25.886Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:42:28.728Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:42:31.228Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T18:42:31.232Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T18:42:31.232Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:42:31.232Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:42:32.347Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:42:32.596Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:42:32.756Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:42:32.957Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "wc:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-16T18:42:32.968Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-16T18:42:32.975Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-16T18:42:32.975Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:42:32.975Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:42:38.976Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:42:38.976Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:42:38.976Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:43:02.819Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:43:02.819Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:43:02.822Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910582822
+2025-12-16T18:43:02.822Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:43:02.831Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (8.6ms)
+2025-12-16T18:43:02.831Z [DEBUG] Temp file written successfully, size: 806 bytes
+2025-12-16T18:43:02.831Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:43:02.831Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765910582822 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:43:02.832Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:43:02.836Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(wc:*)"]
+2025-12-16T18:43:02.949Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T18:43:02.949Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:43:02.949Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T18:43:02.969Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:43:04.220Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:43:06.155Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:44:06.665Z [WARN] Streaming stall detected: 58.9s gap between events (stall #1)
+2025-12-16T18:44:25.448Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:44:25.448Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 15,
+  "rejected_count": 0
+}
+2025-12-16T18:44:33.503Z [WARN] Streaming completed with 1 stall(s), total stall time: 58.9s
+2025-12-16T18:44:33.519Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T18:44:33.523Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T18:44:33.523Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:44:33.523Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:44:33.536Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:44:33.539Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:44:33.539Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/quick-reference.md.tmp.32809.1765910673539
+2025-12-16T18:44:33.545Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.1ms)
+2025-12-16T18:44:33.545Z [DEBUG] Temp file written successfully, size: 11201 bytes
+2025-12-16T18:44:33.545Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/quick-reference.md.tmp.32809.1765910673539 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/quick-reference.md
+2025-12-16T18:44:33.545Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/requirements/quick-reference.md written atomically
+2025-12-16T18:44:33.555Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T18:44:33.555Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:44:33.555Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:44:38.068Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:45:01.703Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T18:45:01.703Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:01.703Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:45:01.713Z [DEBUG] Getting matching hook commands for PostToolUse with query: Task
+2025-12-16T18:45:01.713Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:01.713Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2025-12-16T18:45:01.725Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:45:01.725Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:45:01.725Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:45:01.725Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:45:01.725Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:45:01.728Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:45:05.153Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:45:08.121Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:45:08.122Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:45:08.125Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:45:08.125Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:08.125Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:08.125Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:45:08.125Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:08.125Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:08.149Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:45:08.149Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:08.149Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:08.462Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:45:08.462Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:08.462Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:08.470Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:45:08.470Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:45:08.470Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:45:08.470Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:45:08.470Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:45:08.471Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 1ms
+2025-12-16T18:45:12.144Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:45:15.668Z [DEBUG] executePreToolHooks called for tool: Glob
+2025-12-16T18:45:15.672Z [DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+2025-12-16T18:45:15.672Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:15.672Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:45:15.672Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:45:15.675Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:45:15.675Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:15.675Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:15.701Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:45:15.701Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:15.701Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:45:15.970Z [DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+2025-12-16T18:45:15.970Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:15.970Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:45:15.977Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:45:15.978Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:45:15.978Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:45:15.978Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:45:15.978Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:45:15.983Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+2025-12-16T18:45:19.749Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:45:31.094Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2025-12-16T18:45:31.094Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:45:31.094Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:49:21.365Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:49:21.365Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 14,
+  "rejected_count": 0
+}
+2025-12-16T18:53:03.026Z [DEBUG] UserCommandMessage rendering: "agents" (args: "none")
+2025-12-16T18:53:03.026Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T18:53:03.137Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:53:31.104Z [DEBUG] Metadata string for start-pm:
+2025-12-16T18:53:31.104Z [DEBUG] <command-message>start-pm is running…</command-message>
+<command-name>/start-pm</command-name>
+2025-12-16T18:53:31.104Z [DEBUG] command-message tags in metadata: 1
+2025-12-16T18:53:31.112Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:53:31.112Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:53:31.112Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:53:31.112Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:53:31.112Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:53:31.116Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T18:53:31.116Z [DEBUG] processPromptSlashCommand creating 2 messages for start-pm
+2025-12-16T18:53:31.116Z [DEBUG] Message 1: <command-message>start-pm is running…</command-message>
+<command-name>/start-pm</command-name>
+2025-12-16T18:53:31.116Z [DEBUG] Message 2 [META]: [{"type":"text","text":"# Project Management - Implementation Planning\n\nCreate a strategic implementation plan by analyzing the codebase, requirements, and dependencies.\n\n## Instructions\n\n1. **R
+2025-12-16T18:53:31.124Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-16T18:53:31.124Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:31.124Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:53:31.125Z [DEBUG] FileHistory: Making snapshot for message a578c82b-1655-49fb-b381-814b156332e3
+2025-12-16T18:53:31.125Z [DEBUG] FileHistory: Added snapshot for a578c82b-1655-49fb-b381-814b156332e3, tracking 0 files
+2025-12-16T18:53:31.127Z [DEBUG] UserCommandMessage rendering: "start-pm is running…" (args: "none")
+2025-12-16T18:53:31.127Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T18:53:31.133Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-16T18:53:31.138Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 5ms
+2025-12-16T18:53:31.181Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:53:37.895Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:53:41.480Z [DEBUG] executePreToolHooks called for tool: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:53:41.485Z [DEBUG] Getting matching hook commands for PreToolUse with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:53:41.485Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:41.485Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:53:41.502Z [DEBUG] executePermissionRequestHooks called for tool: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:53:41.507Z [DEBUG] Getting matching hook commands for PermissionRequest with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:53:41.508Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:41.508Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:53:53.101Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T18:53:53.101Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:53.101Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T18:53:54.081Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T18:53:54.081Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T18:53:54.085Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765911234085
+2025-12-16T18:53:54.085Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:53:54.089Z [DEBUG] Temp file written successfully, size: 860 bytes
+2025-12-16T18:53:54.089Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:53:54.089Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.32809.1765911234085 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T18:53:54.089Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T18:53:54.092Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["mcp__knowledge-graph-custom-path__read_graph"]
+2025-12-16T18:53:54.094Z [DEBUG] MCP server "knowledge-graph-custom-path": Calling MCP tool: read_graph
+2025-12-16T18:53:54.105Z [ERROR] MCP server "knowledge-graph-custom-path" Server stderr: [12/16/25 19:53:54] INFO     Processing request of type            server.py:624
+                             CallToolRequest                                    
+                    INFO     Warning: PydanticDeprecatedSince20:   server.py:614
+                             The `dict` method is deprecated; use               
+                             `model_dump` instead. Deprecated in                
+                             Pydantic V2.0 to be removed in V3.0.               
+                             See Pydantic V2 Migration Guide at                 
+                             https://errors.pydantic.dev/2.11/migr              
+                             ation/                                             
+                    INFO     Warning: PydanticDeprecatedSince20:   server.py:614
+                             The `dict` method is deprecated; use               
+                             `model_dump` instead. Deprecated in                
+                             Pydantic V2.0 to be removed in V3.0.               
+                             See Pydantic V2 Migration Guide at                 
+                             https://errors.pydantic.dev/2.11/migr              
+                             ation/
+2025-12-16T18:53:54.105Z [DEBUG] MCP server "knowledge-graph-custom-path": Tool 'read_graph' completed successfully in 11ms
+2025-12-16T18:53:54.119Z [DEBUG] Getting matching hook commands for PostToolUse with query: mcp__knowledge-graph-custom-path__read_graph
+2025-12-16T18:53:54.119Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:54.119Z [DEBUG] Matched 0 unique hooks for query "mcp__knowledge-graph-custom-path__read_graph" (0 before deduplication)
+2025-12-16T18:53:54.125Z [DEBUG] executePreToolHooks called for tool: Glob
+2025-12-16T18:53:54.132Z [DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+2025-12-16T18:53:54.132Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:54.132Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:53:54.132Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T18:53:54.136Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T18:53:54.136Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:54.136Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:53:54.167Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:53:54.205Z [DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+2025-12-16T18:53:54.205Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:54.205Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T18:53:54.570Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T18:53:54.570Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:53:54.570Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T18:53:54.580Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:53:54.581Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:53:54.581Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:53:54.581Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:53:54.581Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:53:54.583Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:53:59.315Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:54:14.520Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2025-12-16T18:54:14.525Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2025-12-16T18:54:14.525Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:54:14.525Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2025-12-16T18:54:14.539Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765911254539
+2025-12-16T18:54:14.539Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:54:14.545Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.7ms)
+2025-12-16T18:54:14.545Z [DEBUG] Temp file written successfully, size: 440 bytes
+2025-12-16T18:54:14.545Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:54:14.545Z [DEBUG] Renaming /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765911254539 to /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json
+2025-12-16T18:54:14.545Z [DEBUG] File /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json written atomically
+2025-12-16T18:54:14.553Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2025-12-16T18:54:14.553Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:54:14.553Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2025-12-16T18:54:14.561Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:54:14.561Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:54:14.561Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:54:14.561Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:54:14.561Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:54:14.565Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T18:54:17.607Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:54:17.607Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 7,
+  "rejected_count": 0
+}
+2025-12-16T18:54:18.806Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:55:21.118Z [WARN] Streaming stall detected: 61.8s gap between events (stall #1)
+2025-12-16T18:55:22.857Z [WARN] Streaming completed with 1 stall(s), total stall time: 61.8s
+2025-12-16T18:55:22.874Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T18:55:22.879Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T18:55:22.879Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:55:22.879Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:55:22.888Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:55:22.891Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T18:55:22.891Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/implementation_plan.md.tmp.32809.1765911322891
+2025-12-16T18:55:22.894Z [DEBUG] Temp file written successfully, size: 15011 bytes
+2025-12-16T18:55:22.894Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/implementation_plan.md.tmp.32809.1765911322891 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/implementation_plan.md
+2025-12-16T18:55:22.895Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/implementation_plan.md written atomically
+2025-12-16T18:55:22.902Z [DEBUG] FileHistory: Tracked file modification for /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/implementation_plan.md
+2025-12-16T18:55:22.911Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T18:55:22.911Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:55:22.911Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T18:55:22.929Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:55:22.929Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:55:22.929Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:55:22.929Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:55:22.929Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:55:22.933Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T18:55:27.954Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:55:29.925Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2025-12-16T18:55:29.928Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2025-12-16T18:55:29.928Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:55:29.928Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2025-12-16T18:55:29.942Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765911329942
+2025-12-16T18:55:29.942Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T18:55:29.947Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-16T18:55:29.947Z [DEBUG] Applied original permissions to temp file
+2025-12-16T18:55:29.947Z [DEBUG] Renaming /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json.tmp.32809.1765911329942 to /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json
+2025-12-16T18:55:29.947Z [DEBUG] File /home/javiervel/.claude/todos/21aa6b9f-2132-4527-be9f-b35f76e6b6df-agent-21aa6b9f-2132-4527-be9f-b35f76e6b6df.json written atomically
+2025-12-16T18:55:29.952Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2025-12-16T18:55:29.952Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:55:29.952Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2025-12-16T18:55:29.959Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T18:55:29.960Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T18:55:29.960Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T18:55:29.960Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T18:55:29.960Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T18:55:29.964Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-16T18:55:34.393Z [DEBUG] Stream started - received first chunk
+2025-12-16T18:55:40.627Z [DEBUG] Language not supported while highlighting code, falling back to markdown:
+2025-12-16T18:55:40.854Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2025-12-16T18:55:40.854Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:55:40.854Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T18:56:40.876Z [DEBUG] [SLOW OPERATION DETECTED] fs.readFileSync (7.7ms)
+2025-12-16T18:56:40.877Z [DEBUG] Getting matching hook commands for Notification with query: idle_prompt
+2025-12-16T18:56:40.877Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T18:56:40.877Z [DEBUG] Matched 0 unique hooks for query "idle_prompt" (0 before deduplication)
+2025-12-16T18:59:11.706Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T18:59:16.929Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T18:59:16.929Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 10,
+  "rejected_count": 0
+}
+2025-12-16T19:01:00.122Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2025-12-16T19:01:00.122Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:01:00.122Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)
+2025-12-16T19:01:00.122Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2025-12-16T19:01:00.122Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:01:00.122Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)
+2025-12-16T19:01:00.126Z [DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765909483129-uqxvre.sh
+2025-12-16T19:01:00.126Z [DEBUG] MCP server "knowledge-graph-custom-path": Sending SIGINT to MCP server process
+2025-12-16T19:01:00.127Z [DEBUG] MCP server "context7": Sending SIGINT to MCP server process
+2025-12-16T19:01:00.127Z [DEBUG] MCP server "playwright": Sending SIGINT to MCP server process
+2025-12-16T19:01:00.128Z [DEBUG] MCP server "ide": WebSocket transport closed/disconnected, attempting automatic reconnection
+2025-12-16T19:01:12.334Z [DEBUG] Getting matching hook commands for SessionStart with query: resume
+2025-12-16T19:01:12.334Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:01:12.334Z [DEBUG] Matched 0 unique hooks for query "resume" (0 before deduplication)
+2025-12-16T19:01:12.337Z [DEBUG] FileHistory: Copied backup 23488f3483ab09d0@v1 from session 21aa6b9f-2132-4527-be9f-b35f76e6b6df to 8106de38-f6d1-47e3-839b-3ef1501db8bf
+2025-12-16T19:01:12.345Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.51844.1765911672345
+2025-12-16T19:01:12.345Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T19:01:12.350Z [DEBUG] Temp file written successfully, size: 93585 bytes
+2025-12-16T19:01:12.350Z [DEBUG] Applied original permissions to temp file
+2025-12-16T19:01:12.350Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.51844.1765911672345 to /home/javiervel/.claude.json
+2025-12-16T19:01:12.350Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T19:01:12.356Z [DEBUG] UserCommandMessage rendering: "model" (args: "none")
+2025-12-16T19:01:12.356Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T19:01:12.397Z [DEBUG] UserCommandMessage rendering: "agents" (args: "none")
+2025-12-16T19:01:12.397Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T19:01:12.398Z [DEBUG] UserCommandMessage rendering: "start-pm is running…" (args: "none")
+2025-12-16T19:01:12.398Z [DEBUG] isSkillFormat: false, prefix: "/"
+2025-12-16T19:01:12.407Z [DEBUG] Language not supported while highlighting code, falling back to markdown:
+2025-12-16T19:01:12.462Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.51844.1765911672462
+2025-12-16T19:01:12.462Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T19:01:12.468Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.1ms)
+2025-12-16T19:01:12.468Z [DEBUG] Temp file written successfully, size: 93512 bytes
+2025-12-16T19:01:12.468Z [DEBUG] Applied original permissions to temp file
+2025-12-16T19:01:12.468Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.51844.1765911672462 to /home/javiervel/.claude.json
+2025-12-16T19:01:12.468Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T19:01:12.482Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.51844.1765911672482
+2025-12-16T19:01:12.482Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T19:01:12.487Z [DEBUG] Temp file written successfully, size: 93585 bytes
+2025-12-16T19:01:12.487Z [DEBUG] Applied original permissions to temp file
+2025-12-16T19:01:12.487Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.51844.1765911672482 to /home/javiervel/.claude.json
+2025-12-16T19:01:12.487Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T19:01:12.537Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T19:01:41.452Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T19:01:41.452Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T19:01:41.452Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T19:01:41.452Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T19:01:41.472Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-16T19:01:41.472Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:01:41.472Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T19:01:41.473Z [DEBUG] FileHistory: Making snapshot for message 278f6a3a-05b6-4b7a-86a8-87ec98a50721
+2025-12-16T19:01:41.473Z [DEBUG] FileHistory: Added snapshot for 278f6a3a-05b6-4b7a-86a8-87ec98a50721, tracking 1 files
+2025-12-16T19:01:41.480Z [DEBUG] MCP server "ide": Calling MCP tool: closeAllDiffTabs
+2025-12-16T19:01:41.489Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-16T19:01:41.495Z [DEBUG] MCP server "ide": Tool 'closeAllDiffTabs' completed successfully in 15ms
+2025-12-16T19:01:42.742Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:01:47.631Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:02:03.682Z [DEBUG] executePreToolHooks called for tool: Task
+2025-12-16T19:02:03.687Z [DEBUG] Getting matching hook commands for PreToolUse with query: Task
+2025-12-16T19:02:03.687Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:03.687Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2025-12-16T19:02:03.719Z [DEBUG] Getting matching hook commands for SubagentStart with query: bone-test-agent
+2025-12-16T19:02:03.719Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:03.719Z [DEBUG] Matched 0 unique hooks for query "bone-test-agent" (0 before deduplication)
+2025-12-16T19:02:06.405Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:02:07.892Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T19:02:07.899Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T19:02:07.899Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:07.899Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:02:08.356Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T19:02:08.356Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:08.356Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:02:11.047Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:02:14.427Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T19:02:14.435Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T19:02:14.435Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:14.435Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T19:02:14.452Z [DEBUG] tree-sitter: WASM files not found
+2025-12-16T19:02:15.901Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:02:16.276Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "mkdir:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2025-12-16T19:02:16.292Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2025-12-16T19:02:16.302Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2025-12-16T19:02:16.302Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:16.302Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T19:02:22.301Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T19:02:22.301Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:02:22.301Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T19:03:48.008Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2025-12-16T19:03:48.008Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2025-12-16T19:03:48.011Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.51844.1765911828011
+2025-12-16T19:03:48.011Z [DEBUG] Preserving file permissions: 100600
+2025-12-16T19:03:48.021Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.4ms)
+2025-12-16T19:03:48.021Z [DEBUG] Temp file written successfully, size: 883 bytes
+2025-12-16T19:03:48.021Z [DEBUG] Applied original permissions to temp file
+2025-12-16T19:03:48.021Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json.tmp.51844.1765911828011 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json
+2025-12-16T19:03:48.022Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json written atomically
+2025-12-16T19:03:48.028Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(mkdir:*)"]
+2025-12-16T19:03:48.034Z [DEBUG] No session environment scripts found
+2025-12-16T19:03:48.139Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T19:03:48.139Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:03:48.139Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T19:03:48.164Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T19:03:49.129Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:03:50.978Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:04:20.737Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:04:20.743Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:04:20.743Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:04:20.743Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:04:20.757Z [DEBUG] Permission suggestions for Write: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2025-12-16T19:04:20.771Z [DEBUG] executePermissionRequestHooks called for tool: Write
+2025-12-16T19:04:20.775Z [DEBUG] MCP server "ide": Calling MCP tool: openDiff
+2025-12-16T19:04:20.780Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Write
+2025-12-16T19:04:20.780Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:04:20.780Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:04:26.780Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2025-12-16T19:04:26.780Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:04:26.780Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2025-12-16T19:04:50.775Z [DEBUG] MCP server "ide": Tool 'openDiff' still running (30s elapsed)
+2025-12-16T19:05:00.030Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-16T19:05:00.032Z [DEBUG] Applying permission update: Setting mode to 'acceptEdits'
+2025-12-16T19:05:00.033Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:05:00.052Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 19ms
+2025-12-16T19:05:00.072Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 42ms
+2025-12-16T19:05:00.096Z [DEBUG] MCP server "ide": Tool 'openDiff' completed successfully in 39s
+2025-12-16T19:05:00.097Z [DEBUG] MCP server "ide": Calling MCP tool: close_tab
+2025-12-16T19:05:00.104Z [DEBUG] MCP server "ide": Tool 'close_tab' completed successfully in 7ms
+2025-12-16T19:05:00.124Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/README.md.tmp.51844.1765911900124
+2025-12-16T19:05:00.134Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (9.6ms)
+2025-12-16T19:05:00.134Z [DEBUG] Temp file written successfully, size: 6015 bytes
+2025-12-16T19:05:00.134Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/README.md.tmp.51844.1765911900124 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/README.md
+2025-12-16T19:05:00.134Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/README.md written atomically
+2025-12-16T19:05:00.144Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:05:00.144Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:05:00.144Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:05:00.157Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T19:05:02.509Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:06:05.474Z [WARN] Streaming stall detected: 62.0s gap between events (stall #1)
+2025-12-16T19:06:05.729Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=false
+2025-12-16T19:06:06.021Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T19:06:06.022Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 32,
+  "rejected_count": 0
+}
+2025-12-16T19:06:06.503Z [WARN] Streaming completed with 1 stall(s), total stall time: 62.0s
+2025-12-16T19:06:06.520Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:06:06.524Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:06:06.524Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:06:06.524Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:06:06.538Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:06:06.541Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:06:06.541Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-001-tests.md.tmp.51844.1765911966541
+2025-12-16T19:06:06.547Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.2ms)
+2025-12-16T19:06:06.547Z [DEBUG] Temp file written successfully, size: 13914 bytes
+2025-12-16T19:06:06.547Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-001-tests.md.tmp.51844.1765911966541 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-001-tests.md
+2025-12-16T19:06:06.547Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-001-tests.md written atomically
+2025-12-16T19:06:06.558Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:06:06.558Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:06:06.558Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:06:10.244Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:07:17.864Z [WARN] Streaming stall detected: 66.3s gap between events (stall #1)
+2025-12-16T19:07:20.229Z [WARN] Streaming completed with 1 stall(s), total stall time: 66.3s
+2025-12-16T19:07:20.245Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:07:20.253Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:07:20.253Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:07:20.253Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:07:20.267Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:07:20.271Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T19:07:20.271Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-002-tests.md.tmp.51844.1765912040271
+2025-12-16T19:07:20.277Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.1ms)
+2025-12-16T19:07:20.277Z [DEBUG] Temp file written successfully, size: 15292 bytes
+2025-12-16T19:07:20.277Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-002-tests.md.tmp.51844.1765912040271 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-002-tests.md
+2025-12-16T19:07:20.277Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-002-tests.md written atomically
+2025-12-16T19:07:20.288Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:07:20.288Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:07:20.288Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:07:24.181Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:08:50.418Z [WARN] Streaming stall detected: 85.4s gap between events (stall #1)
+2025-12-16T19:08:52.035Z [WARN] Streaming completed with 1 stall(s), total stall time: 85.4s
+2025-12-16T19:08:52.053Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:08:52.060Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:08:52.060Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:08:52.060Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:08:52.073Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:08:52.076Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:08:52.077Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-003-tests.md.tmp.51844.1765912132077
+2025-12-16T19:08:52.083Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.1ms)
+2025-12-16T19:08:52.083Z [DEBUG] Temp file written successfully, size: 18789 bytes
+2025-12-16T19:08:52.083Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-003-tests.md.tmp.51844.1765912132077 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-003-tests.md
+2025-12-16T19:08:52.083Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-003-tests.md written atomically
+2025-12-16T19:08:52.094Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:08:52.094Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:08:52.094Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:08:54.692Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:10:14.153Z [WARN] Streaming stall detected: 78.0s gap between events (stall #1)
+2025-12-16T19:10:21.504Z [WARN] Streaming completed with 1 stall(s), total stall time: 78.0s
+2025-12-16T19:10:21.522Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:10:21.529Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:10:21.529Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:10:21.529Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:10:21.541Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:10:21.543Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T19:10:21.543Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-004-tests.md.tmp.51844.1765912221543
+2025-12-16T19:10:21.549Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.6ms)
+2025-12-16T19:10:21.549Z [DEBUG] Temp file written successfully, size: 17277 bytes
+2025-12-16T19:10:21.549Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-004-tests.md.tmp.51844.1765912221543 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-004-tests.md
+2025-12-16T19:10:21.549Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-004-tests.md written atomically
+2025-12-16T19:10:21.560Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:10:21.560Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:10:21.560Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:10:23.966Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:11:05.183Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T19:11:05.183Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 8,
+  "rejected_count": 0
+}
+2025-12-16T19:11:46.270Z [WARN] Streaming stall detected: 81.0s gap between events (stall #1)
+2025-12-16T19:11:47.865Z [WARN] Streaming completed with 1 stall(s), total stall time: 81.0s
+2025-12-16T19:11:47.879Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:11:47.886Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:11:47.886Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:11:47.886Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:11:47.901Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:11:47.903Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:11:47.903Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-005-tests.md.tmp.51844.1765912307903
+2025-12-16T19:11:47.910Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.3ms)
+2025-12-16T19:11:47.910Z [DEBUG] Temp file written successfully, size: 17458 bytes
+2025-12-16T19:11:47.910Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-005-tests.md.tmp.51844.1765912307903 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-005-tests.md
+2025-12-16T19:11:47.910Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-005-tests.md written atomically
+2025-12-16T19:11:47.920Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:11:47.920Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:11:47.920Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:11:50.903Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:13:14.404Z [WARN] Streaming stall detected: 82.9s gap between events (stall #1)
+2025-12-16T19:13:15.783Z [WARN] Streaming completed with 1 stall(s), total stall time: 82.9s
+2025-12-16T19:13:15.799Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:13:15.807Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:13:15.807Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:13:15.807Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:13:15.820Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:13:15.822Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T19:13:15.823Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-006-tests.md.tmp.51844.1765912395823
+2025-12-16T19:13:15.827Z [DEBUG] Temp file written successfully, size: 18008 bytes
+2025-12-16T19:13:15.827Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-006-tests.md.tmp.51844.1765912395823 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-006-tests.md
+2025-12-16T19:13:15.827Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/functional/F-006-tests.md written atomically
+2025-12-16T19:13:15.838Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:13:15.838Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:13:15.838Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:13:18.743Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:14:45.321Z [WARN] Streaming stall detected: 85.0s gap between events (stall #1)
+2025-12-16T19:14:48.177Z [WARN] Streaming completed with 1 stall(s), total stall time: 85.0s
+2025-12-16T19:14:48.193Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:14:48.199Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:14:48.199Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:14:48.199Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:14:48.214Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:14:48.219Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-16T19:14:48.219Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-001-tests.md.tmp.51844.1765912488219
+2025-12-16T19:14:48.223Z [DEBUG] Temp file written successfully, size: 17142 bytes
+2025-12-16T19:14:48.223Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-001-tests.md.tmp.51844.1765912488219 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-001-tests.md
+2025-12-16T19:14:48.223Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-001-tests.md written atomically
+2025-12-16T19:14:48.237Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:14:48.237Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:14:48.237Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:14:51.373Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:16:05.155Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T19:16:05.155Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 8,
+  "rejected_count": 0
+}
+2025-12-16T19:16:12.288Z [WARN] Streaming stall detected: 79.1s gap between events (stall #1)
+2025-12-16T19:16:13.793Z [WARN] Streaming completed with 1 stall(s), total stall time: 79.1s
+2025-12-16T19:16:13.810Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:16:13.818Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:16:13.818Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:16:13.818Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:16:13.829Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:16:13.831Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 2ms
+2025-12-16T19:16:13.831Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-002-tests.md.tmp.51844.1765912573831
+2025-12-16T19:16:13.835Z [DEBUG] Temp file written successfully, size: 17930 bytes
+2025-12-16T19:16:13.835Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-002-tests.md.tmp.51844.1765912573831 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-002-tests.md
+2025-12-16T19:16:13.835Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-002-tests.md written atomically
+2025-12-16T19:16:13.848Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:16:13.848Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:16:13.848Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:16:16.432Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:17:41.097Z [WARN] Streaming stall detected: 82.5s gap between events (stall #1)
+2025-12-16T19:17:42.081Z [WARN] Streaming completed with 1 stall(s), total stall time: 82.5s
+2025-12-16T19:17:42.098Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:17:42.105Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:17:42.105Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:17:42.105Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:17:42.120Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:17:42.123Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:17:42.123Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-003-tests.md.tmp.51844.1765912662123
+2025-12-16T19:17:42.128Z [DEBUG] Temp file written successfully, size: 17226 bytes
+2025-12-16T19:17:42.128Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-003-tests.md.tmp.51844.1765912662123 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-003-tests.md
+2025-12-16T19:17:42.128Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/non-functional/NFR-003-tests.md written atomically
+2025-12-16T19:17:42.140Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:17:42.140Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:17:42.140Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:17:44.680Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:19:00.741Z [WARN] Streaming stall detected: 74.2s gap between events (stall #1)
+2025-12-16T19:19:04.367Z [WARN] Streaming completed with 1 stall(s), total stall time: 74.2s
+2025-12-16T19:19:04.383Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:19:04.390Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:19:04.390Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:19:04.390Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:19:04.405Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:19:04.408Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:19:04.408Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-001-tests.md.tmp.51844.1765912744408
+2025-12-16T19:19:04.412Z [DEBUG] Temp file written successfully, size: 16971 bytes
+2025-12-16T19:19:04.412Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-001-tests.md.tmp.51844.1765912744408 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-001-tests.md
+2025-12-16T19:19:04.413Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-001-tests.md written atomically
+2025-12-16T19:19:04.423Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:19:04.423Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:19:04.423Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:19:08.460Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:20:27.599Z [WARN] Streaming stall detected: 77.1s gap between events (stall #1)
+2025-12-16T19:20:30.416Z [WARN] Streaming completed with 1 stall(s), total stall time: 77.1s
+2025-12-16T19:20:30.441Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:20:30.449Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:20:30.449Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:20:30.449Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:20:30.461Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:20:30.465Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T19:20:30.465Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-002-tests.md.tmp.51844.1765912830465
+2025-12-16T19:20:30.472Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.0ms)
+2025-12-16T19:20:30.472Z [DEBUG] Temp file written successfully, size: 17783 bytes
+2025-12-16T19:20:30.472Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-002-tests.md.tmp.51844.1765912830465 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-002-tests.md
+2025-12-16T19:20:30.472Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-002-tests.md written atomically
+2025-12-16T19:20:30.486Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:20:30.486Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:20:30.486Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:20:33.422Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:21:05.237Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T19:21:05.237Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 8,
+  "rejected_count": 0
+}
+2025-12-16T19:21:57.910Z [WARN] Streaming stall detected: 82.7s gap between events (stall #1)
+2025-12-16T19:21:59.203Z [WARN] Streaming completed with 1 stall(s), total stall time: 82.7s
+2025-12-16T19:21:59.230Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:21:59.236Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:21:59.236Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:21:59.236Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:21:59.254Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:21:59.258Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T19:21:59.258Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-003-tests.md.tmp.51844.1765912919258
+2025-12-16T19:21:59.264Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.4ms)
+2025-12-16T19:21:59.264Z [DEBUG] Temp file written successfully, size: 17230 bytes
+2025-12-16T19:21:59.264Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-003-tests.md.tmp.51844.1765912919258 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-003-tests.md
+2025-12-16T19:21:59.264Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/data/D-003-tests.md written atomically
+2025-12-16T19:21:59.278Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:21:59.278Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:21:59.278Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:22:02.432Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:23:50.508Z [WARN] Streaming stall detected: 106.6s gap between events (stall #1)
+2025-12-16T19:23:53.728Z [WARN] Streaming completed with 1 stall(s), total stall time: 106.6s
+2025-12-16T19:23:53.745Z [DEBUG] executePreToolHooks called for tool: Write
+2025-12-16T19:23:53.752Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2025-12-16T19:23:53.752Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:23:53.752Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:23:53.767Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:23:53.771Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 4ms
+2025-12-16T19:23:53.771Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/test-matrix.md.tmp.51844.1765913033771
+2025-12-16T19:23:53.775Z [DEBUG] Temp file written successfully, size: 19144 bytes
+2025-12-16T19:23:53.775Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/test-matrix.md.tmp.51844.1765913033771 to /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/test-matrix.md
+2025-12-16T19:23:53.775Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/docs/tests/test-matrix.md written atomically
+2025-12-16T19:23:53.787Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2025-12-16T19:23:53.787Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:23:53.787Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2025-12-16T19:23:56.468Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:23:58.339Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T19:23:58.346Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T19:23:58.346Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:23:58.346Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T19:23:58.428Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2025-12-16T19:23:58.428Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:23:58.428Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T19:23:59.667Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:01.616Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:20.120Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T19:24:20.120Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:20.120Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T19:24:20.131Z [DEBUG] Getting matching hook commands for PostToolUse with query: Task
+2025-12-16T19:24:20.131Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:20.131Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2025-12-16T19:24:20.143Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:24:20.143Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T19:24:20.144Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T19:24:20.144Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T19:24:20.144Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T19:24:20.150Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+2025-12-16T19:24:23.907Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:26.291Z [DEBUG] executePreToolHooks called for tool: Glob
+2025-12-16T19:24:26.293Z [DEBUG] Getting matching hook commands for PreToolUse with query: Glob
+2025-12-16T19:24:26.293Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:26.293Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T19:24:26.632Z [DEBUG] Getting matching hook commands for PostToolUse with query: Glob
+2025-12-16T19:24:26.632Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:26.632Z [DEBUG] Matched 0 unique hooks for query "Glob" (0 before deduplication)
+2025-12-16T19:24:26.640Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:24:26.640Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T19:24:26.640Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T19:24:26.640Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T19:24:26.640Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T19:24:26.645Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 5ms
+2025-12-16T19:24:28.782Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:31.308Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T19:24:31.308Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T19:24:31.313Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T19:24:31.313Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:31.313Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:31.313Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T19:24:31.313Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:31.313Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:31.343Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T19:24:31.343Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:31.343Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:31.343Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T19:24:31.343Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:31.343Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:31.353Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:24:31.353Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T19:24:31.353Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T19:24:31.353Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T19:24:31.353Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T19:24:31.359Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 6ms
+2025-12-16T19:24:34.386Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:38.013Z [DEBUG] executePreToolHooks called for tool: Read
+2025-12-16T19:24:38.018Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2025-12-16T19:24:38.018Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:38.018Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:38.040Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2025-12-16T19:24:38.040Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:38.040Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2025-12-16T19:24:38.049Z [DEBUG] MCP server "ide": Calling MCP tool: getDiagnostics
+2025-12-16T19:24:38.049Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T19:24:38.049Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T19:24:38.049Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T19:24:38.049Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T19:24:38.052Z [DEBUG] MCP server "ide": Tool 'getDiagnostics' completed successfully in 3ms
+2025-12-16T19:24:40.495Z [DEBUG] Stream started - received first chunk
+2025-12-16T19:24:54.454Z [DEBUG] Language not supported while highlighting code, falling back to markdown:
+2025-12-16T19:24:54.502Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2025-12-16T19:24:54.502Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:24:54.502Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T19:25:54.515Z [DEBUG] Getting matching hook commands for Notification with query: idle_prompt
+2025-12-16T19:25:54.515Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T19:25:54.515Z [DEBUG] Matched 0 unique hooks for query "idle_prompt" (0 before deduplication)
+2025-12-16T19:26:05.814Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T19:26:05.815Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 19,
+  "rejected_count": 0
+}

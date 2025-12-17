@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""
+Detection visualization script using OpenCV.
+Draws bounding boxes on an image at specified coordinates.
+"""
+
+import argparse
+import ast
+import cv2
+import sys
+
+
+def parse_coordinates(coord_str: str) -> list:
+    """Parse coordinate string into list of bounding boxes."""
+    try:
+        coords = ast.literal_eval(coord_str)
+        if not isinstance(coords, list):
+            raise ValueError("Coordinates must be a list")
+        return coords
+    except (ValueError, SyntaxError) as e:
+        raise argparse.ArgumentTypeError(f"Invalid coordinates format: {e}")
+
+
+def draw_boxes(image_path: str, coordinates: list, output_path: str = None):
+    """Draw bounding boxes on an image."""
+    # Load image
+    img = cv2.imread(image_path)
+    if img is None:
+        print(f"Error: Could not load image '{image_path}'")
+        sys.exit(1)
+
+    # Draw each bounding box
+    for i, box in enumerate(coordinates):
+        if len(box) != 4:
+            print(f"Warning: Skipping invalid box {i}: {box} (expected 4 values)")
+            continue
+
+        x1, y1, x2, y2 = box
+        # Draw rectangle (green color, 2px thickness)
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        # Add label
+        cv2.putText(img, f"{i}", (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    # Determine output path
+    if output_path is None:
+        output_path = image_path.rsplit('.', 1)[0] + '_detected.jpg'
+
+    # Save result
+    cv2.imwrite(output_path, img)
+    print(f"Output saved to: {output_path}")
+
+    return output_path
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Draw bounding boxes on an image")
+    parser.add_argument("--image", required=True, help="Path to the input image")
+    parser.add_argument(
+        "--coordinates",
+        required=True,
+        type=parse_coordinates,
+        help="Bounding boxes as [[x1,y1,x2,y2], ...] format"
+    )
+    parser.add_argument("--output", help="Output image path (optional)")
+
+    args = parser.parse_args()
+
+    draw_boxes(args.image, args.coordinates, args.output)
+
+
+if __name__ == "__main__":
+    main()

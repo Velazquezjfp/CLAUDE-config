@@ -1,0 +1,92 @@
+"""
+LC_02: Maximum Daily Hours in 14-Hour Span
+Legal Constraint: 9 hours in any 14-hour span (hard)
+Company Policy: 8.5 hours (soft, dynamic)
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_14h_span_constraints(model: cp_model.CpModel,
+                             x_vars: dict,
+                             data,
+                             constraints) -> tuple:
+    """
+    Add maximum hours in 14h span constraints to the model
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        Tuple of (violations, metadata):
+            - violations: List of violation variables (for soft constraints)
+            - metadata: List of dicts with violation context for analysis
+    """
+    MAX_HOURS_LEGAL = constraints.get_legal_value('max_hours_in_14h')
+    MAX_HOURS_COMPANY = constraints.get_company_value('max_hours_in_14h')
+
+    violations = []
+    violation_metadata = []  # Track metadata for analysis
+
+    print(f"\n[LC_02] Adding 14h span constraints...")
+    print(f"  Legal limit: {MAX_HOURS_LEGAL}h in 14h (hard)")
+    print(f"  Company limit: {MAX_HOURS_COMPANY}h in 14h (soft)")
+
+    for resource_id in data.resource_ids:
+        for window_idx in range(len(data.windows_14h)):
+            # Calculate total hours for this resource in this 14h window
+            window_hours_terms = []
+
+            for request_id in data.request_ids:
+                hours_in_window = data.get_task_hours_in_window(request_id, window_idx)
+                if hours_in_window > 0:
+                    window_hours_terms.append(
+                        x_vars[(resource_id, request_id)] * hours_in_window
+                    )
+
+            if not window_hours_terms:
+                continue  # No tasks in this window
+
+            window_sum = sum(window_hours_terms)
+
+            # Hard constraint: legal limit
+            model.Add(window_sum <= int(MAX_HOURS_LEGAL * SCALING_FACTOR))
+
+            # Soft constraint: company policy
+            if USE_SOFT_CONSTRAINTS:
+                violation = model.NewIntVar(
+                    0, 50,
+                    f'violation_14h_{resource_id}_win{window_idx}'
+                )
+                model.Add(
+                    window_sum <= int(MAX_HOURS_COMPANY * SCALING_FACTOR) + violation
+                )
+                violations.append(violation)
+
+                # Store metadata for analysis
+                assignments_in_window = [
+                    req_id for req_id in data.request_ids
+                    if data.get_task_hours_in_14h_window(req_id, window_idx) > 0
+                ]
+
+                violation_metadata.append({
+                    'constraint_id': 'LC_02',
+                    'constraint_name': 'max_hours_in_14h',
+                    'violation_var_name': violation.Name(),
+                    'resource_id': resource_id,
+                    'window_idx': window_idx,
+                    'window': data.windows_14h[window_idx] if window_idx < len(data.windows_14h) else f"Window_{window_idx}",
+                    'legal_limit': MAX_HOURS_LEGAL,
+                    'company_limit': MAX_HOURS_COMPANY,
+                    'assignments_in_window': assignments_in_window
+                })
+
+    print(f"  Added constraints for {len(data.resource_ids)} resources × {len(data.windows_14h)} windows")
+    print(f"  Soft violations tracked: {len(violations)}")
+
+    return violations, violation_metadata  # Return tuple

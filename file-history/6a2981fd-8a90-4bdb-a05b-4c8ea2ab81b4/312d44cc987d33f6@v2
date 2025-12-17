@@ -1,0 +1,334 @@
+# Field Usage Inventory Report
+## CFF Workforce Planning Solver v2 - Database Field Validation
+
+**Generated:** 2025-12-11
+**Purpose:** Document all fields being accessed from demands and resources tables to ensure compatibility with database schema changes
+
+---
+
+## Executive Summary
+
+This report documents all database fields accessed by the solver_v2 codebase. After the database schema changes (addition of region_code, division_code, location_code columns and renaming of endpoints), this inventory ensures all field references are valid.
+
+### Status: ⚠️ **CRITICAL BUGS FOUND**
+- **solver/model.py** contains outdated field names that will cause runtime errors
+- All preprocessing and constraints have been updated correctly
+- API client correctly maps qualification strings to arrays
+
+---
+
+## 1. DEMANDS TABLE FIELDS
+
+### 1.1 Core Fields (Used)
+
+| Field Name | Data Type | Usage Location | Purpose |
+|------------|-----------|----------------|---------|
+| `id` | string | All modules | Primary identifier for demands/requests |
+| `shift_start_time` | datetime (ISO 8601) | preprocessing/, constraints/, analysis/ | Task start time |
+| `shift_finish_time` | datetime (ISO 8601) | preprocessing/, constraints/, analysis/ | Task end time |
+| `required_qualifications` | string (CSV) → array | constraints/cp_02_*, analysis/ | Qualification requirements (parsed from comma-separated string) |
+
+### 1.2 Fields NOT Currently Used (But Available)
+
+The following fields exist in the demands table but are NOT accessed by the solver:
+
+- `demand_type`
+- `priority`
+- `assignment_status`
+- `notes`
+- `region_code` ⭐ NEW
+- `division_code` ⭐ NEW
+- `location_code` ⭐ NEW
+- `created_at`
+- `updated_at`
+
+---
+
+## 2. RESOURCES TABLE FIELDS
+
+### 2.1 Core Fields (Used)
+
+| Field Name | Data Type | Usage Location | Purpose |
+|------------|-----------|----------------|---------|
+| `resource_id` | string | All modules | Primary identifier for resources |
+| `qualifications` | array | constraints/cp_02_*, analysis/ | Resource qualifications for matching |
+| `type` | string | preprocessing/, analysis/ (display only) | Resource type (display) |
+| `contract` | string | preprocessing/, analysis/ (display only) | Contract type (display) |
+
+### 2.2 Fields NOT Currently Used (But Available)
+
+- `name`
+- `email`
+- `phone`
+- `status`
+- `region_code` ⭐ NEW
+- `division_code` ⭐ NEW
+- `location_code` ⭐ NEW
+- `created_at`
+- `updated_at`
+
+---
+
+## 3. OTHER TABLES ACCESSED
+
+### 3.1 Absences Table
+- **Endpoint:** `/api/v1/absences/`
+- **Used by:** data fetching (TEST_MODE)
+- **Fields accessed:** All fields returned by API (not explicitly validated)
+- **Status:** ✅ Working
+
+### 3.2 Legal Constraints Table
+- **Endpoint:** `/api/v1/legal-constraints/`
+- **Used by:** constraint value fetching
+- **Fields accessed:**
+  - `constraint_name`
+  - `parameter_value`
+- **Status:** ✅ Working
+
+### 3.3 Company Policy Constraints Table
+- **Endpoint:** `/api/v1/company-policy-constraints/`
+- **Used by:** constraint value fetching
+- **Fields accessed:**
+  - `policy_name`
+  - `planning_mode`
+  - `parameter_value`
+- **Status:** ✅ Working
+
+---
+
+## 4. DETAILED FIELD USAGE BY MODULE
+
+### 4.1 API Client (`api/client.py`)
+
+**Demands Fields:**
+- `data['data']` - iteration over demand array
+- `required_qualifications` - parsed from CSV string to array (lines 62-66)
+
+**Resources Fields:**
+- `data['data']` - iteration over resource array
+- `resource_id` - extracted for absence fetching (line 269)
+
+**Status:** ✅ All field references valid
+
+---
+
+### 4.2 Preprocessing (`preprocessing/time_windows.py`)
+
+**Demands Fields:**
+```python
+Line 21: datetime.fromisoformat(r['shift_start_time'])
+Line 22: datetime.fromisoformat(r['shift_finish_time'])
+Line 132-133: task['shift_start_time'], task['shift_finish_time']
+Line 155-156: task['shift_start_time'], task['shift_finish_time']
+Line 181-182: task['shift_start_time'], task['shift_finish_time']
+Line 203-204: task['shift_start_time'], task['shift_finish_time']
+Line 224-225: task_i_end, task_j_start (as parameters)
+Line 238-239: task['shift_start_time'], task['shift_finish_time']
+```
+
+**Status:** ✅ All references updated correctly (10 occurrences fixed)
+
+---
+
+### 4.3 Preprocessing (`preprocessing/data_processor.py`)
+
+**Demands Fields:**
+```python
+Line 66: req['id']
+Line 117: req['shift_start_time']
+Line 118: req['shift_finish_time']
+```
+
+**Resources Fields:**
+```python
+Line 94: res['resource_id']
+Line 124: res.get('type', 'Unknown')
+Line 125: res.get('contract', 'Unknown')
+```
+
+**Status:** ✅ All field references valid
+
+---
+
+### 4.4 Constraints (`constraints/cp_02_qualification_matching.py`)
+
+**Demands Fields:**
+```python
+Line 52: request['id']
+Line 53: request.get('required_qualifications', [])
+Line 78: request['id']
+Line 127: request['id']
+Line 128: request.get('required_qualifications', [])
+```
+
+**Resources Fields:**
+```python
+Line 48: resource['resource_id']
+Line 49: resource.get('qualifications', [])
+Line 75: resource['resource_id']
+Line 135: res['resource_id']
+Line 148: resource['resource_id']
+Line 149: resource.get('qualifications', [])
+```
+
+**Status:** ✅ All field references valid
+
+---
+
+### 4.5 Constraints (Other LC_* files)
+
+**Demands Fields:**
+- All constraints access `request_id` via data.request_ids
+- Time-based constraints use preprocessed time windows (not direct field access)
+
+**Resources Fields:**
+- All constraints access `resource_id` via data.resource_ids
+
+**Status:** ✅ All field references valid
+
+---
+
+### 4.6 ⚠️ **CRITICAL BUG:** Solver Model (`solver/model.py`)
+
+**Line 274:** ❌ **BUG**
+```python
+req = next(r for r in self.data.requests if r['request_id'] == request_id)
+```
+**Should be:** `r['id']`
+
+**Line 280:** ❌ **BUG**
+```python
+'start': req['start_datetime'],
+```
+**Should be:** `req['shift_start_time']`
+
+**Line 281:** ❌ **BUG**
+```python
+'end': req['end_datetime'],
+```
+**Should be:** `req['shift_finish_time']`
+
+**Line 287:** ❌ **BUG**
+```python
+print(f"    {req['start_datetime']} to {req['end_datetime']} ({duration:.2f}h)")
+```
+**Should be:** `{req['shift_start_time']} to {req['shift_finish_time']}`
+
+**Impact:** HIGH - These bugs will cause KeyError exceptions when solver tries to extract solution
+**Status:** ❌ **MUST BE FIXED IMMEDIATELY**
+
+---
+
+### 4.7 Analysis (`analysis/objective_analyzers/coverage_analyzer.py`)
+
+**Demands Fields:**
+```python
+Line 32: a['id'] (from assignments)
+Line 35: req['id']
+Line 55: r['id']
+Line 74: request['id']
+Line 75: request.get('required_qualifications', [])
+Line 82: resource.get('qualifications', [])
+Line 90: resource['resource_id']
+```
+
+**Status:** ✅ All field references valid
+
+---
+
+### 4.8 Analysis (Constraint Analyzers)
+
+All constraint analyzers (`lc_01_analyzer.py`, `lc_03_analyzer.py`, etc.) use metadata from violation tracking and assignments, not direct database field access.
+
+**Status:** ✅ Working correctly
+
+---
+
+## 5. NEW DATABASE COLUMNS (NOT YET USED)
+
+The following columns were added to the database but are **NOT currently accessed** by the solver:
+
+### Demands Table:
+- `region_code`
+- `division_code`
+- `location_code`
+
+### Resources Table:
+- `region_code`
+- `division_code`
+- `location_code`
+
+### Future Implementation Notes:
+These fields are planned for use in filtering logic (see `config.py` lines 39-40):
+```python
+FILTER_BY_REGION = False         # Filter by region_code
+REGION_CODE = None               # e.g., "RWT"
+```
+
+**Status:** ⏳ Available but not yet implemented
+
+---
+
+## 6. FIELD MAPPING DECISIONS
+
+### 6.1 Qualification Field Parsing
+**Issue:** API returns `required_qualifications` as comma-separated string
+**Solution:** Parse to array in `api/client.py` (lines 62-66)
+**Status:** ✅ Implemented and working
+
+### 6.2 Field Name Consistency
+**Decision:** Use database field names directly (no mapping layer)
+**Implementation:** Updated all references throughout codebase
+**Status:** ✅ Complete (except solver/model.py bugs)
+
+---
+
+## 7. VALIDATION SUMMARY
+
+### ✅ Modules with Valid Field References:
+- `api/client.py` - All correct
+- `preprocessing/time_windows.py` - All updated (10 fixes)
+- `preprocessing/data_processor.py` - All correct
+- `constraints/cp_02_qualification_matching.py` - All correct
+- `constraints/lc_*.py` - All correct
+- `analysis/objective_analyzers/coverage_analyzer.py` - All correct
+- `analysis/constraint_analyzers/*.py` - All correct
+
+### ❌ Modules with Bugs:
+- **`solver/model.py`** - 4 critical bugs (lines 274, 280, 281, 287)
+
+---
+
+## 8. REQUIRED IMMEDIATE ACTIONS
+
+### Priority 1 (CRITICAL - Blocks Solver):
+1. Fix `solver/model.py` line 274: `r['request_id']` → `r['id']`
+2. Fix `solver/model.py` line 280: `req['start_datetime']` → `req['shift_start_time']`
+3. Fix `solver/model.py` line 281: `req['end_datetime']` → `req['shift_finish_time']`
+4. Fix `solver/model.py` line 287: Update print statement field names
+
+### Priority 2 (Future Enhancements):
+1. Implement region/division/location filtering in `config.py`
+2. Add date range filtering logic
+3. Consider using assignment_status for filtering open demands
+
+---
+
+## 9. TESTING RECOMMENDATIONS
+
+After fixing `solver/model.py` bugs:
+
+1. Run `python main.py` with TEST_MODE=True
+2. Verify solution extraction works without KeyError
+3. Check that assignments show correct datetime values
+4. Validate that all constraints report correctly
+
+---
+
+## CHANGELOG
+
+**2025-12-11:**
+- Initial field inventory created
+- Identified critical bugs in solver/model.py
+- Documented all field usage across codebase
+- Validated API integration after endpoint rename

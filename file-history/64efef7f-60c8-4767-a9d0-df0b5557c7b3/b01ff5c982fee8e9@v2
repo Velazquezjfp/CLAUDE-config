@@ -1,0 +1,56 @@
+"""
+Maximize Coverage Objective
+Maximize the number of requests covered with qualified resources
+
+This objective encourages the solver to cover as many requests as possible
+when full coverage is not feasible due to qualification requirements or
+resource constraints.
+
+Priority: Highest (weight: 10000)
+- More important than workload balancing
+- Ensures maximum service delivery
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+
+
+def add_maximize_coverage_objective(model: cp_model.CpModel,
+                                      coverage_vars: dict,
+                                      data) -> list:
+    """
+    Add maximize coverage objective to the model
+
+    Args:
+        model: CP-SAT model
+        coverage_vars: Dict of {request_id: BoolVar} tracking which requests are covered
+        data: PreprocessedData object
+
+    Returns:
+        List with single objective variable (total coverage)
+    """
+    print(f"\n[MAXIMIZE COVERAGE] Adding coverage maximization objective...")
+
+    # Weight for coverage maximization (very high priority)
+    # Negative weight because we MAXIMIZE (solver minimizes by default)
+    COVERAGE_WEIGHT = -10000
+
+    print(f"  Weight: {abs(COVERAGE_WEIGHT)} (negative = maximize)")
+    print(f"  Strategy: Maximize number of covered requests")
+
+    # Calculate total coverage
+    total_requests = len(data.request_ids)
+    total_coverage = sum(coverage_vars.values())
+
+    print(f"  Total requests: {total_requests}")
+    print(f"  Coverage variable tracks: sum of {len(coverage_vars)} request coverage indicators")
+
+    # Return the coverage term for objective function
+    # Multiply by negative weight to maximize
+    objective_term = COVERAGE_WEIGHT * total_coverage
+
+    print(f"  Objective contribution: {COVERAGE_WEIGHT} × total_coverage")
+    print(f"  Effect: Solver will prioritize covering as many requests as possible")
+
+    # Return as list with single element (the weighted coverage term)
+    return [objective_term]

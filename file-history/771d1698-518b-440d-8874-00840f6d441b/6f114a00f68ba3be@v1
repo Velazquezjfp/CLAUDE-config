@@ -1,0 +1,56 @@
+# CFF Personnel Planning API - Production Environment Configuration
+# =============================================================================
+# This API uses a split database architecture:
+# - Internal DB: Local PostgreSQL container for parameters (constraints, weights)
+# - External DB: Remote PostgreSQL server for production data
+# =============================================================================
+
+# =============================================================================
+# Internal Database Configuration (Local Container - Parameters)
+# Tables: legal_constraints, company_policy_constraints, objective_weights,
+#         utilization_targets, audit_log
+# =============================================================================
+INTERNAL_DB_HOST=postgres
+INTERNAL_DB_PORT=5432
+INTERNAL_DB_NAME=cff_planning
+INTERNAL_DB_USER=cff_app_user
+INTERNAL_DB_PASSWORD=changeme
+
+# Legacy variables (for postgres container itself)
+DB_NAME=cff_planning
+DB_USER=cff_app_user
+DB_PASSWORD=changeme
+DB_PORT=5433
+
+# =============================================================================
+# External Database Configuration (Remote Server - Production Data)
+# Tables: resources, demands, assignments, absences, regions, teams, groups,
+#         locations, qualifications, divisions, demands_list, operation_points,
+#         resource_category
+# =============================================================================
+EXTERNAL_DB_HOST=150.241.245.65
+EXTERNAL_DB_PORT=5432
+EXTERNAL_DB_NAME=cff
+EXTERNAL_DB_USER=cffdev
+EXTERNAL_DB_PASSWORD=cffdev
+
+# =============================================================================
+# Database Connection Pool (shared for both databases)
+# =============================================================================
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=10
+DB_POOL_TIMEOUT=30
+
+# =============================================================================
+# API Configuration
+# =============================================================================
+API_PORT=8002
+LOG_LEVEL=INFO
+
+# CORS Origins - Add your frontend URLs here
+CORS_ORIGINS='["*"]'
+
+# =============================================================================
+# Storage Configuration (Internal DB only)
+# =============================================================================
+POSTGRES_DATA_PATH=./data/postgres

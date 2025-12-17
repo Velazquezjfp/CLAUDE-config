@@ -1,0 +1,10 @@
+"""
+Analysis Module for CFF Workforce Planning Solver
+
+This module provides comprehensive post-solve analysis including:
+- Constraint violation analysis
+- Objective performance analysis
+- Training and hiring recommendations
+- Resource capacity analysis
+- Weight adjustment suggestions
+"""

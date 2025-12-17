@@ -1,0 +1,341 @@
+"""
+Assignments router - Full CRUD for assignments table with pagination
+Connects to EXTERNAL database (data tables)
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional
+import math
+import json
+
+from database import get_external_db
+from models import PaginatedResponse
+from config import settings
+
+
+router = APIRouter(prefix="/assignments", tags=["Assignments"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_assignments(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    bsa_id: Optional[str] = Query(None, description="Filter by BSA ID"),
+    request_id: Optional[str] = Query(None, description="Filter by request ID"),
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all assignments with pagination and optional filters.
+    Data comes from external database.
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause dynamically
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if resource_id:
+            where_clauses.append("resource_id = :resource_id")
+            params["resource_id"] = resource_id
+
+        if bsa_id:
+            where_clauses.append("bsa_id = :bsa_id")
+            params["bsa_id"] = bsa_id
+
+        if request_id:
+            where_clauses.append("request_id = :request_id")
+            params["request_id"] = request_id
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM assignments {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch assignments - updated columns for external DB
+        query = text(f"""
+            SELECT
+                id, resource_id, request_id, bsa_id,
+                calendar_start, calendar_end, calendar_type, enterprise,
+                meeting_location, meeting_time, family_name, responsible,
+                required_skills, notes, resource_category,
+                billing_number, tour_manager, work_site, rdm_comments,
+                created_at, created_by, updated_at, updated_by
+            FROM assignments
+            {where_sql}
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        assignments = [dict(row._mapping) for row in rows]
+
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=assignments,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching assignments: {str(e)}",
+        )
+
+
+@router.get("/{assignment_id}")
+async def get_assignment(
+    assignment_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single assignment by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                id, resource_id, request_id, bsa_id,
+                calendar_start, calendar_end, calendar_type, enterprise,
+                meeting_location, meeting_time, family_name, responsible,
+                required_skills, notes, resource_category,
+                billing_number, tour_manager, work_site, rdm_comments,
+                created_at, created_by, updated_at, updated_by
+            FROM assignments
+            WHERE id = :assignment_id
+        """)
+
+        result = await db.execute(query, {"assignment_id": assignment_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching assignment: {str(e)}",
+        )
+
+
+@router.get("/resource/{resource_id}")
+async def get_assignments_by_resource(
+    resource_id: str,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get all assignments for a specific resource.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT
+                id, resource_id, request_id, bsa_id,
+                calendar_start, calendar_end, calendar_type, enterprise,
+                meeting_location, meeting_time, family_name, responsible,
+                required_skills, notes, resource_category,
+                billing_number, tour_manager, work_site, rdm_comments,
+                created_at, created_by, updated_at, updated_by
+            FROM assignments
+            WHERE resource_id = :resource_id
+            ORDER BY calendar_start DESC
+        """)
+
+        result = await db.execute(query, {"resource_id": resource_id})
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching assignments by resource: {str(e)}",
+        )
+
+
+@router.post("/", status_code=201)
+async def create_assignment(
+    assignment: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new assignment in external database.
+    """
+    try:
+        insert_query = text("""
+            INSERT INTO assignments (
+                resource_id, request_id, bsa_id,
+                calendar_start, calendar_end, calendar_type, enterprise,
+                meeting_location, meeting_time, family_name, responsible,
+                required_skills, notes, resource_category,
+                billing_number, tour_manager, work_site, rdm_comments,
+                created_by
+            ) VALUES (
+                :resource_id, :request_id, :bsa_id,
+                :calendar_start, :calendar_end, :calendar_type, :enterprise,
+                :meeting_location, :meeting_time, :family_name, :responsible,
+                :required_skills, :notes, :resource_category,
+                :billing_number, :tour_manager, :work_site, :rdm_comments,
+                :created_by
+            )
+            RETURNING *
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "resource_id": assignment.get("resource_id"),
+                "request_id": assignment.get("request_id"),
+                "bsa_id": assignment.get("bsa_id"),
+                "calendar_start": assignment.get("calendar_start"),
+                "calendar_end": assignment.get("calendar_end"),
+                "calendar_type": assignment.get("calendar_type"),
+                "enterprise": assignment.get("enterprise", "SBB/CFF/FFS"),
+                "meeting_location": assignment.get("meeting_location"),
+                "meeting_time": assignment.get("meeting_time"),
+                "family_name": assignment.get("family_name"),
+                "responsible": assignment.get("responsible"),
+                "required_skills": assignment.get("required_skills"),
+                "notes": assignment.get("notes"),
+                "resource_category": assignment.get("resource_category"),
+                "billing_number": assignment.get("billing_number"),
+                "tour_manager": assignment.get("tour_manager"),
+                "work_site": assignment.get("work_site"),
+                "rdm_comments": assignment.get("rdm_comments"),
+                "created_by": assignment.get("created_by", "api"),
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating assignment: {str(e)}",
+        )
+
+
+@router.put("/{assignment_id}")
+async def update_assignment(
+    assignment_id: int,
+    assignment: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing assignment in external database.
+    """
+    try:
+        # Check if assignment exists
+        check_query = text("SELECT id FROM assignments WHERE id = :assignment_id")
+        check_result = await db.execute(check_query, {"assignment_id": assignment_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        # Build UPDATE clause dynamically
+        update_fields = []
+        params = {"assignment_id": assignment_id}
+
+        # Simple fields
+        simple_fields = [
+            "resource_id", "request_id", "bsa_id",
+            "calendar_start", "calendar_end", "calendar_type", "enterprise",
+            "meeting_location", "meeting_time", "family_name", "responsible",
+            "required_skills", "notes", "resource_category",
+            "billing_number", "tour_manager", "work_site", "rdm_comments"
+        ]
+
+        for field in simple_fields:
+            if field in assignment and assignment[field] is not None:
+                update_fields.append(f"{field} = :{field}")
+                params[field] = assignment[field]
+
+        # Add updated_by
+        update_fields.append("updated_by = :updated_by")
+        params["updated_by"] = assignment.get("updated_by", "api")
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=400,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE assignments
+            SET {', '.join(update_fields)}
+            WHERE id = :assignment_id
+            RETURNING *
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating assignment: {str(e)}",
+        )
+
+
+@router.delete("/{assignment_id}", status_code=204)
+async def delete_assignment(
+    assignment_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete an assignment from external database.
+    """
+    try:
+        # Check if assignment exists
+        check_query = text("SELECT id FROM assignments WHERE id = :assignment_id")
+        check_result = await db.execute(check_query, {"assignment_id": assignment_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        delete_query = text("DELETE FROM assignments WHERE id = :assignment_id")
+        await db.execute(delete_query, {"assignment_id": assignment_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting assignment: {str(e)}",
+        )

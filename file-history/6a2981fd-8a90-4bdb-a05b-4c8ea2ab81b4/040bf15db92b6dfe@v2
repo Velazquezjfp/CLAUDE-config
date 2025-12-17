@@ -1,0 +1,244 @@
+"""
+Time Window Generation for Constraint Preprocessing
+Generates weeks, days, and sliding windows from planning period
+"""
+from datetime import datetime, timedelta, time, timezone
+from typing import List, Tuple
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR
+
+
+def determine_planning_period(requests: List[dict]) -> Tuple[datetime, datetime]:
+    """
+    Determine planning period from requests
+    Returns: (planning_start, planning_end) - timezone-aware UTC
+    """
+    if not requests:
+        raise ValueError("No requests provided")
+
+    # Find earliest start and latest end (these are timezone-aware from API)
+    starts = [datetime.fromisoformat(r['shift_start_time']) for r in requests]
+    ends = [datetime.fromisoformat(r['shift_finish_time']) for r in requests]
+
+    planning_start = min(starts)
+    planning_end = max(ends)
+
+    # Extend to week boundaries (ISO 8601: Monday-Sunday)
+    # Move start back to Monday 00:00 (preserve timezone)
+    days_since_monday = planning_start.weekday()
+    week_start = planning_start.date() - timedelta(days=days_since_monday)
+    planning_start = datetime.combine(week_start, time(0, 0), tzinfo=timezone.utc)
+
+    # Move end forward to Sunday 23:59 (preserve timezone)
+    days_until_sunday = 6 - planning_end.weekday()
+    week_end = planning_end.date() + timedelta(days=days_until_sunday)
+    planning_end = datetime.combine(week_end, time(23, 59, 59), tzinfo=timezone.utc)
+
+    return planning_start, planning_end
+
+
+def generate_weeks(planning_start: datetime,
+                   planning_end: datetime) -> List[Tuple[datetime, datetime]]:
+    """
+    Generate ISO 8601 weeks (Monday 00:00 to Sunday 23:59:59)
+    Returns: List of (week_start, week_end) tuples
+    """
+    weeks = []
+    current = planning_start
+
+    while current <= planning_end:
+        # Week starts Monday 00:00
+        week_start = current
+        # Week ends Sunday 23:59:59
+        week_end = current + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+        weeks.append((week_start, week_end))
+        # Move to next Monday
+        current = week_end + timedelta(seconds=1)
+
+    return weeks
+
+
+def generate_calendar_days(planning_start: datetime,
+                           planning_end: datetime) -> List[datetime]:
+    """
+    Generate all calendar days in planning period
+    Returns: List of datetime objects (one per day at 00:00 UTC)
+    """
+    days = []
+    current = planning_start.date()
+    end_date = planning_end.date()
+
+    while current <= end_date:
+        days.append(datetime.combine(current, time(0, 0), tzinfo=timezone.utc))
+        current += timedelta(days=1)
+
+    return days
+
+
+def generate_14h_windows(planning_start: datetime,
+                         planning_end: datetime,
+                         slide_hours: int = 1) -> List[Tuple[datetime, datetime]]:
+    """
+    Generate sliding 14-hour windows for LC_02 constraint
+    Windows slide by slide_hours (default 1 hour)
+    Returns: List of (window_start, window_end) tuples
+    """
+    windows = []
+    current = planning_start
+
+    # Generate windows until the last possible 14h window
+    while current + timedelta(hours=14) <= planning_end:
+        window_start = current
+        window_end = current + timedelta(hours=14)
+        windows.append((window_start, window_end))
+
+        # Slide forward
+        current += timedelta(hours=slide_hours)
+
+    return windows
+
+
+def calculate_task_overlap_with_period(task_start: datetime,
+                                       task_end: datetime,
+                                       period_start: datetime,
+                                       period_end: datetime) -> float:
+    """
+    Calculate how many hours a task overlaps with a time period
+    Returns: hours of overlap (float)
+    """
+    # Find the actual overlap
+    overlap_start = max(task_start, period_start)
+    overlap_end = min(task_end, period_end)
+
+    # No overlap
+    if overlap_start >= overlap_end:
+        return 0.0
+
+    # Calculate hours
+    overlap_seconds = (overlap_end - overlap_start).total_seconds()
+    overlap_hours = overlap_seconds / 3600
+
+    return overlap_hours
+
+
+def allocate_task_to_weeks(task: dict,
+                           weeks: List[Tuple[datetime, datetime]]) -> dict:
+    """
+    Allocate task hours to weeks (handles cross-week tasks)
+    Returns: {week_index: hours_scaled}
+    """
+    task_start = datetime.fromisoformat(task['shift_start_time'])
+    task_end = datetime.fromisoformat(task['shift_finish_time'])
+
+    allocation = {}
+
+    for week_idx, (week_start, week_end) in enumerate(weeks):
+        hours = calculate_task_overlap_with_period(
+            task_start, task_end, week_start, week_end
+        )
+
+        if hours > 0:
+            # Scale to integer
+            allocation[week_idx] = int(hours * SCALING_FACTOR)
+
+    return allocation
+
+
+def allocate_task_to_days(task: dict,
+                          days: List[datetime]) -> dict:
+    """
+    Allocate task hours to calendar days (handles midnight-crossing tasks)
+    Returns: {day_index: hours_scaled}
+    """
+    task_start = datetime.fromisoformat(task['shift_start_time'])
+    task_end = datetime.fromisoformat(task['shift_finish_time'])
+
+    allocation = {}
+
+    for day_idx, day_start in enumerate(days):
+        # Day runs from 00:00 to 23:59:59
+        day_end = day_start + timedelta(hours=23, minutes=59, seconds=59)
+
+        hours = calculate_task_overlap_with_period(
+            task_start, task_end, day_start, day_end
+        )
+
+        if hours > 0:
+            # Scale to integer
+            allocation[day_idx] = int(hours * SCALING_FACTOR)
+
+    return allocation
+
+
+def allocate_task_to_14h_windows(task: dict,
+                                 windows: List[Tuple[datetime, datetime]]) -> dict:
+    """
+    Allocate task hours to 14-hour windows
+    Returns: {window_index: hours_scaled}
+    """
+    task_start = datetime.fromisoformat(task['shift_start_time'])
+    task_end = datetime.fromisoformat(task['shift_finish_time'])
+
+    allocation = {}
+
+    for window_idx, (window_start, window_end) in enumerate(windows):
+        hours = calculate_task_overlap_with_period(
+            task_start, task_end, window_start, window_end
+        )
+
+        if hours > 0:
+            # Scale to integer
+            allocation[window_idx] = int(hours * SCALING_FACTOR)
+
+    return allocation
+
+
+def identify_night_shift(task: dict) -> bool:
+    """
+    Check if task overlaps significantly with night period (23:00-06:00)
+    Returns: True if >= 2 hours overlap with night period
+    """
+    task_start = datetime.fromisoformat(task['shift_start_time'])
+    task_end = datetime.fromisoformat(task['shift_finish_time'])
+
+    night_hours = [23, 0, 1, 2, 3, 4, 5]  # 23:00-06:00
+    overlap_count = 0
+
+    current = task_start
+    while current < task_end:
+        if current.hour in night_hours:
+            overlap_count += 1
+        current += timedelta(hours=1)
+
+    # Significant overlap = at least 2 hours
+    return overlap_count >= 2
+
+
+def calculate_rest_period(task_i_end: str, task_j_start: str) -> float:
+    """
+    Calculate rest period between two consecutive tasks
+    Returns: rest hours (float)
+    """
+    end = datetime.fromisoformat(task_i_end)
+    start = datetime.fromisoformat(task_j_start)
+
+    rest_seconds = (start - end).total_seconds()
+    rest_hours = rest_seconds / 3600
+
+    return max(0.0, rest_hours)  # Ensure non-negative
+
+
+def calculate_task_duration(task: dict) -> float:
+    """
+    Calculate task duration in hours
+    Returns: duration (float)
+    """
+    start = datetime.fromisoformat(task['shift_start_time'])
+    end = datetime.fromisoformat(task['shift_finish_time'])
+
+    duration_seconds = (end - start).total_seconds()
+    duration_hours = duration_seconds / 3600
+
+    return duration_hours

@@ -1,0 +1,92 @@
+"""
+LC_03: Maximum Absolute Daily Hours
+Legal Constraint: 12.5 hours per calendar day (hard)
+Company Policy: 10 hours (soft, dynamic)
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_absolute_daily_constraints(model: cp_model.CpModel,
+                                   x_vars: dict,
+                                   data,
+                                   constraints) -> tuple:
+    """
+    Add maximum absolute daily hours constraints to the model
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        Tuple of (violations, metadata):
+            - violations: List of violation variables (for soft constraints)
+            - metadata: List of dicts with violation context for analysis
+    """
+    MAX_HOURS_LEGAL = constraints.get_legal_value('max_hours_per_day')
+    MAX_HOURS_COMPANY = constraints.get_company_value('max_hours_per_day')
+
+    violations = []
+    violation_metadata = []  # Track metadata for analysis
+
+    print(f"\n[LC_03] Adding absolute daily hours constraints...")
+    print(f"  Legal limit: {MAX_HOURS_LEGAL}h per day (hard)")
+    print(f"  Company limit: {MAX_HOURS_COMPANY}h per day (soft)")
+
+    for resource_id in data.resource_ids:
+        for day_idx in range(len(data.days)):
+            # Calculate total hours for this resource on this calendar day
+            daily_hours_terms = []
+
+            for request_id in data.request_ids:
+                hours_in_day = data.get_task_hours_in_day(request_id, day_idx)
+                if hours_in_day > 0:
+                    daily_hours_terms.append(
+                        x_vars[(resource_id, request_id)] * hours_in_day
+                    )
+
+            if not daily_hours_terms:
+                continue  # No tasks on this day
+
+            daily_sum = sum(daily_hours_terms)
+
+            # Hard constraint: legal limit
+            model.Add(daily_sum <= int(MAX_HOURS_LEGAL * SCALING_FACTOR))
+
+            # Soft constraint: company policy
+            if USE_SOFT_CONSTRAINTS:
+                violation = model.NewIntVar(
+                    0, 250,
+                    f'violation_daily_{resource_id}_d{day_idx}'
+                )
+                model.Add(
+                    daily_sum <= int(MAX_HOURS_COMPANY * SCALING_FACTOR) + violation
+                )
+                violations.append(violation)
+
+                # Store metadata for analysis
+                assignments_in_day = [
+                    req_id for req_id in data.request_ids
+                    if data.get_task_hours_in_day(req_id, day_idx) > 0
+                ]
+
+                violation_metadata.append({
+                    'constraint_id': 'LC_03',
+                    'constraint_name': 'max_absolute_daily_hours',
+                    'violation_var_name': violation.Name(),
+                    'resource_id': resource_id,
+                    'day_idx': day_idx,
+                    'day': data.days[day_idx] if day_idx < len(data.days) else f"Day_{day_idx}",
+                    'legal_limit': MAX_HOURS_LEGAL,
+                    'company_limit': MAX_HOURS_COMPANY,
+                    'assignments_in_day': assignments_in_day
+                })
+
+    print(f"  Added constraints for {len(data.resource_ids)} resources × {len(data.days)} days")
+    print(f"  Soft violations tracked: {len(violations)}")
+
+    return violations, violation_metadata  # Return tuple

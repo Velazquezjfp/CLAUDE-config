@@ -1,0 +1,125 @@
+"""
+Test script for LC_02 analyzer
+"""
+import sys
+import json
+
+from analysis.constraint_analyzers.lc_02_analyzer import LC_02_Analyzer
+from preprocessing.data_processor import preprocess_data
+from preprocessing.constraints import ConstraintValues
+
+# Mock solution object
+class MockSolution:
+    def __init__(self):
+        # Load from saved solution
+        with open('solver_v2/output/solution.json', 'r') as f:
+            data = json.load(f)
+            self.assignments = data.get('assignments', [])
+            self.status = data.get('status')
+            self.objective_value = data.get('objective_value')
+
+def test_lc02_analyzer():
+    print("=" * 60)
+    print("TESTING LC_02 ANALYZER")
+    print("=" * 60)
+
+    # Initialize components
+    print("\n1. Initializing constraint values...")
+    constraints = ConstraintValues(planning_mode="Balanced")
+
+    print("\n2. Loading solution...")
+    solution = MockSolution()
+    print(f"   Loaded {len(solution.assignments)} assignments")
+
+    # Create minimal mock data object
+    print("\n3. Creating mock data object...")
+    from datetime import datetime, timedelta
+
+    class MockData:
+        def __init__(self):
+            self.request_ids = ['REQ-828796-41', 'REQ-828796-42']
+            self.resource_ids = ['RES-INT-0003', 'RES-INT-0004', 'RES-INT-0005']
+
+            # Create mock 14h windows
+            start_date = datetime(2024, 11, 18, 0, 0)
+            self.windows_14h = []
+            for i in range(10):  # 10 windows
+                window_start = start_date + timedelta(hours=i * 14)
+                window_end = window_start + timedelta(hours=14)
+                self.windows_14h.append({
+                    'start': window_start,
+                    'end': window_end
+                })
+
+            self.requests = [
+                {'request_id': 'REQ-828796-41', 'required_qualifications': []},
+                {'request_id': 'REQ-828796-42', 'required_qualifications': []}
+            ]
+
+            self.resources = [
+                {'resource_id': 'RES-INT-0003', 'qualifications': []},
+                {'resource_id': 'RES-INT-0004', 'qualifications': []},
+                {'resource_id': 'RES-INT-0005', 'qualifications': []}
+            ]
+
+        def get_task_hours_in_window(self, request_id, window_idx):
+            # Mock: return 9 hours for first window, 0 for others
+            if window_idx == 0 and request_id == 'REQ-828796-41':
+                return 9.0
+            return 0.0
+
+    data = MockData()
+    print(f"   Created mock data with {len(data.windows_14h)} windows")
+
+    # Create mock violation metadata (simulating what solver would provide)
+    print("\n4. Creating mock violation metadata...")
+    violation_metadata = [
+        {
+            'constraint_id': 'LC_02',
+            'constraint_name': 'max_hours_in_14h',
+            'violation_var_name': 'violation_14h_RES-INT-0003_win0',
+            'resource_id': 'RES-INT-0003',
+            'window_idx': 0,
+            'window': data.windows_14h[0],
+            'legal_limit': 9.0,
+            'company_limit': 8.5,
+            'assignments_in_window': ['REQ-828796-41']
+        }
+    ]
+    print(f"   Created {len(violation_metadata)} mock violations")
+
+    print("\n5. Running LC_02 analyzer...")
+    analyzer = LC_02_Analyzer()
+    result = analyzer.analyze_violations(solution, data, constraints, violation_metadata)
+
+    print("\n6. ANALYSIS RESULTS:")
+    print("-" * 60)
+    print(json.dumps(result, indent=2, default=str))
+
+    # Test check_would_violate
+    print("\n7. Testing check_would_violate method...")
+    if solution.assignments:
+        # Add mock constraint values for this test
+        constraints.legal['max_hours_in_14h'] = 9.0
+        constraints.company['max_hours_in_14h'] = 8.5
+
+        test_assignment = solution.assignments[0]
+        existing = []
+        try:
+            check_result = analyzer.check_would_violate(test_assignment, existing, data, constraints)
+            print("\n   Check result:")
+            print(json.dumps(check_result, indent=2, default=str))
+        except Exception as e:
+            print(f"\n   Skipping check_would_violate test: {e}")
+
+    # Test weight suggestions
+    print("\n8. Testing weight adjustment suggestions...")
+    weight_suggestions = analyzer.suggest_weight_adjustment(result)
+    print(json.dumps(weight_suggestions, indent=2))
+
+    print("\n" + "=" * 60)
+    print("✓ LC_02 ANALYZER TEST COMPLETE")
+    print("=" * 60)
+
+if __name__ == "__main__":
+    test_lc02_analyzer()

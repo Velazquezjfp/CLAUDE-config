@@ -1,0 +1,73 @@
+"""
+Utility script to check API connectivity and data availability
+"""
+import sys
+sys.path.append('..')
+from api.client import CFFApiClient
+
+
+def check_api_connection():
+    """Check if API is accessible and data is available"""
+    print("\n" + "="*60)
+    print("CFF API CONNECTION CHECK")
+    print("="*60)
+
+    try:
+        client = CFFApiClient()
+        print("\n[✓] API client created successfully")
+
+        # Test requests endpoint
+        print("\n[TEST] Fetching requests...")
+        requests = client.get_requests(limit=5)
+        print(f"[✓] Fetched {len(requests['data'])} requests (limited to 5)")
+        if requests['data']:
+            print(f"    Sample request: {requests['data'][0]['request_id']}")
+
+        # Test resources endpoint
+        print("\n[TEST] Fetching resources...")
+        resources = client.get_resources(limit=5)
+        print(f"[✓] Fetched {len(resources['data'])} resources (limited to 5)")
+        if resources['data']:
+            print(f"    Sample resource: {resources['data'][0]['resource_id']}")
+
+        # Test legal constraints endpoint
+        print("\n[TEST] Fetching legal constraints...")
+        legal = client.get_all_legal_constraints()
+        print(f"[✓] Fetched {len(legal)} legal constraints")
+        constraint_names = [c['constraint_name'] for c in legal]
+        print(f"    Available: {', '.join(constraint_names[:5])}...")
+
+        # Test company policies endpoint
+        print("\n[TEST] Fetching company policies...")
+        policies = client.get_all_company_policies()
+        print(f"[✓] Fetched {len(policies)} company policies")
+        policy_names = [p['policy_name'] for p in policies]
+        print(f"    Available: {', '.join(policy_names[:5])}...")
+
+        # Test specific constraint values
+        print("\n[TEST] Fetching specific constraints...")
+        max_weekly = client.get_legal_constraint("max_weekly_hours")
+        print(f"[✓] max_weekly_hours: {max_weekly['parameter_value']['value']}h")
+
+        company_weekly = client.get_company_policy("Preferred Max Weekly Hours")
+        print(f"[✓] Preferred Max Weekly Hours: {company_weekly['parameter_value']['value']}h")
+
+        print("\n" + "="*60)
+        print("✅ ALL CHECKS PASSED - API is ready!")
+        print("="*60 + "\n")
+
+        return True
+
+    except Exception as e:
+        print(f"\n❌ ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("\n" + "="*60)
+        print("❌ API CHECK FAILED")
+        print("="*60 + "\n")
+        return False
+
+
+if __name__ == "__main__":
+    success = check_api_connection()
+    sys.exit(0 if success else 1)

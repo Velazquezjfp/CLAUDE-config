@@ -1,25 +1,29 @@
 {
   "language": "typescript",
-  "version": "1.0",
-  "last_updated": "2025-01-15",
+  "version": "2.0",
+  "last_updated": "2025-12-16",
+  "description": "TypeScript grammar patterns for code graph extraction",
   "patterns": {
     "imports": [
       "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
       "^\\s*import\\s+['\"]([^'\"]+)['\"]",
       "^\\s*import\\s+type\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
-      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)"
+      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)",
+      "^\\s*export\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]"
     ],
     "exports": [
-      "^\\s*export\\s+(?:default\\s+)?(?:class|function|const|let|var|interface|type|enum)\\s+(\\w+)",
+      "^\\s*export\\s+default\\s+(function|const|class|interface|type)\\s+(\\w+)",
+      "^\\s*export\\s+default\\s+(\\w+)",
+      "^\\s*export\\s+(function|const|let|var|class|interface|type|enum)\\s+(\\w+)",
+      "^\\s*export\\s+\\{([^}]+)\\}",
       "^\\s*export\\s+\\{[^}]*\\}\\s+from\\s+['\"]([^'\"]+)['\"]"
     ],
     "functions": [
       "function\\s+(\\w+)\\s*(?:<[^>]+>)?\\s*\\(",
-      "(?:const|let|var)\\s+(\\w+)\\s*:\\s*(?:<[^>]*>)?\\s*\\([^)]*\\)\\s*=>",
-      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
-      "(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*=>",
-      "(\\w+)\\s*:\\s*(?:async\\s+)?function\\s*\\(",
-      "async\\s+function\\s+(\\w+)\\s*\\("
+      "(?:export\\s+)?(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?\\([^)]*\\)\\s*(?::\\s*[^=]+)?\\s*=>",
+      "(?:export\\s+)?(?:const|let|var)\\s+(\\w+)\\s*=\\s*(?:async\\s+)?function",
+      "async\\s+function\\s+(\\w+)\\s*\\(",
+      "(?:public|private|protected)?\\s*(\\w+)\\s*\\([^)]*\\)\\s*(?::\\s*\\w+)?\\s*\\{"
     ],
     "classes": [
       "class\\s+(\\w+)(?:<[^>]+>)?(?:\\s+extends\\s+\\w+(?:<[^>]+>)?)?(?:\\s+implements\\s+[\\w,\\s<>]+)?\\s*\\{"
@@ -30,11 +34,20 @@
     "types": [
       "type\\s+(\\w+)(?:<[^>]+>)?\\s*="
     ],
+    "enums": [
+      "enum\\s+(\\w+)\\s*\\{"
+    ],
+    "constants": [
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=",
+      "(?:export\\s+)?const\\s+(\\w+)\\s*:\\s*[^=]+\\s*="
+    ],
     "api_endpoints": [
-      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\(['\"]([^'\"]+)['\"]",
+      "(?:app|router|express)\\.(get|post|put|delete|patch|use)\\s*\\(['\"]([^'\"]+)['\"]",
       "@(Get|Post|Put|Delete|Patch)\\(['\"]([^'\"]+)['\"]\\)",
       "@Controller\\(['\"]([^'\"]+)['\"]\\)",
-      "\\.route\\(['\"]([^'\"]+)['\"]\\)"
+      "\\.route\\(['\"]([^'\"]+)['\"]\\)",
+      "fetch\\(['\"]([^'\"]+)['\"]",
+      "axios\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]"
     ],
     "database_queries": [
       "\\.find\\(\\{",
@@ -43,17 +56,14 @@
       "\\.create\\(",
       "\\.update\\(",
       "\\.delete\\(",
+      "\\.query\\(",
       "SELECT\\s+.*\\s+FROM\\s+(\\w+)",
       "INSERT\\s+INTO\\s+(\\w+)",
       "UPDATE\\s+(\\w+)\\s+SET",
       "DELETE\\s+FROM\\s+(\\w+)",
-      "@Entity\\(['\"]([^'\"]+)['\"]\\)",
-      "getRepository\\((\\w+)\\)"
-    ],
-    "react_components": [
-      "(?:function|const)\\s+(\\w+)\\s*(?::|=)\\s*(?:React\\.)?FC(?:<[^>]*>)?",
-      "(?:function|const)\\s+(\\w+)\\s*=?\\s*\\([^)]*\\)\\s*:\\s*JSX\\.Element",
-      "class\\s+(\\w+)\\s+extends\\s+(?:React\\.)?(?:Component|PureComponent)(?:<[^>]*>)?"
+      "@Entity\\(['\"]?([^'\"\\)]+)['\"]?\\)",
+      "getRepository\\((\\w+)\\)",
+      "prisma\\.(\\w+)\\."
     ],
     "decorators": [
       "@(\\w+)(?:\\([^)]*\\))?"

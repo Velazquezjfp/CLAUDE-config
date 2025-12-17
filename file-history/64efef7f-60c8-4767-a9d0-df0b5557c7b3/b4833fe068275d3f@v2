@@ -1,0 +1,38 @@
+# Analysis System Tests
+
+This folder contains unit tests for individual constraint and objective analyzers.
+
+## Purpose
+
+These tests verify that each analyzer correctly:
+- Analyzes violations from solver metadata
+- Classifies severity (LOW/MEDIUM/HIGH)
+- Generates fix suggestions
+- Provides weight adjustment recommendations
+- Checks if simulated assignments would violate constraints
+
+## Test Files
+
+- `test_lc02_analyzer.py` - Tests LC_02 (14-hour span) analyzer
+- `test_lc03_analyzer.py` - Tests LC_03 (absolute daily hours) analyzer
+- `test_cp02_analyzer.py` - Tests CP_02 (qualification matching) analyzer
+
+## Running Tests
+
+```bash
+# From solver_v2/ directory
+python analysis/tests/test_lc02_analyzer.py
+python analysis/tests/test_lc03_analyzer.py
+python analysis/tests/test_cp02_analyzer.py
+```
+
+## When to Use
+
+These tests are useful when:
+1. **Creating a new analyzer** - Use as templates to verify basic functionality
+2. **Debugging analyzer behavior** - Test in isolation without running full solver
+3. **Verifying changes** - Ensure updates don't break existing analyzers
+
+## Note
+
+These are **development tests**, not production unit tests. The full analysis system is tested through `main.py` integration testing.

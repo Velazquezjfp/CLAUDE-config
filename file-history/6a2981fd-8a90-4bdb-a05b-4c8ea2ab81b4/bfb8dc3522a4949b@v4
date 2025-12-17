@@ -1,0 +1,631 @@
+# CFF Personnel Planning API - Router Summary
+
+## Overview
+This document provides a comprehensive overview of all FastAPI routers created for the CFF Personnel Planning API.
+
+**Total Routers:** 18
+**Total Lines of Code:** ~6,800
+**Architecture:** Async SQLAlchemy with raw SQL queries
+**Database:** Dual PostgreSQL (External + Internal)
+
+---
+
+## External Database Routers (14 routers)
+
+### 1. **resources.py** - Resources Management
+**Endpoint Base:** `/api/v1/resources`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `resource_id` (VARCHAR)
+
+#### Endpoints:
+- `GET /` - List all resources with pagination
+  - Query params: `page`, `per_page`, `type`, `status`, `region_id`, `team_id`
+  - Returns: PaginatedResponse with resources
+
+- `GET /{resource_id}` - Get single resource by ID
+  - Returns: Resource object
+
+- `POST /` - Create new resource
+  - Body: ResourceCreate
+  - Returns: Created Resource (201)
+
+- `PUT /{resource_id}` - Update existing resource
+  - Body: ResourceUpdate
+  - Returns: Updated Resource
+
+- `DELETE /{resource_id}` - Delete resource
+  - Returns: 204 No Content
+
+#### Special Features:
+- Validates hierarchical constraints (region -> team -> sub_group)
+- Handles JSONB fields (qualifications, availability_pattern)
+- Filters by type (Internal/External), status, region, team
+
+---
+
+### 2. **regions.py** - Regions Management
+**Endpoint Base:** `/api/v1/regions`
+**Status:** Full CRUD
+**Primary Key:** `region_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all regions (ordered by name)
+- `GET /{region_id}` - Get single region
+- `POST /` - Create new region
+- `PUT /{region_id}` - Update region
+- `DELETE /{region_id}` - Delete region
+
+#### Validation:
+- Unique region_name constraint
+- Cascade considerations for dependent teams
+
+---
+
+### 3. **teams.py** - Teams Management
+**Endpoint Base:** `/api/v1/teams`
+**Status:** Full CRUD
+**Primary Key:** `team_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all teams
+  - Query param: `region_id` (filter by region)
+- `GET /{team_id}` - Get single team
+- `POST /` - Create new team
+- `PUT /{team_id}` - Update team
+- `DELETE /{team_id}` - Delete team
+
+#### Validation:
+- Unique team_name constraint
+- Cascade to groups
+
+---
+
+### 4. **groups.py** - Groups Management
+**Endpoint Base:** `/api/v1/groups`
+**Status:** Full CRUD
+**Primary Key:** `group_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all groups
+  - Query param: `team_id` (filter by team)
+- `GET /{group_id}` - Get single group
+- `POST /` - Create new group
+- `PUT /{group_id}` - Update group
+- `DELETE /{group_id}` - Delete group
+
+#### Validation:
+- Unique constraint: (group_name, team_id)
+- Color code support (Orange, Jaune, Blanc, etc.)
+
+---
+
+### 5. **divisions.py** - Divisions Management
+**Endpoint Base:** `/api/v1/divisions`
+**Status:** Full CRUD
+**Primary Key:** `division_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all divisions (ordered by name)
+- `GET /{division_id}` - Get single division
+- `POST /` - Create new division
+- `PUT /{division_id}` - Update division
+- `DELETE /{division_id}` - Delete division
+
+#### Validation:
+- Unique division_name constraint
+- Optional division_code field
+
+---
+
+### 6. **absences.py** - Absences Management
+**Endpoint Base:** `/api/v1/absences`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `absence_id` (VARCHAR)
+
+#### Endpoints:
+- `GET /` - List all absences with pagination
+  - Query params: `page`, `per_page`, `resource_id`, `type`, `status`, `start_date`, `end_date`
+  - Returns: PaginatedResponse
+
+- `GET /{absence_id}` - Get single absence
+- `POST /` - Create new absence
+- `PUT /{absence_id}` - Update absence
+- `DELETE /{absence_id}` - Delete absence
+
+#### Special Features:
+- Validates resource_id exists
+- Date range validation (end_date >= start_date)
+- Auto-calculated `number_of_days` (database-side)
+- Supports absence types: Holiday, Training, Sick_Leave, Personal, Conference, Assignment_Blocked
+- Status tracking: En_attente, Approuvé, Rejeté, Annulé
+
+---
+
+### 7. **demands.py** - Demands Management
+**Endpoint Base:** `/api/v1/demands`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all demands with pagination
+  - Query params: `page`, `per_page`, `bsa_id`, `status`, `priority`, `branch`, `locked`
+  - Returns: PaginatedResponse
+
+- `GET /{demand_id}` - Get single demand
+- `POST /` - Create new demand
+- `PUT /{demand_id}` - Update demand
+- `DELETE /{demand_id}` - Delete demand
+
+#### Special Features:
+- Handles JSONB fields (required_qualifications, assigned_resources)
+- DateTime validation (end_datetime >= start_datetime)
+- BSA-ID tracking (can have duplicates for multiple resource needs)
+- Priority levels: low, medium, high, critical
+- Status tracking: pending, pre-reserved, reserved, confirmed, external_confirmed, completed, cancelled
+- Shift types: morning, afternoon, night, day, full_day
+
+---
+
+### 8. **demands_list.py** - Historical Demands (READ-ONLY)
+**Endpoint Base:** `/api/v1/demands-list`
+**Status:** Read-Only with Pagination
+**Primary Key:** `id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all historical demand records with pagination
+  - Query params: `page`, `per_page`, `bsa_id`, `branch`, `status_filter`, `technical_service`, `mandate_type`, `start_date`, `end_date`
+  - Returns: PaginatedResponse
+
+- `GET /{demand_id}` - Get single historical demand record
+- `GET /bsa/{bsa_id}` - Get all records for a specific BSA ID
+
+#### Special Features:
+- Historical BSA demand records imported from external systems
+- 38 columns including mandate info, duty stations, technical positions
+- No POST/PUT/DELETE operations (read-only archive)
+
+---
+
+### 9. **assignments.py** - Assignments Management
+**Endpoint Base:** `/api/v1/assignments`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all assignments with pagination
+  - Query params: `page`, `per_page`, `resource_id`, `demand_id`, `status`, `type`, `start_date`, `end_date`
+  - Returns: PaginatedResponse
+
+- `GET /{assignment_id}` - Get single assignment
+- `POST /` - Create new assignment
+- `PUT /{assignment_id}` - Update assignment
+- `DELETE /{assignment_id}` - Delete assignment
+
+#### Special Features:
+- Validates resource_id exists
+- Date range validation
+- Supports Internal and External assignments (different field sets)
+- Links resources to demands (BSA-ID)
+- Cost tracking (estimated_cost_chf)
+- Status: Confirmé, Provisoire, Pré-réservé, Externe confirmé, Cancelled
+- Auto-creates Assignment_Blocked absences (via database trigger)
+
+---
+
+### 10. **locations.py** - Locations Management
+**Endpoint Base:** `/api/v1/locations`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `location_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all locations with pagination
+  - Query params: `page`, `per_page`, `canton`, `location_name` (partial search)
+  - Returns: PaginatedResponse
+
+- `GET /{location_id}` - Get single location
+- `POST /` - Create new location
+- `PUT /{location_id}` - Update location
+- `DELETE /{location_id}` - Delete location
+
+#### Special Features:
+- Unique location_name constraint
+- Canton filtering
+- Latitude/Longitude coordinates support
+- Location code support
+- Used for distance calculations and travel time
+
+---
+
+### 11. **qualifications.py** - Qualifications Management
+**Endpoint Base:** `/api/v1/qualifications`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `qualification_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all qualifications with pagination
+  - Query params: `page`, `per_page`, `category`, `certification_required`, `qualification_name`
+  - Returns: PaginatedResponse
+
+- `GET /{qualification_id}` - Get single qualification
+- `POST /` - Create new qualification
+- `PUT /{qualification_id}` - Update qualification
+- `DELETE /{qualification_id}` - Delete qualification
+
+#### Special Features:
+- Category-based filtering
+- Certification requirement flag
+- Validity period tracking (validity_months)
+- Partial name search (ILIKE)
+- Master reference list for required_qualifications in resources and demands
+
+---
+
+### 12. **resource_categories.py** - Resource Categories (Lookup Table)
+**Endpoint Base:** `/api/v1/resource-categories`
+**Status:** Full CRUD
+**Primary Key:** `id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all resource categories (ordered by name)
+- `GET /{category_id}` - Get single resource category
+- `POST /` - Create new resource category
+- `PUT /{category_id}` - Update resource category
+- `DELETE /{category_id}` - Delete resource category
+
+#### Special Features:
+- Simple lookup table (id, name only)
+- Unique name constraint
+- Contains 19 predefined categories (Monteur VF, Chef/fe de team, etc.)
+
+---
+
+### 13. **operation_points.py** - Operation Points (Railway Stations)
+**Endpoint Base:** `/api/v1/operation-points`
+**Status:** Full CRUD with Pagination
+**Primary Key:** `operation_points_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all operation points with pagination
+  - Query params: `page`, `per_page`, `line_number`, `station_code`, `team_id`
+  - Returns: PaginatedResponse
+
+- `GET /{operation_points_id}` - Get single operation point
+- `GET /line/{line_number}` - Get all operation points for a specific line (ordered by km)
+- `POST /` - Create new operation point
+- `PUT /{operation_points_id}` - Update operation point
+- `DELETE /{operation_points_id}` - Delete operation point
+
+#### Special Features:
+- Railway operational points with station info
+- Line number and kilometer markers
+- Station code support
+- Team assignment capability
+- 761 records covering Swiss railway network
+
+---
+
+### 14. **bsa_details.py** - BSA Details (Consolidated View)
+**Endpoint Base:** `/api/v1/bsa-details`
+**Status:** Read-Only (uses PostgreSQL function)
+**Database Function:** `get_bsa_details_json()`
+
+#### Endpoints:
+- `GET /{bsa_id}` - Get consolidated BSA details by ID
+  - Calls `get_bsa_details_json()` PostgreSQL function
+  - Returns: Consolidated JSON with data from demands_list, demands, and assignments
+
+- `GET /` - Batch lookup for multiple BSA IDs
+  - Query param: `bsa_ids` (comma-separated list, max 100)
+  - Returns: Array of BSA detail objects
+
+- `GET /status/{status_filter}` - Get BSA IDs by status with pagination
+  - Path param: `status_filter` (ASSIGNED, OPEN, UNKNOWN)
+  - Query params: `page`, `per_page`
+  - Returns: Paginated list of BSA details
+
+#### Response Fields:
+- `bsa_id`: The BSA identifier
+- `status`: ASSIGNED (has assignments), OPEN (demands only), UNKNOWN (demands_list only)
+- `team_id`: Team reference
+- `demand_shift`, `assignment_calendar_type`: Shift information
+- `first_shift_start`, `last_shift_end`: Date range from demands_list
+- `demand_shift_start_time`, `demand_shift_finish_time`: Times from demands
+- `assignment_calendar_start`, `assignment_calendar_end`: Times from assignments
+- `duty_station_from_code`, `demand_start_location_code`: Location codes
+- `mandate_owner`, `demand_responsible_person`, `assignment_responsible`: Responsible persons
+- `personnel`: Personnel count from demands
+- `required_qualifications`: From demands (JSONB array)
+- `required_skills`: From assignments
+- `demand_resource_category`, `assignment_resource_category`: Resource categories
+
+#### Special Features:
+- Consolidates data from three tables in a single call
+- Uses PostgreSQL function for optimal performance
+- Status derived from table presence (ASSIGNED/OPEN/UNKNOWN)
+- Batch lookup supports up to 100 BSA IDs per request
+
+---
+
+## Internal Database Routers (4 routers)
+
+### 15. **constraints.py** - Legal Constraints (READ-ONLY)
+**Endpoint Base:** `/api/v1/legal-constraints`
+**Status:** READ-ONLY (No POST/PUT/DELETE)
+**Primary Key:** `constraint_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all legal constraints
+  - Query param: `category` (filter by category)
+  - Returns: List of LegalConstraint
+
+- `GET /{constraint_id}` - Get single legal constraint
+
+- `GET /categories/list` - Get distinct constraint categories
+
+- `POST /` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be created via API"
+
+- `PUT /{constraint_id}` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be modified via API"
+
+- `DELETE /{constraint_id}` - **NOT ALLOWED** (405 Method Not Allowed)
+  - Returns error: "Legal constraints cannot be deleted via API"
+
+#### Special Features:
+- Immutable constraints defined by Swiss LDT law
+- JSONB parameter_value field
+- Categories: work_time, rest_periods, work_schedule, night_work, sunday_work
+- Legal reference tracking
+- Database-enforced immutability (immutable = TRUE constraint)
+
+---
+
+### 16. **company_policies.py** - Company Policy Constraints
+**Endpoint Base:** `/api/v1/company-policy-constraints`
+**Status:** GET and PUT only (no POST/DELETE)
+**Primary Key:** `constraint_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all company policy constraints with pagination
+  - Query params: `page`, `per_page`, `constraint_category`, `active`
+  - Returns: List of CompanyPolicyConstraint
+
+- `GET /{constraint_id}` - Get single company policy constraint
+- `GET /categories/list` - List distinct constraint categories
+- `PUT /{constraint_id}` - Update company policy constraint (partial update)
+
+#### Special Features:
+- CFF-specific policy overrides for legal constraints
+- Links to legal_constraint_id for reference
+- Validity period tracking (valid_from, valid_to)
+- Approval tracking (approved_by)
+- Active flag for enabling/disabling policies
+- Categories: work_time, rest_periods, work_schedule, etc.
+
+---
+
+### 17. **objective_weights.py** - Objective Weights
+**Endpoint Base:** `/api/v1/objective-weights`
+**Status:** GET and PUT only (no POST/DELETE)
+**Primary Key:** `weight_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all objective weights with pagination
+  - Query params: `page`, `per_page`, `objective_category`, `active`
+  - Returns: List of ObjectiveWeight
+
+- `GET /{weight_id}` - Get single objective weight
+- `GET /categories/list` - List distinct objective categories
+- `PUT /{weight_id}` - Update objective weight (partial update)
+
+#### Special Features:
+- Multi-objective optimization configuration
+- Weight coefficients for balancing optimization goals
+- Min/max bounds for weight values
+- Categories: cost, utilization, fairness, compliance, etc.
+- Active flag for enabling/disabling objectives
+- Used by optimization engine for priority tuning
+
+---
+
+### 18. **utilization_targets.py** - Utilization Targets
+**Endpoint Base:** `/api/v1/utilization-targets`
+**Status:** GET and PUT only (no POST/DELETE)
+**Primary Key:** `target_id` (SERIAL)
+
+#### Endpoints:
+- `GET /` - List all utilization targets with pagination
+  - Query params: `page`, `per_page`, `resource_type`, `target_type`, `scope`, `active`
+  - Returns: List of UtilizationTarget
+
+- `GET /{target_id}` - Get single utilization target
+- `GET /types/list` - List distinct target types
+- `PUT /{target_id}` - Update utilization target (partial update)
+
+#### Special Features:
+- Resource efficiency goal configuration
+- Scope levels: global, region, team
+- Target types: min_utilization, max_utilization, target_hours, etc.
+- Internal vs External resource type filtering
+- Validity period tracking (valid_from, valid_to)
+- Active flag for enabling/disabling targets
+
+---
+
+## Common Features Across All Routers
+
+### Error Handling
+All routers implement consistent error handling:
+- **404 Not Found:** When resource doesn't exist
+- **400 Bad Request:** Invalid data, constraint violations
+- **405 Method Not Allowed:** For read-only endpoints (constraints)
+- **500 Internal Server Error:** Database or unexpected errors
+
+### Database Patterns
+- **Async Sessions:** All use `AsyncSession = Depends(get_db)` or `Depends(get_external_db)`
+- **Raw SQL:** All queries use SQLAlchemy `text()` for parameterized SQL
+- **Transactions:** Automatic commit on success, rollback on error
+- **Connection Pooling:** Configured in database.py
+- **Dual Database:** External DB for data, Internal DB for parameters
+
+### Response Models
+- All use Pydantic models from `models.py`
+- Consistent naming: `{Entity}`, `{Entity}Create`, `{Entity}Update`
+- PaginatedResponse wrapper for list endpoints
+
+### Pagination (where applicable)
+- Default: 50 items per page
+- Max: 200 items per page
+- Returns: `total`, `page`, `per_page`, `total_pages`, `data`
+
+---
+
+## Integration with main.py
+
+All routers are imported and registered in `main.py`:
+
+```python
+from routers import (
+    resources_router,
+    regions_router,
+    teams_router,
+    groups_router,
+    divisions_router,
+    absences_router,
+    demands_router,
+    demands_list_router,
+    assignments_router,
+    locations_router,
+    qualifications_router,
+    resource_categories_router,
+    operation_points_router,
+    constraints_router,
+    company_policies_router,
+    objective_weights_router,
+    utilization_targets_router,
+    bsa_details_router,
+)
+
+# All routers mounted at /api/v1
+app.include_router(resources_router, prefix=f"{settings.API_V1_STR}")
+# ... etc
+```
+
+---
+
+## API Endpoints Summary
+
+### External Database - Full CRUD with Pagination (7 routers):
+1. `/api/v1/resources` - Resources
+2. `/api/v1/absences` - Absences
+3. `/api/v1/demands` - Demands
+4. `/api/v1/assignments` - Assignments
+5. `/api/v1/locations` - Locations
+6. `/api/v1/qualifications` - Qualifications
+7. `/api/v1/operation-points` - Operation Points
+
+### External Database - Full CRUD without Pagination (5 routers):
+8. `/api/v1/regions` - Regions (small dataset)
+9. `/api/v1/teams` - Teams
+10. `/api/v1/groups` - Groups
+11. `/api/v1/divisions` - Divisions
+12. `/api/v1/resource-categories` - Resource Categories
+
+### External Database - Read-Only (2 routers):
+13. `/api/v1/demands-list` - Historical Demands List
+14. `/api/v1/bsa-details` - Consolidated BSA Details (uses DB function)
+
+### Internal Database - Read-Only (1 router):
+15. `/api/v1/legal-constraints` - Legal Constraints
+
+### Internal Database - GET/PUT Only (3 routers):
+16. `/api/v1/company-policy-constraints` - Company Policy Constraints
+17. `/api/v1/objective-weights` - Objective Weights
+18. `/api/v1/utilization-targets` - Utilization Targets
+
+---
+
+## Testing the API
+
+### Start the server:
+```bash
+cd /home/javiervel/clients/CFF/mock_data_v2/database_application_v2/api
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Access documentation:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **OpenAPI JSON:** http://localhost:8000/api/v1/openapi.json
+
+### Health check:
+```bash
+curl http://localhost:8000/health
+```
+
+---
+
+## Dependencies
+
+### Required imports for all routers:
+```python
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+from database import get_db  # or get_external_db
+from models import [appropriate models]
+```
+
+### Additional imports where needed:
+- `datetime` - For date/time handling
+- `math` - For pagination calculations
+- `json` - For JSONB field serialization
+
+---
+
+## File Structure
+```
+database_application_v2/api/routers/
+├── __init__.py              # Exports all routers
+├── resources.py             # Resources CRUD
+├── regions.py               # Regions CRUD
+├── teams.py                 # Teams CRUD
+├── groups.py                # Groups CRUD
+├── divisions.py             # Divisions CRUD
+├── absences.py              # Absences CRUD
+├── demands.py               # Demands CRUD
+├── demands_list.py          # Demands List (read-only)
+├── assignments.py           # Assignments CRUD
+├── locations.py             # Locations CRUD
+├── qualifications.py        # Qualifications CRUD
+├── bsa_details.py           # BSA Details (consolidated view)
+├── resource_categories.py   # Resource Categories CRUD
+├── operation_points.py      # Operation Points CRUD
+├── constraints.py           # Legal Constraints (read-only)
+├── company_policies.py      # Company Policy Constraints (GET/PUT)
+├── objective_weights.py     # Objective Weights (GET/PUT)
+├── utilization_targets.py   # Utilization Targets (GET/PUT)
+└── ROUTER_SUMMARY.md        # This file
+```
+
+---
+
+## Best Practices Implemented
+
+1. **Separation of Concerns:** Each router handles one table/entity
+2. **Consistent Patterns:** All routers follow same structure
+3. **Input Validation:** Pydantic models validate all inputs
+4. **Atomic Transactions:** Database sessions handle commits/rollbacks
+5. **Parameterized Queries:** All SQL uses bound parameters (SQL injection safe)
+6. **Error Messages:** Clear, actionable error messages
+7. **HTTP Status Codes:** Proper use of 200, 201, 204, 400, 404, 405, 500
+8. **Documentation:** OpenAPI/Swagger auto-generated from code
+9. **Type Safety:** Full type hints throughout
+10. **Dual Database Support:** Clean separation of external data vs internal parameters
+
+---
+
+**Generated:** 2025-12-08
+**Version:** 2.1.0
+**Author:** Claude Code Assistant

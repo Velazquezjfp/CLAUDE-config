@@ -1,0 +1,92 @@
+[DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json...
+[DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+[DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=/home/javiervel/clients/personal/GrapherIBM/.claude/skills
+[DEBUG] >>>>> getPluginSkills CALLED <<<<<
+[DEBUG] Creating shell snapshot for bash (/bin/bash)
+[DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+[DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+[DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761916361701-ikp2pe.sh
+[DEBUG] Shell binary exists: true
+[DEBUG] Execution timeout: 10000ms
+[DEBUG] Writing to temp file: /home/javiervel/.claude/todos/517cb16c-dc4c-4960-b5f5-611908eed8d4-agent-517cb16c-dc4c-4960-b5f5-611908eed8d4.json.tmp.3041.1761916361703
+[DEBUG] Temp file written successfully, size: 2 bytes
+[DEBUG] Renaming /home/javiervel/.claude/todos/517cb16c-dc4c-4960-b5f5-611908eed8d4-agent-517cb16c-dc4c-4960-b5f5-611908eed8d4.json.tmp.3041.1761916361703 to /home/javiervel/.claude/todos/517cb16c-dc4c-4960-b5f5-611908eed8d4-agent-517cb16c-dc4c-4960-b5f5-611908eed8d4.json
+[DEBUG] File /home/javiervel/.claude/todos/517cb16c-dc4c-4960-b5f5-611908eed8d4-agent-517cb16c-dc4c-4960-b5f5-611908eed8d4.json written atomically
+[DEBUG] getPluginSkills: Processing 0 enabled plugins
+[DEBUG] Total plugin skills loaded: 0
+[DEBUG] Total plugin commands loaded: 0
+[DEBUG] Registered 0 hooks from 0 plugins
+[DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+[DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+[DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+[DEBUG] Shell snapshot created successfully (4502 bytes)
+[DEBUG] Total plugin agents loaded: 0
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3041.1761916361833
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.3041.1761916361833 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3041.1761916361878
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.3041.1761916361878 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3041.1761916361885
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.3041.1761916361885 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[ERROR] Error streaming, falling back to non-streaming mode: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+[ERROR] Error streaming, falling back to non-streaming mode: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+[ERROR] Error in non-streaming fallback: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+[ERROR] Error: Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+    at uy.validateHeaders (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:930)
+    at uy.buildHeaders (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:8412)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async uy.buildRequest (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:7470)
+    at async uy.makeRequest (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:3309)
+    at async OtA.model (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:18888)
+    at async OtA (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:2692:39781)
+    at async ib2 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:19040)
+    at async file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:13007
+    at async Wo1 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:4492)
+[ERROR] Error in non-streaming fallback: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+[ERROR] Error: Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+    at uy.validateHeaders (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:930)
+    at uy.buildHeaders (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:8412)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async uy.buildRequest (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:7470)
+    at async uy.makeRequest (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:357:3309)
+    at async OtA.model (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:18888)
+    at async OtA (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:2692:39781)
+    at async ib2 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:19040)
+    at async file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:13007
+    at async Wo1 (file:///home/javiervel/.nvm/versions/node/v20.19.4/lib/node_modules/@anthropic-ai/claude-code/cli.js:3354:4492)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3041.1761916364330
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.3041.1761916364330 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.3041.1761916364339
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.3041.1761916364339 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] Getting matching hook commands for SessionEnd with query: undefined
+[DEBUG] Found 0 hook matchers in settings
+[DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+[DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1761916361701-ikp2pe.sh
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter flush complete
+[DEBUG] BigQuery metrics exporter shutdown complete

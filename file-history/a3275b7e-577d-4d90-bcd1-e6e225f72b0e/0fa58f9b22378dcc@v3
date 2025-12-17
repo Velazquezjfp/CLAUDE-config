@@ -1,0 +1,344 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 02: Maximum Daily Hours in 14-Hour Span (Database-Aligned Version)
+# Swiss LDT Art. 10
+
+constraint_metadata:
+  name: "max_daily_hours_14h_span"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 9 hours within any 14-hour span"
+  legal_reference: "Swiss LDT Art. 10"
+  modifiable: false
+  constraint_id: 2                          # From database
+
+constraint_parameters:
+  - name: "max_hours_in_14h"
+    description: "Maximum allowed working hours within any 14-hour span"
+    type: "float"
+    unit: "hours"
+    default_value: 9                        # From legal_constraints API
+    min_value: 0
+    max_value: 14
+    source: "legal_constraints.constraint_id=2"
+    api_endpoint: "GET /api/v1/legal-constraints/?constraint_name=max_daily_hours_14h_span"
+
+  - name: "max_hours_company_14h"
+    description: "Company preferred maximum (stricter than legal) - DYNAMICALLY FETCHED"
+    type: "float"
+    unit: "hours"
+    default_value: 8.5                      # Current value from API (can change!)
+    min_value: 0
+    max_value: 9                           # Cannot exceed legal limit
+    source: "company_policy_constraints.constraint_id=3"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=Preferred%20Max%20in%2014h%20Span"
+    dynamic: true                          # Value changes based on planning mode or policy updates
+    notes: |
+      This value is NOT hardcoded. It's fetched dynamically from the database and can vary:
+      - Different planning modes (Conservative/Balanced/Aggressive) may have different values
+      - HR can update this value through the API
+      - Value is validated to ensure it doesn't exceed legal limit
+
+data_inputs_from_database:
+  - name: "requests"
+    description: "Task/request data from database"
+    source_table: "requests"
+    api_endpoint: "GET /api/v1/requests/"
+    required_fields:
+      - "request_id"                       # REQ-828796-41 format
+      - "start_datetime"                   # 2025-12-18T21:00:00Z format
+      - "end_datetime"                     # 2025-12-19T06:00:00Z format
+      - "shift_service_type"                # "Service de nuit" indicates night work
+      - "resource_category"                # For matching constraints
+      - "assignment_status"                # pending/confirmed
+      - "locked"                          # boolean for fixed assignments
+
+  - name: "resources"
+    description: "Resource data from database"
+    source_table: "resources"
+    api_endpoint: "GET /api/v1/resources/"
+    required_fields:
+      - "resource_id"                      # RES-INT-0001 format
+      - "type"                             # Internal/External
+      - "weekly_hours"                     # Contract hours
+      - "availability_pattern"              # Daily availability windows
+
+  - name: "absences"
+    description: "Resource absences including blocked time"
+    source_table: "absences"
+    api_endpoint: "GET /api/v1/absences/"
+    required_fields:
+      - "absence_id"                       # ABS-00131, ABS-BLOCK-9026 formats
+      - "resource_id"
+      - "type"                             # Holiday, Sick_Leave, Assignment_Blocked
+      - "start_date"
+      - "end_date"
+      - "status"                           # Approuvé/En_attente
+
+  - name: "assignments"
+    description: "Existing assignments (for partial replanning)"
+    source_table: "assignments"
+    api_endpoint: "GET /api/v1/assignments/"
+    required_fields:
+      - "assignment_id"                    # ASSIGN-INT-828796-0020 format
+      - "resource_id"
+      - "request_id"
+      - "status"                           # Confirmé = locked
+
+preprocessed_data:
+  - name: "work_windows_14h"
+    description: "All possible 14-hour windows in planning period"
+    type: "list[datetime_pair]"
+    calculation: |
+      def generate_14h_windows(planning_start, planning_end):
+          """Generate all 14-hour windows to check"""
+          windows = []
+          current = planning_start
+
+          # Slide window every hour through planning period
+          while current + timedelta(hours=14) <= planning_end:
+              window_start = current
+              window_end = current + timedelta(hours=14)
+              windows.append((window_start, window_end))
+              current += timedelta(hours=1)  # Slide by 1 hour
+
+          return windows
+
+  - name: "task_hours_in_window"
+    description: "Hours of each task within each 14h window (scaled)"
+    type: "dict[(request_id, window_id), int]"
+    calculation: |
+      def calculate_task_hours_in_window(request, window_start, window_end):
+          """Calculate overlap between task and 14h window"""
+          task_start = datetime.fromisoformat(request['start_datetime'])
+          task_end = datetime.fromisoformat(request['end_datetime'])
+
+          # Find overlap
+          overlap_start = max(task_start, window_start)
+          overlap_end = min(task_end, window_end)
+
+          if overlap_start >= overlap_end:
+              return 0  # No overlap
+
+          hours = (overlap_end - overlap_start).total_seconds() / 3600
+          return int(hours * 100)  # Scale by 100
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req] = 1 if resource r assigned to request req"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "work_hours_in_window"
+    description: "Total hours worked by resource r in 14h window w (scaled)"
+    type: "integer"
+    dimensions: "[resources, windows_14h]"
+    domain: "[0, 900]"                     # Max 9 hours * 100
+
+  - name: "violation_14h"
+    description: "Soft violation variable for company policy (if using soft constraints)"
+    type: "integer"
+    dimensions: "[resources, windows_14h]"
+    domain: "[0, 50]"                      # Max 0.5 hour violation * 100
+
+mathematical_formulation:
+  equation: |
+    Preprocessing:
+    1. Generate all 14-hour windows in planning period
+    2. For each request and window, calculate overlap hours
+
+    Hard Constraint (Legal):
+    For each resource r and 14-hour window w:
+        work_hours_in_window[r][w] = Σ(x[r][req] × task_hours_in_window[req][w])
+                                      for all requests req
+
+        work_hours_in_window[r][w] ≤ max_hours_in_14h × 100
+
+    Soft Constraint (Company Policy - optional):
+    For each resource r and 14-hour window w:
+        work_hours_in_window[r][w] ≤ max_hours_company_14h × 100 + violation_14h[r][w]
+
+    Add to objective: minimize Σ(violation_14h[r][w]) with appropriate weight
+
+  explanation: |
+    This constraint prevents fatigue by limiting work within any rolling 14-hour window.
+
+    Key concepts:
+    1. **Rolling window**: Check every possible 14-hour span, not just calendar days
+    2. **Overlap calculation**: A task may partially fall within a window
+    3. **Company vs Legal**: Legal is hard constraint (9h), company is soft (8.5h)
+
+    Example: If a resource works:
+    - 08:00-12:00 (4 hours)
+    - 13:00-18:00 (5 hours)
+    Total in window 08:00-22:00 = 9 hours ✓ (at legal limit)
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Step 1: Fetch data from API (DYNAMIC VALUES)
+    async def fetch_constraint_data(planning_mode=None):
+        async with httpx.AsyncClient() as client:
+            # Get constraint parameters - these are DYNAMIC!
+            legal = await client.get(f"{API_URL}/legal-constraints/?constraint_name=max_daily_hours_14h_span")
+
+            # Company policy may vary based on planning mode or other factors
+            params = {"policy_name": "Preferred Max in 14h Span"}
+            if planning_mode:
+                params["planning_mode"] = planning_mode  # Conservative/Balanced/Aggressive
+            company = await client.get(f"{API_URL}/company-policy-constraints/", params=params)
+
+            # Get operational data
+            requests = await client.get(f"{API_URL}/requests/?limit=500")
+            resources = await client.get(f"{API_URL}/resources/")
+            absences = await client.get(f"{API_URL}/absences/?status=Approuvé")
+
+            return legal.json(), company.json(), requests.json(), resources.json(), absences.json()
+
+    # Step 2: Preprocess windows and overlaps
+    def preprocess_14h_windows(requests_data, planning_start, planning_end):
+        windows = generate_14h_windows(planning_start, planning_end)
+        task_hours_in_window = {}
+
+        for req in requests_data['data']:
+            req_id = req['request_id']
+            for w_idx, (w_start, w_end) in enumerate(windows):
+                hours = calculate_task_hours_in_window(req, w_start, w_end)
+                if hours > 0:
+                    task_hours_in_window[(req_id, w_idx)] = hours
+
+        return windows, task_hours_in_window
+
+    # Step 3: Create constraints in OR-tools
+    def add_14h_span_constraints(model, x, resources, requests, windows, task_hours_in_window,
+                                  legal_constraint, company_policy):
+        # Dynamically fetch values from API response
+        MAX_HOURS_LEGAL = legal_constraint['parameter_value']['value']  # From API
+        MAX_HOURS_COMPANY = company_policy['parameter_value']['value']  # From API (can change!)
+        SCALING = 100
+
+        violations = []  # For soft constraints
+
+        for r in resources:
+            for w_idx, window in enumerate(windows):
+                # Calculate total hours in this window
+                hours_in_window = sum(
+                    x[(r['resource_id'], req['request_id'])] *
+                    task_hours_in_window.get((req['request_id'], w_idx), 0)
+                    for req in requests
+                )
+
+                # Hard constraint (legal limit)
+                model.Add(hours_in_window <= int(MAX_HOURS_LEGAL * SCALING))
+
+                # Soft constraint (company preference) - optional
+                if USE_SOFT_CONSTRAINTS:
+                    violation = model.NewIntVar(0, 50, f'violation_14h_{r}_{w_idx}')
+                    model.Add(hours_in_window <= int(MAX_HOURS_COMPANY * SCALING) + violation)
+                    violations.append(violation)
+
+        return violations
+
+validation_rules:
+  - rule: "14-hour window must slide hourly for complete coverage"
+    condition: "windows are generated with 1-hour increments"
+  - rule: "Company limit must not exceed legal limit"
+    condition: "max_hours_company_14h <= max_hours_in_14h"
+  - rule: "All datetime comparisons in UTC"
+    condition: "consistent timezone handling"
+  - rule: "Check resource availability during window"
+    condition: "resource not absent during task time"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_weekly_hours"
+    relationship: "Daily 14h limits aggregate to respect weekly 50h limit"
+  - related_constraint: "max_absolute_daily_hours"
+    relationship: "12.5h absolute daily max is checked separately"
+  - related_constraint: "min_daily_rest"
+    relationship: "11h rest requirement limits work distribution in 14h windows"
+  - related_constraint: "resource_availability"
+    relationship: "Absences block time slots within 14h windows"
+
+penalty_configuration:
+  applicable: true                          # Can be soft for company policy
+  penalty_weight: 100                       # Per 0.01 hour violation
+  penalty_calculation: "linear"
+  notes: "Only company policy (8.5h) can be soft; legal (9h) is always hard"
+
+dynamic_value_examples:
+  - planning_mode: "Conservative"
+    max_hours_company_14h: 8.0              # Stricter limit
+    notes: "Conservative mode uses lower bounds for safety"
+
+  - planning_mode: "Balanced"
+    max_hours_company_14h: 8.5              # Default balanced approach
+
+  - planning_mode: "Aggressive"
+    max_hours_company_14h: 9.0              # Use full legal limit
+    notes: "Emergency coverage mode - uses legal maximum"
+
+  - custom_policy: "Holiday Period"
+    max_hours_company_14h: 7.5              # Even stricter during holidays
+    notes: "Special policy activated during holiday seasons"
+
+examples:
+  - scenario: "Morning and evening shift same day"
+    input:
+      resource: "RES-INT-0001"
+      date: "2025-12-18"
+      assigned_tasks:
+        - request_id: "REQ-001"
+          start_datetime: "2025-12-18T06:00:00Z"
+          end_datetime: "2025-12-18T10:00:00Z"  # 4 hours
+        - request_id: "REQ-002"
+          start_datetime: "2025-12-18T16:00:00Z"
+          end_datetime: "2025-12-18T21:00:00Z"  # 5 hours
+    window_check: "06:00-20:00 (14h span)"
+    output:
+      total_hours_in_window: 9
+      work_hours_scaled: 900
+      legal_constraint_satisfied: true       # Equal to 9h limit
+      company_constraint_satisfied: false    # Exceeds 8.5h preference
+      violation_amount: 50                   # 0.5 hours over company limit
+
+  - scenario: "Night shift crossing midnight"
+    input:
+      resource: "RES-INT-0002"
+      assigned_task:
+        request_id: "REQ-828796-41"
+        start_datetime: "2025-12-18T21:00:00Z"
+        end_datetime: "2025-12-19T06:00:00Z"  # 9 hours
+    windows_to_check:
+      - window_1: "2025-12-18T16:00:00Z to 2025-12-19T06:00:00Z"
+        hours_in_window: 9                    # Full task in window
+      - window_2: "2025-12-18T21:00:00Z to 2025-12-19T11:00:00Z"
+        hours_in_window: 9                    # Full task in window
+    output:
+      constraint_satisfied: true              # All windows ≤ 9h
+      critical_window: "Any containing the full 9h shift"
+
+  - scenario: "Multiple short tasks spread across day"
+    input:
+      resource: "RES-INT-0003"
+      date: "2025-12-18"
+      assigned_tasks:
+        - start: "07:00", end: "09:00"        # 2h
+        - start: "10:00", end: "12:00"        # 2h
+        - start: "13:00", end: "15:00"        # 2h
+        - start: "16:00", end: "18:00"        # 2h
+        - start: "19:00", end: "20:00"        # 1h
+    worst_window: "07:00-21:00"
+    output:
+      total_hours: 9
+      constraint_satisfied: true
+      utilization: "Maximally utilized within legal limits"
+
+notes:
+  - "Critical for preventing fatigue in irregular shift patterns"
+  - "Window slides every hour - computationally intensive for long planning periods"
+  - "Consider caching window calculations for performance"
+  - "Night shifts often trigger this constraint"
+  - "Database stores assignments with meeting_time (20:00:00) which may differ from start_datetime"
+  - "Assignment_Blocked absences prevent double-booking automatically"

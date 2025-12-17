@@ -1,0 +1,76 @@
+"""
+LC_04: Maximum Continuous Work Analyzer
+Analyzes continuous work patterns (breaks assumed external)
+"""
+from .base_analyzer import ConstraintAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class LC_04_Analyzer(ConstraintAnalyzer):
+    """
+    Analyzer for LC_04 (maximum continuous work)
+
+    Note: Breaks are assumed to be managed externally, not by the solver.
+    This analyzer exists for completeness but typically reports no violations.
+    """
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='LC_04',
+            constraint_name='max_continuous_work'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze continuous work patterns
+
+        Since breaks are managed externally, this typically returns no violations.
+        The analysis confirms that break management is handled operationally.
+        """
+        # Filter metadata for this constraint (will be empty)
+        my_violations = [
+            v for v in violation_metadata
+            if v['constraint_id'] == 'LC_04'
+        ]
+
+        return {
+            "constraint_id": "LC_04",
+            "constraint_name": "max_continuous_work",
+            "constraint_type": "EXTERNAL",
+            "total_violations": 0,
+            "message": "Breaks are managed externally - no violations tracked by solver",
+            "assumption": "Operational procedures ensure breaks are scheduled during long shifts",
+            "legal_limit": constraints.get_legal_value('max_continuous_hours'),
+            "company_limit": constraints.get_company_value('max_continuous_hours'),
+            "notes": [
+                "Break timing is not enforced by the optimization model",
+                "Shifts longer than continuous work limit are allowed",
+                "Break scheduling is handled by operational procedures",
+                "This constraint exists for documentation and future enhancement"
+            ]
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check continuous work constraints
+
+        Since breaks are external, this always returns no violation.
+        Operational procedures handle break requirements.
+        """
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "reason": "Breaks are managed externally - solver does not enforce continuous work limits",
+            "note": "Long assignments are allowed; breaks will be scheduled operationally"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """Not applicable - no violations tracked"""
+        return {
+            "constraint_id": "LC_04",
+            "constraint_type": "EXTERNAL",
+            "message": "Weight adjustment not applicable - breaks managed externally",
+            "suggested_adjustments": []
+        }

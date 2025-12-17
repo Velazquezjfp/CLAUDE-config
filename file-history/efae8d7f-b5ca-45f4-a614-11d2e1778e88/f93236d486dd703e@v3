@@ -1,0 +1,309 @@
+"""
+Data Preprocessing for Solver
+Processes requests, resources, absences and prepares data structures for CP-SAT
+"""
+from typing import List, Dict, Tuple
+from datetime import datetime, timezone
+import sys
+sys.path.append('..')
+from config import (
+    ENFORCE_ABSENCE_BLOCKING,
+    ABSENCE_APPROVED_STATUSES,
+    ABSENCE_BLOCKED_TYPES
+)
+from preprocessing.time_windows import (
+    determine_planning_period,
+    generate_weeks,
+    generate_calendar_days,
+    generate_14h_windows,
+    allocate_task_to_weeks,
+    allocate_task_to_days,
+    allocate_task_to_14h_windows,
+    identify_night_shift,
+    calculate_task_duration
+)
+
+
+class PreprocessedData:
+    """Container for all preprocessed data ready for CP-SAT solver"""
+
+    def __init__(self, requests_data: dict, resources_data: dict,
+                 absences_data: dict):
+        """
+        Initialize with raw data from API
+        """
+        self.raw_requests = requests_data['data']
+        self.raw_resources = resources_data['data']
+        self.raw_absences = absences_data['data']
+
+        # Determine planning period
+        self.planning_start, self.planning_end = determine_planning_period(
+            self.raw_requests
+        )
+
+        # Generate time structures
+        self.weeks = generate_weeks(self.planning_start, self.planning_end)
+        self.days = generate_calendar_days(self.planning_start, self.planning_end)
+        self.windows_14h = generate_14h_windows(self.planning_start, self.planning_end)
+
+        # Preprocessed structures (to be populated)
+        self.requests = []          # List of request dicts
+        self.resources = []         # List of resource dicts
+        self.request_ids = []       # List of request IDs
+        self.resource_ids = []      # List of resource IDs
+
+        # Allocation matrices
+        self.task_hours_in_week = {}      # {(request_id, week_idx): hours_scaled}
+        self.task_hours_in_day = {}       # {(request_id, day_idx): hours_scaled}
+        self.task_hours_in_window = {}    # {(request_id, window_idx): hours_scaled}
+
+        # Task properties
+        self.task_is_night = {}           # {request_id: boolean}
+        self.task_duration = {}           # {request_id: hours}
+
+        # Absence data: {resource_id: [(start_dt, end_dt, type, status), ...]}
+        self.resource_absences = {}
+        self.absences_stats = {
+            'total_raw': 0,
+            'filtered': 0,
+            'resources_with_absences': 0
+        }
+
+        # Process data
+        self._process_requests()
+        self._process_resources()
+        self._process_absences()
+
+    def _process_requests(self):
+        """Process and allocate requests to time periods"""
+        for req in self.raw_requests:
+            req_id = req['id']
+            self.request_ids.append(req_id)
+            self.requests.append(req)
+
+            # Allocate to weeks
+            weekly_allocation = allocate_task_to_weeks(req, self.weeks)
+            for week_idx, hours in weekly_allocation.items():
+                self.task_hours_in_week[(req_id, week_idx)] = hours
+
+            # Allocate to days
+            daily_allocation = allocate_task_to_days(req, self.days)
+            for day_idx, hours in daily_allocation.items():
+                self.task_hours_in_day[(req_id, day_idx)] = hours
+
+            # Allocate to 14h windows
+            window_allocation = allocate_task_to_14h_windows(req, self.windows_14h)
+            for window_idx, hours in window_allocation.items():
+                self.task_hours_in_window[(req_id, window_idx)] = hours
+
+            # Identify night shift
+            self.task_is_night[req_id] = identify_night_shift(req)
+
+            # Calculate duration
+            self.task_duration[req_id] = calculate_task_duration(req)
+
+    def _process_resources(self):
+        """Process resources"""
+        for res in self.raw_resources:
+            res_id = res['resource_id']
+            self.resource_ids.append(res_id)
+            self.resources.append(res)
+
+    def _process_absences(self):
+        """
+        Process and index absences by resource.
+        Filters by status and type according to config settings.
+        """
+        self.absences_stats['total_raw'] = len(self.raw_absences)
+
+        if not ENFORCE_ABSENCE_BLOCKING:
+            print("  [ABSENCES] Absence blocking is DISABLED in config")
+            return
+
+        filtered_count = 0
+
+        for absence in self.raw_absences:
+            res_id = absence.get('resource_id')
+            if not res_id:
+                continue
+
+            # Convert resource_id to int to match resource_ids from resources table
+            try:
+                res_id = int(res_id)
+            except (ValueError, TypeError):
+                continue  # Skip if can't convert
+
+            # Filter by status
+            status = absence.get('status', '')
+            if status not in ABSENCE_APPROVED_STATUSES:
+                continue
+
+            # Filter by type (if configured)
+            absence_type = absence.get('type', '')
+            if ABSENCE_BLOCKED_TYPES is not None and absence_type not in ABSENCE_BLOCKED_TYPES:
+                continue
+
+            # Parse dates
+            start_dt = self._parse_absence_datetime(absence.get('start_date'))
+            end_dt = self._parse_absence_datetime(absence.get('end_date'))
+
+            if start_dt is None or end_dt is None:
+                continue
+
+            # Store absence indexed by resource
+            if res_id not in self.resource_absences:
+                self.resource_absences[res_id] = []
+
+            self.resource_absences[res_id].append({
+                'start': start_dt,
+                'end': end_dt,
+                'type': absence_type,
+                'status': status,
+                'absence_id': absence.get('absence_id')
+            })
+            filtered_count += 1
+
+        self.absences_stats['filtered'] = filtered_count
+        self.absences_stats['resources_with_absences'] = len(self.resource_absences)
+
+    def _parse_absence_datetime(self, dt_string: str) -> datetime:
+        """
+        Parse absence datetime string handling various formats.
+        Returns timezone-aware datetime in UTC.
+        """
+        if not dt_string:
+            return None
+
+        try:
+            # Add time component if only date provided
+            if 'T' not in dt_string:
+                dt_string = dt_string + 'T00:00:00'
+
+            # Add timezone if missing
+            if not dt_string.endswith('Z') and '+' not in dt_string and '-' not in dt_string[-6:]:
+                dt_string = dt_string + '+00:00'
+            elif dt_string.endswith('Z'):
+                dt_string = dt_string.replace('Z', '+00:00')
+
+            # Parse datetime
+            dt = datetime.fromisoformat(dt_string)
+
+            # Ensure timezone-aware (UTC)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+
+            return dt
+        except (ValueError, AttributeError) as e:
+            print(f"  Warning: Could not parse absence date '{dt_string}': {e}")
+            return None
+
+    def is_resource_available(self, resource_id: str,
+                              demand_start: datetime,
+                              demand_end: datetime) -> bool:
+        """
+        Check if resource is available (not on absence) during demand period.
+
+        Args:
+            resource_id: Resource identifier
+            demand_start: Demand start datetime (timezone-aware)
+            demand_end: Demand end datetime (timezone-aware)
+
+        Returns:
+            True if resource is available, False if overlaps with absence
+        """
+        if not ENFORCE_ABSENCE_BLOCKING:
+            return True
+
+        if resource_id not in self.resource_absences:
+            return True
+
+        for absence in self.resource_absences[resource_id]:
+            absence_start = absence['start']
+            absence_end = absence['end']
+
+            # Check for time overlap
+            # Two periods overlap unless one ends before the other starts
+            if not (demand_end <= absence_start or demand_start >= absence_end):
+                return False  # Overlap detected
+
+        return True
+
+    def get_blocking_absence(self, resource_id: str,
+                             demand_start: datetime,
+                             demand_end: datetime) -> dict:
+        """
+        Get the absence that blocks assignment (if any).
+        Useful for reporting and analysis.
+
+        Returns:
+            Absence dict if blocking, None otherwise
+        """
+        if not ENFORCE_ABSENCE_BLOCKING:
+            return None
+
+        if resource_id not in self.resource_absences:
+            return None
+
+        for absence in self.resource_absences[resource_id]:
+            absence_start = absence['start']
+            absence_end = absence['end']
+
+            if not (demand_end <= absence_start or demand_start >= absence_end):
+                return absence
+
+        return None
+
+    def print_summary(self):
+        """Print summary of preprocessed data"""
+        print("\n" + "="*60)
+        print("PREPROCESSED DATA SUMMARY")
+        print("="*60)
+        print(f"Planning Period: {self.planning_start} to {self.planning_end}")
+        print(f"Number of Weeks: {len(self.weeks)}")
+        print(f"Number of Days: {len(self.days)}")
+        print(f"Number of 14h Windows: {len(self.windows_14h)}")
+        print(f"\nRequests: {len(self.requests)}")
+        print(f"Resources: {len(self.resources)}")
+        print(f"Absences: {self.absences_stats['filtered']} filtered from {self.absences_stats['total_raw']} total")
+        print(f"Resources with Absences: {self.absences_stats['resources_with_absences']}")
+
+        print("\nREQUESTS DETAIL:")
+        print("-" * 60)
+        for req in self.requests:
+            req_id = req['id']
+            duration = self.task_duration[req_id]
+            is_night = "NIGHT" if self.task_is_night[req_id] else "DAY"
+            print(f"  {req_id}: {duration:.2f}h [{is_night}]")
+            print(f"    Start: {req['shift_start_time']}")
+            print(f"    End:   {req['shift_finish_time']}")
+
+        print("\nRESOURCES DETAIL:")
+        print("-" * 60)
+        for res in self.resources:
+            res_id = res['resource_id']
+            res_type = res.get('type', 'Unknown')
+            contract = res.get('contract', 'Unknown')
+            print(f"  {res_id}: Type={res_type}, Contract={contract}")
+
+        print("="*60 + "\n")
+
+    def get_task_hours_in_week(self, request_id: str, week_idx: int) -> int:
+        """Get scaled hours for a task in a specific week"""
+        return self.task_hours_in_week.get((request_id, week_idx), 0)
+
+    def get_task_hours_in_day(self, request_id: str, day_idx: int) -> int:
+        """Get scaled hours for a task in a specific day"""
+        return self.task_hours_in_day.get((request_id, day_idx), 0)
+
+    def get_task_hours_in_window(self, request_id: str, window_idx: int) -> int:
+        """Get scaled hours for a task in a specific 14h window"""
+        return self.task_hours_in_window.get((request_id, window_idx), 0)
+
+
+def preprocess_data(requests_data: dict, resources_data: dict,
+                   absences_data: dict) -> PreprocessedData:
+    """
+    Convenience function to preprocess all data
+    Returns: PreprocessedData object ready for solver
+    """
+    return PreprocessedData(requests_data, resources_data, absences_data)

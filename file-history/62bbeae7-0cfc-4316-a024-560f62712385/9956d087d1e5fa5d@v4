@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFF Database Schema - ERD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .header {
+            background: #16213e;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #0f3460;
+        }
+        .header h1 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #aaa;
+            font-size: 14px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 15px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .legend-pk {
+            width: 12px;
+            height: 12px;
+            background: #ffd700;
+            border-radius: 2px;
+        }
+        .legend-fk {
+            width: 12px;
+            height: 12px;
+            background: #00bcd4;
+            border-radius: 2px;
+        }
+        .legend-nn {
+            width: 12px;
+            height: 12px;
+            background: #e94560;
+            border-radius: 50%;
+        }
+        .legend-uk {
+            width: 12px;
+            height: 12px;
+            background: #9c27b0;
+            border-radius: 2px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 30px;
+            justify-content: center;
+        }
+        .table-card {
+            background: #16213e;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            min-width: 320px;
+            max-width: 400px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .table-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(233,69,96,0.2);
+        }
+        .table-card.expanded {
+            max-width: 500px;
+        }
+        .table-header {
+            background: #0f3460;
+            padding: 12px 15px;
+            border-bottom: 2px solid #e94560;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-header:hover {
+            background: #0f4080;
+        }
+        .table-info {
+            flex: 1;
+        }
+        .table-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #fff;
+        }
+        .row-count {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .expand-icon {
+            color: #e94560;
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+        .table-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+        .columns {
+            padding: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .table-card.expanded .columns {
+            max-height: none;
+        }
+        .column {
+            display: flex;
+            align-items: center;
+            padding: 6px 15px;
+            font-size: 13px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .column:last-child {
+            border-bottom: none;
+        }
+        .column:hover {
+            background: rgba(233,69,96,0.1);
+        }
+        .col-icons {
+            display: flex;
+            gap: 4px;
+            margin-right: 10px;
+            min-width: 50px;
+        }
+        .col-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            border-radius: 3px;
+        }
+        .pk-icon {
+            background: #ffd700;
+            color: #000;
+        }
+        .fk-icon {
+            background: #00bcd4;
+            color: #000;
+        }
+        .uk-icon {
+            background: #9c27b0;
+            color: #fff;
+        }
+        .col-name {
+            flex: 1;
+            color: #ddd;
+        }
+        .col-name.not-null::after {
+            content: " *";
+            color: #e94560;
+            font-weight: bold;
+        }
+        .col-type {
+            color: #888;
+            font-size: 11px;
+            text-align: right;
+            min-width: 80px;
+        }
+        .fk-ref {
+            display: block;
+            font-size: 10px;
+            color: #00bcd4;
+            padding-left: 60px;
+            padding-bottom: 4px;
+        }
+        .relationships {
+            background: #0f3460;
+            margin: 30px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .relationships h2 {
+            color: #e94560;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .rel-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 10px;
+        }
+        .rel-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #16213e;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        .rel-arrow {
+            color: #00bcd4;
+            margin: 0 10px;
+            font-size: 16px;
+        }
+        .rel-table {
+            color: #ffd700;
+        }
+        .rel-col {
+            color: #aaa;
+        }
+        .summary {
+            background: #0f3460;
+            margin: 0 30px 30px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .summary h2 {
+            color: #e94560;
+            margin-bottom: 15px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .summary-item {
+            background: #16213e;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .summary-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .summary-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .controls {
+            text-align: center;
+            padding: 15px;
+            background: #16213e;
+        }
+        .controls button {
+            background: #e94560;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+        }
+        .controls button:hover {
+            background: #ff6b6b;
+        }
+        .col-group {
+            background: rgba(233,69,96,0.05);
+            border-left: 3px solid #e94560;
+            margin: 5px 0;
+        }
+        .col-group-header {
+            padding: 8px 15px;
+            font-size: 11px;
+            color: #e94560;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CFF Database Schema</h1>
+        <p>PostgreSQL Database: cff @ 150.241.245.65:5432 | Generated: 2025-12-03 | Click table headers to expand/collapse</p>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-pk"></div> Primary Key (PK)</div>
+        <div class="legend-item"><div class="legend-fk"></div> Foreign Key (FK)</div>
+        <div class="legend-item"><div class="legend-uk"></div> Unique (UK)</div>
+        <div class="legend-item"><div class="legend-nn"></div> NOT NULL (*)</div>
+    </div>
+
+    <div class="controls">
+        <button onclick="expandAll()">Expand All Tables</button>
+        <button onclick="collapseAll()">Collapse All Tables</button>
+    </div>
+
+    <div class="summary">
+        <h2>Database Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-value">16</div>
+                <div class="summary-label">Tables</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">12</div>
+                <div class="summary-label">Foreign Key Relationships</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">183,636</div>
+                <div class="summary-label">Total Rows</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-value">245</div>
+                <div class="summary-label">Total Columns</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="relationships">
+        <h2>Foreign Key Relationships (12)</h2>
+        <div class="rel-list">
+            <div class="rel-item">
+                <span class="rel-table">cff_user_activations</span>.<span class="rel-col">user_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">cff_users</span>.<span class="rel-col">id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">cff_user_roles</span>.<span class="rel-col">role_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">cff_roles</span>.<span class="rel-col">id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">cff_user_roles</span>.<span class="rel-col">user_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">cff_users</span>.<span class="rel-col">id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">demands_list</span>.<span class="rel-col">team_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">teams</span>.<span class="rel-col">team_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">import_job_logs</span>.<span class="rel-col">job_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">import_job_details</span>.<span class="rel-col">id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">operation_points</span>.<span class="rel-col">team_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">teams</span>.<span class="rel-col">team_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">requests</span>.<span class="rel-col">team_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">teams</span>.<span class="rel-col">team_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">resources</span>.<span class="rel-col">region_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">regions</span>.<span class="rel-col">region_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">resources</span>.<span class="rel-col">sub_group_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">sub_groups</span>.<span class="rel-col">sub_group_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">resources</span>.<span class="rel-col">team_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">teams</span>.<span class="rel-col">team_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">sub_groups</span>.<span class="rel-col">team_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">teams</span>.<span class="rel-col">team_id</span>
+            </div>
+            <div class="rel-item">
+                <span class="rel-table">teams</span>.<span class="rel-col">region_id</span>
+                <span class="rel-arrow">→</span>
+                <span class="rel-table">regions</span>.<span class="rel-col">region_id</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- ============== USER MANAGEMENT DOMAIN ============== -->
+
+        <!-- cff_users -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">cff_users</div>
+                    <div class="row-count">6 rows | 10 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">uuid</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">email</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">employee_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">first_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">last_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">middle_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">password</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- cff_roles -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">cff_roles</div>
+                    <div class="row-count">1 row | 2 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">bigint</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">role_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- cff_user_roles -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">cff_user_roles</div>
+                    <div class="row-count">6 rows | 2 columns | Junction Table</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name not-null">user_id</div>
+                    <div class="col-type">uuid</div>
+                </div>
+                <span class="fk-ref">→ cff_users.id</span>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name not-null">role_id</div>
+                    <div class="col-type">bigint</div>
+                </div>
+                <span class="fk-ref">→ cff_roles.id</span>
+            </div>
+        </div>
+
+        <!-- cff_user_activations -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">cff_user_activations</div>
+                    <div class="row-count">5 rows | 5 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">uuid</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">expires_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">token</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">user_id</div>
+                    <div class="col-type">uuid</div>
+                </div>
+                <span class="fk-ref">→ cff_users.id</span>
+            </div>
+        </div>
+
+        <!-- ============== ORGANIZATIONAL DOMAIN ============== -->
+
+        <!-- regions -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">regions</div>
+                    <div class="row-count">0 rows (EMPTY) | 7 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">region_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name">region_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">region_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- teams -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">teams</div>
+                    <div class="row-count">56 rows | 8 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">team_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">team_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">region_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ regions.region_id</span>
+            </div>
+        </div>
+
+        <!-- sub_groups -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">sub_groups</div>
+                    <div class="row-count">47 rows | 8 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">sub_group_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">color_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">sub_group_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name not-null">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ teams.team_id</span>
+            </div>
+        </div>
+
+        <!-- ============== RESOURCES DOMAIN ============== -->
+
+        <!-- resources -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">resources</div>
+                    <div class="row-count">374 rows | 27 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">resource_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">address</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">availability_pattern</div>
+                    <div class="col-type">jsonb</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">contract</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">cost_per_hour</div>
+                    <div class="col-type">numeric</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name">email</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">first_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">hire_date</div>
+                    <div class="col-type">date</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">home_location</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">last_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">npa</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">number</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">phone</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">qualifications</div>
+                    <div class="col-type">jsonb</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">resource_categories</div>
+                    <div class="col-type">jsonb</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">shift_preference</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">team_salon_hr</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">user_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">weekly_hours</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">region_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ regions.region_id</span>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">sub_group_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ sub_groups.sub_group_id</span>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ teams.team_id</span>
+            </div>
+        </div>
+
+        <!-- resource_category -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">resource_category</div>
+                    <div class="row-count">19 rows | 2 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- qualifications -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">qualifications</div>
+                    <div class="row-count">101 rows | 10 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">qualification_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">certification_required</div>
+                    <div class="col-type">boolean</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">description</div>
+                    <div class="col-type">text</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">qualification_category</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon uk-icon">UK</div></div>
+                    <div class="col-name not-null">qualification_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">validity_months</div>
+                    <div class="col-type">integer</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============== OPERATIONS DOMAIN ============== -->
+
+        <!-- operation_points -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">operation_points</div>
+                    <div class="row-count">476 rows | 10 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">operation_points_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">km</div>
+                    <div class="col-type">numeric</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">line_number</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">station_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">station_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ teams.team_id</span>
+            </div>
+        </div>
+
+        <!-- ============== DEMANDS & REQUESTS DOMAIN ============== -->
+
+        <!-- demands_list -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">demands_list</div>
+                    <div class="row-count">25,577 rows | 38 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">branch</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">branch_availability</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">bsa_cluster_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">bsa_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">direct_assignment</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">duty_station_from</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">duty_station_from_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">duty_station_to</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">duty_station_to_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">editor</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">end_date</div>
+                    <div class="col-type">date</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">first_shift_start</div>
+                    <div class="col-type">date</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">hca</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">isp_amgt</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">last_shift_end</div>
+                    <div class="col-type">date</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">main_mandate_number</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">mandate_info</div>
+                    <div class="col-type">text</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">mandate_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">mandate_owner</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">mandate_phase</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">mandate_type</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">on_trigger</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">psp</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">revision_number</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">service_product</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">split_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">start_date</div>
+                    <div class="col-type">date</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">technical_position</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">technical_position_desc</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">technical_service</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">work_model</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ teams.team_id</span>
+            </div>
+        </div>
+
+        <!-- requests -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">requests</div>
+                    <div class="row-count">50,896 rows | 33 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">bsa_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">assigned_resources</div>
+                    <div class="col-type">jsonb</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">branch</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">comments</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">isp_amgt</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">locked</div>
+                    <div class="col-type">boolean</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">task_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">responsible_person</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">start_location</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">start_location_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">end_location</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">end_location_code</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">people_needed</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">personnel</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">priority</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">psp</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">required_qualifications</div>
+                    <div class="col-type">jsonb</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">resource_category</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">resource_category_group</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">shift_finish_time</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">shift_start_time</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">shift</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">assignment_status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">technical_service</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">work_operation_type1</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">work_operation_type2</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">work_type</div>
+                    <div class="col-type">text</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name">team_id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <span class="fk-ref">→ teams.team_id</span>
+            </div>
+        </div>
+
+        <!-- assignments -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">assignments</div>
+                    <div class="row-count">106,038 rows | 23 columns | NO FKs</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">meeting_location</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">meeting_time</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">notes</div>
+                    <div class="col-type">text</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">billing_number</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">bsa_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">calendar_end</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">calendar_start</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">calendar_type</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">enterprise</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">family_name</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">responsible</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">required_skills</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">rdm_comments</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">request_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">resource_category</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">resource_id</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">tour_manager</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">updated_at</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">work_site</div>
+                    <div class="col-type">varchar</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============== IMPORT DOMAIN ============== -->
+
+        <!-- import_job_details -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">import_job_details</div>
+                    <div class="row-count">6 rows | 10 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">bigint</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">created_by</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">created_time</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">file_url</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">import_type</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">job_completion_time</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">job_no</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">records_not_processed</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name">records_processed</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">status</div>
+                    <div class="col-type">varchar</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- import_job_logs -->
+        <div class="table-card expanded" onclick="toggleCard(this)">
+            <div class="table-header">
+                <div class="table-info">
+                    <div class="table-name">import_job_logs</div>
+                    <div class="row-count">28 rows | 6 columns</div>
+                </div>
+                <div class="expand-icon">▼</div>
+            </div>
+            <div class="columns">
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon pk-icon">PK</div></div>
+                    <div class="col-name not-null">id</div>
+                    <div class="col-type">integer</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">created_time</div>
+                    <div class="col-type">timestamp</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">error_message</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">file</div>
+                    <div class="col-type">varchar</div>
+                </div>
+                <div class="column">
+                    <div class="col-icons"><div class="col-icon fk-icon">FK</div></div>
+                    <div class="col-name not-null">job_id</div>
+                    <div class="col-type">bigint</div>
+                </div>
+                <span class="fk-ref">→ import_job_details.id</span>
+                <div class="column">
+                    <div class="col-icons"></div>
+                    <div class="col-name not-null">source_row_no</div>
+                    <div class="col-type">varchar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align:center;padding:20px;color:#666;font-size:12px;">
+        Generated from PostgreSQL database schema | CFF Resource Management System | All 245 columns displayed | Updated: 2025-12-03
+    </div>
+
+    <script>
+        function toggleCard(card) {
+            card.classList.toggle('expanded');
+        }
+
+        function expandAll() {
+            document.querySelectorAll('.table-card').forEach(card => {
+                card.classList.add('expanded');
+            });
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('.table-card').forEach(card => {
+                card.classList.remove('expanded');
+            });
+        }
+    </script>
+</body>
+</html>

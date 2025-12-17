@@ -1,0 +1,138 @@
+{
+  "language": "vite-react",
+  "version": "1.0",
+  "last_updated": "2025-12-16",
+  "description": "Vite + React + TypeScript + shadcn/ui project grammar patterns",
+  "file_extensions": [".tsx", ".ts", ".jsx", ".js"],
+  "patterns": {
+    "imports": [
+      "^\\s*import\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s+type\\s+.*\\s+from\\s+['\"]([^'\"]+)['\"]",
+      "^\\s*import\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)"
+    ],
+    "path_aliases": [
+      "from\\s+['\"]@/([^'\"]+)['\"]",
+      "from\\s+['\"]~/([^'\"]+)['\"]"
+    ],
+    "exports": [
+      "^\\s*export\\s+default\\s+(function|const|class)\\s+(\\w+)",
+      "^\\s*export\\s+default\\s+(\\w+)",
+      "^\\s*export\\s+(function|const|let|var|class|interface|type|enum)\\s+(\\w+)",
+      "^\\s*export\\s+\\{([^}]+)\\}"
+    ],
+    "page_components": [
+      "(?:export\\s+)?(?:default\\s+)?function\\s+(\\w+)\\s*\\(\\)\\s*\\{",
+      "src/pages/(\\w+)\\.tsx"
+    ],
+    "ui_components": [
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=\\s*React\\.forwardRef",
+      "(?:export\\s+)?const\\s+(\\w+)\\s*=\\s*\\([^)]*\\)\\s*=>\\s*(?:\\{|\\()",
+      "(?:export\\s+)?function\\s+(\\w+)\\s*\\([^)]*\\)\\s*(?::\\s*(?:JSX\\.Element|React\\.ReactNode))?\\s*\\{"
+    ],
+    "workspace_components": [
+      "src/components/workspace/(\\w+)\\.tsx"
+    ],
+    "react_router": [
+      "<Route\\s+path=['\"]([^'\"]+)['\"]\\s+element=",
+      "<Routes>",
+      "useNavigate\\(",
+      "useParams(?:<[^>]*>)?\\(",
+      "useLocation\\(",
+      "useSearchParams\\(",
+      "<Link\\s+to=['\"]([^'\"]+)['\"]",
+      "<NavLink\\s+to=['\"]([^'\"]+)['\"]",
+      "navigate\\(['\"]([^'\"]+)['\"]\\)"
+    ],
+    "contexts": [
+      "createContext(?:<[^>]*>)?\\(",
+      "(?:export\\s+)?const\\s+(\\w+Context)\\s*=\\s*createContext",
+      "(?:export\\s+)?function\\s+(\\w+Provider)\\s*\\(",
+      "useContext\\((\\w+)\\)",
+      "(?:export\\s+)?function\\s+(use\\w+)\\s*\\(\\)"
+    ],
+    "hooks": [
+      "useState(?:<[^>]*>)?\\(",
+      "useEffect\\(",
+      "useCallback\\(",
+      "useMemo\\(",
+      "useRef(?:<[^>]*>)?\\(",
+      "useReducer\\(",
+      "use(\\w+)\\("
+    ],
+    "custom_hooks": [
+      "(?:export\\s+)?function\\s+(use\\w+)\\s*\\(",
+      "(?:export\\s+)?const\\s+(use\\w+)\\s*="
+    ],
+    "tanstack_query": [
+      "useQuery(?:<[^>]*>)?\\(",
+      "useMutation(?:<[^>]*>)?\\(",
+      "useQueryClient\\(",
+      "QueryClient\\(",
+      "QueryClientProvider"
+    ],
+    "react_hook_form": [
+      "useForm(?:<[^>]*>)?\\(",
+      "useFormContext\\(",
+      "useWatch\\(",
+      "useFieldArray\\(",
+      "zodResolver\\(",
+      "<Form[^>]*>",
+      "<FormField",
+      "<FormItem",
+      "<FormLabel",
+      "<FormControl",
+      "<FormMessage"
+    ],
+    "shadcn_ui": [
+      "(?:export\\s+)?const\\s+(\\w+Variants)\\s*=\\s*cva\\(",
+      "cva\\(['\"][^'\"]*['\"]",
+      "(?:export\\s+)?interface\\s+(\\w+Props)\\s+extends",
+      "VariantProps<typeof\\s+(\\w+)>",
+      "cn\\("
+    ],
+    "radix_primitives": [
+      "import\\s+\\*\\s+as\\s+(\\w+Primitive)\\s+from\\s+['\"]@radix-ui",
+      "(\\w+Primitive)\\.(Root|Trigger|Content|Portal|Item|Group)"
+    ],
+    "types_interfaces": [
+      "interface\\s+(\\w+)\\s*(?:extends\\s+[^{]+)?\\{",
+      "type\\s+(\\w+)\\s*=",
+      "type\\s+(\\w+)(?:<[^>]+>)?\\s*="
+    ],
+    "zod_schemas": [
+      "(?:export\\s+)?const\\s+(\\w+Schema)\\s*=\\s*z\\.",
+      "z\\.object\\(",
+      "z\\.infer<typeof\\s+(\\w+)>"
+    ],
+    "event_handlers": [
+      "(?:const|function)\\s+handle(\\w+)\\s*=",
+      "on(Click|Change|Submit|Focus|Blur|KeyDown|KeyUp|DragOver|DragLeave|Drop)\\s*="
+    ],
+    "lucide_icons": [
+      "import\\s+\\{([^}]+)\\}\\s+from\\s+['\"]lucide-react['\"]"
+    ],
+    "tailwind_classes": [
+      "className=['\"]([^'\"]+)['\"]",
+      "cn\\(['\"]([^'\"]+)['\"]"
+    ]
+  },
+  "entity_mappings": {
+    "page_components": "Page",
+    "ui_components": "Component",
+    "workspace_components": "WorkspaceComponent",
+    "contexts": "Context",
+    "custom_hooks": "Hook",
+    "types_interfaces": "Type",
+    "zod_schemas": "Schema"
+  },
+  "relationship_mappings": {
+    "imports": "imports",
+    "path_aliases": "imports",
+    "react_router": "defines_route",
+    "contexts": "provides_context",
+    "hooks": "uses_hook",
+    "tanstack_query": "queries_data",
+    "radix_primitives": "extends_primitive"
+  }
+}

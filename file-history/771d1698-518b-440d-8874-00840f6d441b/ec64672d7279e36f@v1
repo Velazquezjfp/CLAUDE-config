@@ -1,0 +1,226 @@
+"""
+Resource Categories router - Full CRUD for resource_category table
+Connects to EXTERNAL database (data tables)
+Note: Lookup table for resource category types (Monteur VF, Chef/fe de team, etc.)
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+
+from database import get_external_db
+
+
+router = APIRouter(prefix="/resource-categories", tags=["Resource Categories"])
+
+
+@router.get("/")
+async def list_resource_categories(
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    List all resource categories.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT id, name
+            FROM resource_category
+            ORDER BY name
+        """)
+
+        result = await db.execute(query)
+        rows = result.fetchall()
+
+        return [dict(row._mapping) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching resource categories: {str(e)}",
+        )
+
+
+@router.get("/{category_id}")
+async def get_resource_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Get a single resource category by ID.
+    Data comes from external database.
+    """
+    try:
+        query = text("""
+            SELECT id, name
+            FROM resource_category
+            WHERE id = :category_id
+        """)
+
+        result = await db.execute(query, {"category_id": category_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Resource category with ID {category_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching resource category: {str(e)}",
+        )
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_resource_category(
+    category: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Create a new resource category in external database.
+    Required fields: name
+    """
+    try:
+        # Validate required fields
+        if "name" not in category or not category["name"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: name",
+            )
+
+        # Check if name already exists
+        check_query = text("SELECT id FROM resource_category WHERE name = :name")
+        check_result = await db.execute(check_query, {"name": category["name"]})
+        if check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Resource category with name '{category['name']}' already exists",
+            )
+
+        insert_query = text("""
+            INSERT INTO resource_category (name)
+            VALUES (:name)
+            RETURNING id, name
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {"name": category.get("name")},
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating resource category: {str(e)}",
+        )
+
+
+@router.put("/{category_id}")
+async def update_resource_category(
+    category_id: int,
+    category: dict,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Update an existing resource category in external database.
+    """
+    try:
+        # Check if category exists
+        check_query = text("SELECT id FROM resource_category WHERE id = :category_id")
+        check_result = await db.execute(check_query, {"category_id": category_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Resource category with ID {category_id} not found",
+            )
+
+        # Validate name if provided
+        if "name" not in category or not category["name"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field: name",
+            )
+
+        # Check for duplicate name (excluding current record)
+        dup_query = text("SELECT id FROM resource_category WHERE name = :name AND id != :category_id")
+        dup_result = await db.execute(dup_query, {"name": category["name"], "category_id": category_id})
+        if dup_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Resource category with name '{category['name']}' already exists",
+            )
+
+        update_query = text("""
+            UPDATE resource_category
+            SET name = :name
+            WHERE id = :category_id
+            RETURNING id, name
+        """)
+
+        result = await db.execute(
+            update_query,
+            {
+                "category_id": category_id,
+                "name": category["name"],
+            },
+        )
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating resource category: {str(e)}",
+        )
+
+
+@router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_resource_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_external_db),
+):
+    """
+    Delete a resource category from external database.
+    """
+    try:
+        # Check if category exists
+        check_query = text("SELECT id FROM resource_category WHERE id = :category_id")
+        check_result = await db.execute(check_query, {"category_id": category_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Resource category with ID {category_id} not found",
+            )
+
+        delete_query = text("DELETE FROM resource_category WHERE id = :category_id")
+        await db.execute(delete_query, {"category_id": category_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting resource category: {str(e)}",
+        )

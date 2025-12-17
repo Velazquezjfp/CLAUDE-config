@@ -1,0 +1,2234 @@
+# CFF Personnel Planning System - Integration Guide
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [API Authentication](#api-authentication)
+3. [Base URL Configuration](#base-url-configuration)
+4. [Making Your First API Call](#making-your-first-api-call)
+5. [Client Libraries](#client-libraries)
+6. [Data Model Overview](#data-model-overview)
+7. [Understanding the Hierarchy](#understanding-the-hierarchy)
+8. [Pagination](#pagination)
+9. [Filtering and Sorting](#filtering-and-sorting)
+10. [Error Handling](#error-handling)
+11. [Rate Limiting](#rate-limiting)
+12. [Common Integration Patterns](#common-integration-patterns)
+13. [Working with JSONB Fields](#working-with-jsonb-fields)
+14. [Date and Time Handling](#date-and-time-handling)
+15. [Testing Your Integration](#testing-your-integration)
+16. [Best Practices](#best-practices)
+
+---
+
+## Overview
+
+The CFF Personnel Planning System provides a RESTful API built with FastAPI. This guide will help you integrate with the system to:
+
+- Manage organizational hierarchy (Regions, Teams, Groups)
+- Create and manage resources (personnel)
+- Schedule absences and assignments
+- Handle work demands
+- Query availability and qualifications
+- Manage locations and constraints
+
+### API Characteristics
+
+- **Protocol**: HTTP/HTTPS
+- **Format**: JSON
+- **Documentation**: OpenAPI 3.0 (Swagger)
+- **Architecture**: RESTful
+- **Authentication**: None (to be implemented based on requirements)
+- **CORS**: Configurable origins
+
+---
+
+## API Authentication
+
+### Current Status
+
+The current version does not implement authentication. All endpoints are publicly accessible.
+
+### Recommended Authentication (Future Implementation)
+
+For production deployments, implement one of the following:
+
+**Option 1: API Key Authentication**
+```python
+# Header-based
+headers = {
+    "X-API-Key": "your-api-key-here"
+}
+```
+
+**Option 2: JWT Bearer Token**
+```python
+# Bearer token
+headers = {
+    "Authorization": "Bearer your-jwt-token-here"
+}
+```
+
+**Option 3: OAuth 2.0**
+- Suitable for third-party integrations
+- Supports user-level permissions
+
+### Security Recommendations
+
+1. **Always use HTTPS** in production
+2. **Implement authentication** before production deployment
+3. **Use environment variables** for credentials
+4. **Rotate API keys** regularly
+5. **Monitor API usage** for suspicious activity
+
+---
+
+## Base URL Configuration
+
+### Local Development
+
+```
+http://localhost:8000
+```
+
+### Staging
+
+```
+https://staging-api.your-domain.com
+```
+
+### Production
+
+```
+https://api.your-domain.com
+```
+
+### API Version Path
+
+All endpoints are prefixed with `/api/v1`:
+
+```
+http://localhost:8000/api/v1/resources
+```
+
+---
+
+## Making Your First API Call
+
+### 1. Check API Health
+
+```bash
+curl http://localhost:8000/health
+```
+
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "version": "1.0.0",
+  "timestamp": "2025-11-10T12:34:56.789Z"
+}
+```
+
+### 2. Explore API Documentation
+
+Open in your browser:
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+
+### 3. List Regions (Simple GET Request)
+
+```bash
+curl http://localhost:8000/api/v1/regions?page=1&per_page=10
+```
+
+**Expected Response:**
+```json
+{
+  "total": 5,
+  "page": 1,
+  "per_page": 10,
+  "total_pages": 1,
+  "data": [
+    {
+      "region_id": 1,
+      "region_name": "Région Ouest",
+      "region_code": "RO",
+      "created_at": "2025-11-10T10:00:00Z",
+      "updated_at": "2025-11-10T10:00:00Z"
+    }
+  ]
+}
+```
+
+### 4. Create a New Resource (POST Request)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/resources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_id": "RES001",
+    "type": "Internal",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "region_id": 1,
+    "team_id": 1,
+    "status": "Actif"
+  }'
+```
+
+---
+
+## Client Libraries
+
+### Python
+
+#### Using `requests` Library
+
+```python
+import requests
+from typing import Dict, List, Optional
+
+class CFFClient:
+    """Client for CFF Personnel Planning API"""
+
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+        self.api_base = f"{base_url}/api/v1"
+
+    def _get(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
+        """Make GET request"""
+        response = requests.get(f"{self.api_base}{endpoint}", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    def _post(self, endpoint: str, data: Dict) -> Dict:
+        """Make POST request"""
+        response = requests.post(
+            f"{self.api_base}{endpoint}",
+            json=data,
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def _put(self, endpoint: str, data: Dict) -> Dict:
+        """Make PUT request"""
+        response = requests.put(
+            f"{self.api_base}{endpoint}",
+            json=data,
+            headers={"Content-Type": "application/json"}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def _delete(self, endpoint: str) -> None:
+        """Make DELETE request"""
+        response = requests.delete(f"{self.api_base}{endpoint}")
+        response.raise_for_status()
+
+    # Health Check
+    def health_check(self) -> Dict:
+        """Check API health"""
+        response = requests.get(f"{self.base_url}/health")
+        response.raise_for_status()
+        return response.json()
+
+    # Regions
+    def list_regions(self, page: int = 1, per_page: int = 50) -> Dict:
+        """List all regions"""
+        return self._get("/regions", {"page": page, "per_page": per_page})
+
+    def get_region(self, region_id: int) -> Dict:
+        """Get region by ID"""
+        return self._get(f"/regions/{region_id}")
+
+    def create_region(self, region_name: str, region_code: Optional[str] = None) -> Dict:
+        """Create new region"""
+        data = {"region_name": region_name}
+        if region_code:
+            data["region_code"] = region_code
+        return self._post("/regions", data)
+
+    # Resources
+    def list_resources(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        type: Optional[str] = None,
+        status: Optional[str] = None,
+        region_id: Optional[int] = None,
+        team_id: Optional[int] = None
+    ) -> Dict:
+        """List resources with filters"""
+        params = {"page": page, "per_page": per_page}
+        if type:
+            params["type"] = type
+        if status:
+            params["status"] = status
+        if region_id:
+            params["region_id"] = region_id
+        if team_id:
+            params["team_id"] = team_id
+        return self._get("/resources", params)
+
+    def get_resource(self, resource_id: str) -> Dict:
+        """Get resource by ID"""
+        return self._get(f"/resources/{resource_id}")
+
+    def create_resource(self, data: Dict) -> Dict:
+        """Create new resource"""
+        return self._post("/resources", data)
+
+    def update_resource(self, resource_id: str, data: Dict) -> Dict:
+        """Update resource"""
+        return self._put(f"/resources/{resource_id}", data)
+
+    def delete_resource(self, resource_id: str) -> None:
+        """Delete resource"""
+        self._delete(f"/resources/{resource_id}")
+
+    # Absences
+    def list_absences(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        resource_id: Optional[str] = None,
+        status: Optional[str] = None
+    ) -> Dict:
+        """List absences with filters"""
+        params = {"page": page, "per_page": per_page}
+        if resource_id:
+            params["resource_id"] = resource_id
+        if status:
+            params["status"] = status
+        return self._get("/absences", params)
+
+    def create_absence(self, data: Dict) -> Dict:
+        """Create new absence"""
+        return self._post("/absences", data)
+
+    # Requests
+    def list_demands(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        status: Optional[str] = None
+    ) -> Dict:
+        """List requests with filters"""
+        params = {"page": page, "per_page": per_page}
+        if status:
+            params["status"] = status
+        return self._get("/demands", params)
+
+    def create_demand(self, data: Dict) -> Dict:
+        """Create new request"""
+        return self._post("/demands", data)
+
+
+# Usage Example
+if __name__ == "__main__":
+    # Initialize client
+    client = CFFClient("http://localhost:8000")
+
+    # Check health
+    health = client.health_check()
+    print(f"API Status: {health['status']}")
+
+    # List regions
+    regions = client.list_regions()
+    print(f"Total regions: {regions['total']}")
+
+    # Create a resource
+    new_resource = client.create_resource({
+        "resource_id": "RES001",
+        "type": "Internal",
+        "first_name": "John",
+        "last_name": "Doe",
+        "email": "john.doe@example.com",
+        "region_id": 1,
+        "team_id": 1,
+        "status": "Actif"
+    })
+    print(f"Created resource: {new_resource['resource_id']}")
+
+    # List resources by region
+    resources = client.list_resources(region_id=1, status="Actif")
+    print(f"Active resources in region 1: {resources['total']}")
+```
+
+#### Using `httpx` Library (Async)
+
+```python
+import httpx
+import asyncio
+from typing import Dict, Optional
+
+class AsyncCFFClient:
+    """Async client for CFF Personnel Planning API"""
+
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        self.base_url = base_url
+        self.api_base = f"{base_url}/api/v1"
+
+    async def list_resources(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        **filters
+    ) -> Dict:
+        """List resources asynchronously"""
+        params = {"page": page, "per_page": per_page, **filters}
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{self.api_base}/resources", params=params)
+            response.raise_for_status()
+            return response.json()
+
+    async def create_resource(self, data: Dict) -> Dict:
+        """Create resource asynchronously"""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_base}/resources",
+                json=data,
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()
+            return response.json()
+
+
+# Usage Example
+async def main():
+    client = AsyncCFFClient("http://localhost:8000")
+
+    # List resources
+    resources = await client.list_resources(region_id=1)
+    print(f"Total resources: {resources['total']}")
+
+    # Create resource
+    new_resource = await client.create_resource({
+        "resource_id": "RES002",
+        "type": "Internal",
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "email": "jane.smith@example.com",
+        "region_id": 1,
+        "team_id": 1,
+        "status": "Actif"
+    })
+    print(f"Created: {new_resource['resource_id']}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### JavaScript/TypeScript
+
+#### Using `fetch` (Native)
+
+```javascript
+// cff-client.js
+
+class CFFClient {
+  constructor(baseURL = 'http://localhost:8000') {
+    this.baseURL = baseURL;
+    this.apiBase = `${baseURL}/api/v1`;
+  }
+
+  async _request(endpoint, options = {}) {
+    const response = await fetch(`${this.apiBase}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'API request failed');
+    }
+
+    return response.json();
+  }
+
+  // Health Check
+  async healthCheck() {
+    const response = await fetch(`${this.baseURL}/health`);
+    return response.json();
+  }
+
+  // Regions
+  async listRegions(page = 1, perPage = 50) {
+    const params = new URLSearchParams({ page, per_page: perPage });
+    return this._request(`/regions?${params}`);
+  }
+
+  async getRegion(regionId) {
+    return this._request(`/regions/${regionId}`);
+  }
+
+  async createRegion(data) {
+    return this._request('/regions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Resources
+  async listResources(filters = {}) {
+    const { page = 1, perPage = 50, ...rest } = filters;
+    const params = new URLSearchParams({
+      page,
+      per_page: perPage,
+      ...rest,
+    });
+    return this._request(`/resources?${params}`);
+  }
+
+  async getResource(resourceId) {
+    return this._request(`/resources/${resourceId}`);
+  }
+
+  async createResource(data) {
+    return this._request('/resources', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateResource(resourceId, data) {
+    return this._request(`/resources/${resourceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteResource(resourceId) {
+    return this._request(`/resources/${resourceId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Absences
+  async listAbsences(filters = {}) {
+    const { page = 1, perPage = 50, ...rest } = filters;
+    const params = new URLSearchParams({
+      page,
+      per_page: perPage,
+      ...rest,
+    });
+    return this._request(`/absences?${params}`);
+  }
+
+  async createAbsence(data) {
+    return this._request('/absences', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+}
+
+// Usage Example
+(async () => {
+  const client = new CFFClient('http://localhost:8000');
+
+  // Check health
+  const health = await client.healthCheck();
+  console.log('API Status:', health.status);
+
+  // List regions
+  const regions = await client.listRegions();
+  console.log('Total regions:', regions.total);
+
+  // Create resource
+  const newResource = await client.createResource({
+    resource_id: 'RES001',
+    type: 'Internal',
+    first_name: 'John',
+    last_name: 'Doe',
+    email: 'john.doe@example.com',
+    region_id: 1,
+    team_id: 1,
+    status: 'Actif',
+  });
+  console.log('Created resource:', newResource.resource_id);
+})();
+```
+
+#### TypeScript with Axios
+
+```typescript
+// cff-client.ts
+
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
+
+interface PaginatedResponse<T> {
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  data: T[];
+}
+
+interface Region {
+  region_id: number;
+  region_name: string;
+  region_code?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Resource {
+  resource_id: string;
+  type: 'Internal' | 'External';
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  region_id?: number;
+  team_id?: number;
+  group_id?: number;
+  status?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Absence {
+  absence_id: string;
+  resource_id: string;
+  type: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+class CFFClient {
+  private client: AxiosInstance;
+
+  constructor(baseURL: string = 'http://localhost:8000') {
+    this.client = axios.create({
+      baseURL: `${baseURL}/api/v1`,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  // Regions
+  async listRegions(
+    page: number = 1,
+    perPage: number = 50
+  ): Promise<PaginatedResponse<Region>> {
+    const response = await this.client.get<PaginatedResponse<Region>>(
+      '/regions',
+      {
+        params: { page, per_page: perPage },
+      }
+    );
+    return response.data;
+  }
+
+  async getRegion(regionId: number): Promise<Region> {
+    const response = await this.client.get<Region>(`/regions/${regionId}`);
+    return response.data;
+  }
+
+  async createRegion(data: Partial<Region>): Promise<Region> {
+    const response = await this.client.post<Region>('/regions', data);
+    return response.data;
+  }
+
+  // Resources
+  async listResources(
+    filters?: {
+      page?: number;
+      perPage?: number;
+      type?: string;
+      status?: string;
+      region_id?: number;
+      team_id?: number;
+    }
+  ): Promise<PaginatedResponse<Resource>> {
+    const { page = 1, perPage = 50, ...rest } = filters || {};
+    const response = await this.client.get<PaginatedResponse<Resource>>(
+      '/resources',
+      {
+        params: { page, per_page: perPage, ...rest },
+      }
+    );
+    return response.data;
+  }
+
+  async getResource(resourceId: string): Promise<Resource> {
+    const response = await this.client.get<Resource>(
+      `/resources/${resourceId}`
+    );
+    return response.data;
+  }
+
+  async createResource(data: Partial<Resource>): Promise<Resource> {
+    const response = await this.client.post<Resource>('/resources', data);
+    return response.data;
+  }
+
+  async updateResource(
+    resourceId: string,
+    data: Partial<Resource>
+  ): Promise<Resource> {
+    const response = await this.client.put<Resource>(
+      `/resources/${resourceId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteResource(resourceId: string): Promise<void> {
+    await this.client.delete(`/resources/${resourceId}`);
+  }
+
+  // Absences
+  async listAbsences(
+    filters?: {
+      page?: number;
+      perPage?: number;
+      resource_id?: string;
+      status?: string;
+    }
+  ): Promise<PaginatedResponse<Absence>> {
+    const { page = 1, perPage = 50, ...rest } = filters || {};
+    const response = await this.client.get<PaginatedResponse<Absence>>(
+      '/absences',
+      {
+        params: { page, per_page: perPage, ...rest },
+      }
+    );
+    return response.data;
+  }
+
+  async createAbsence(data: Partial<Absence>): Promise<Absence> {
+    const response = await this.client.post<Absence>('/absences', data);
+    return response.data;
+  }
+}
+
+// Usage Example
+(async () => {
+  const client = new CFFClient('http://localhost:8000');
+
+  try {
+    // List regions
+    const regions = await client.listRegions();
+    console.log('Total regions:', regions.total);
+
+    // Create resource
+    const newResource = await client.createResource({
+      resource_id: 'RES001',
+      type: 'Internal',
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'john.doe@example.com',
+      region_id: 1,
+      team_id: 1,
+      status: 'Actif',
+    });
+    console.log('Created resource:', newResource.resource_id);
+
+    // List resources by region
+    const resources = await client.listResources({
+      region_id: 1,
+      status: 'Actif',
+    });
+    console.log('Active resources:', resources.total);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+})();
+
+export default CFFClient;
+```
+
+### cURL Examples
+
+#### List Resources
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/resources?page=1&per_page=50" \
+  -H "Accept: application/json"
+```
+
+#### Create Resource
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/resources" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_id": "RES001",
+    "type": "Internal",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "region_id": 1,
+    "team_id": 1,
+    "status": "Actif"
+  }'
+```
+
+#### Update Resource
+
+```bash
+curl -X PUT "http://localhost:8000/api/v1/resources/RES001" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "Inactif"
+  }'
+```
+
+#### Delete Resource
+
+```bash
+curl -X DELETE "http://localhost:8000/api/v1/resources/RES001"
+```
+
+#### Filter Resources
+
+```bash
+# By type
+curl "http://localhost:8000/api/v1/resources?type=Internal"
+
+# By status
+curl "http://localhost:8000/api/v1/resources?status=Actif"
+
+# By region and team
+curl "http://localhost:8000/api/v1/resources?region_id=1&team_id=2"
+
+# Multiple filters
+curl "http://localhost:8000/api/v1/resources?type=Internal&status=Actif&region_id=1"
+```
+
+---
+
+## Data Model Overview
+
+### Entity Relationship
+
+The system uses a hierarchical data model:
+
+```
+Regions
+  └─ Teams
+      └─ Groups
+          └─ Resources
+
+Locations
+  └─ Location Distances
+
+Qualifications
+  └─ Resource Qualifications (via JSONB)
+
+Legal Constraints
+
+Requests
+  └─ Assignments
+      └─ Resources
+
+Absences
+  └─ Resources
+```
+
+### Core Entities
+
+| Entity | Description | Primary Key |
+|--------|-------------|-------------|
+| **Regions** | Top-level organizational division | `region_id` (serial) |
+| **Teams** | Belongs to a region | `team_id` (serial) |
+| **Groups** | Belongs to a team | `group_id` (serial) |
+| **Resources** | Personnel (internal/external) | `resource_id` (varchar) |
+| **Absences** | Time off for resources | `absence_id` (varchar) |
+| **Requests** | Work requests | `request_id` (serial) |
+| **Assignments** | Resource assignments to requests | `assignment_id` (varchar) |
+| **Locations** | Physical locations | `location_id` (serial) |
+| **Qualifications** | Skills/certifications | `qualification_id` (serial) |
+| **Legal Constraints** | Work regulations | `constraint_id` (serial) |
+
+---
+
+## Understanding the Hierarchy
+
+### Organizational Hierarchy
+
+The system uses a three-level hierarchy:
+
+```
+Region (Région Ouest)
+  ├─ Team (Equipe Ouest 1)
+  │   ├─ Group (Entretien)
+  │   │   ├─ Resource 1
+  │   │   └─ Resource 2
+  │   └─ Group (Intervention)
+  │       └─ Resource 3
+  └─ Team (Equipe Ouest 2)
+      └─ Group (Maintenance)
+          └─ Resource 4
+```
+
+### Creating Complete Hierarchy
+
+#### Step 1: Create Region
+
+```bash
+curl -X POST http://localhost:8000/api/v1/regions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "region_name": "Région Ouest",
+    "region_code": "RO"
+  }'
+```
+
+**Response:**
+```json
+{
+  "region_id": 1,
+  "region_name": "Région Ouest",
+  "region_code": "RO",
+  "created_at": "2025-11-10T10:00:00Z",
+  "updated_at": "2025-11-10T10:00:00Z"
+}
+```
+
+#### Step 2: Create Team
+
+```bash
+curl -X POST http://localhost:8000/api/v1/teams \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_name": "Equipe Ouest 1",
+    "team_code": "EO1",
+    "region_id": 1
+  }'
+```
+
+**Response:**
+```json
+{
+  "team_id": 1,
+  "team_name": "Equipe Ouest 1",
+  "team_code": "EO1",
+  "region_id": 1,
+  "created_at": "2025-11-10T10:01:00Z",
+  "updated_at": "2025-11-10T10:01:00Z"
+}
+```
+
+#### Step 3: Create Group
+
+```bash
+curl -X POST http://localhost:8000/api/v1/groups \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_name": "Entretien",
+    "team_id": 1,
+    "color_code": "#FF5733"
+  }'
+```
+
+**Response:**
+```json
+{
+  "group_id": 1,
+  "group_name": "Entretien",
+  "team_id": 1,
+  "color_code": "#FF5733",
+  "created_at": "2025-11-10T10:02:00Z",
+  "updated_at": "2025-11-10T10:02:00Z"
+}
+```
+
+#### Step 4: Create Resource
+
+```bash
+curl -X POST http://localhost:8000/api/v1/resources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resource_id": "RES001",
+    "type": "Internal",
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "region_id": 1,
+    "team_id": 1,
+    "group_id": 1,
+    "status": "Actif",
+    "contract": "full_time",
+    "weekly_hours": 40
+  }'
+```
+
+### Querying Hierarchy
+
+```python
+# Python example
+client = CFFClient()
+
+# Get all teams in a region
+region_id = 1
+teams = client.list_teams(region_id=region_id)
+
+# Get all sub-groups in a team
+team_id = 1
+groups = client.list_groups(team_id=team_id)
+
+# Get all resources in a sub-group
+group_id = 1
+resources = client.list_resources(group_id=group_id)
+
+# Get full hierarchy
+region = client.get_region(region_id)
+print(f"Region: {region['region_name']}")
+
+for team in teams['data']:
+    print(f"  Team: {team['team_name']}")
+    team_groups = client.list_groups(team_id=team['team_id'])
+    for sg in team_groups['data']:
+        print(f"    Group: {sg['group_name']}")
+```
+
+---
+
+## Pagination
+
+All list endpoints support pagination.
+
+### Pagination Parameters
+
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `page` | integer | 1 | 1-∞ | Page number (1-indexed) |
+| `per_page` | integer | 50 | 1-200 | Items per page |
+
+### Pagination Response Format
+
+```json
+{
+  "total": 150,
+  "page": 2,
+  "per_page": 50,
+  "total_pages": 3,
+  "data": [
+    {/* item 1 */},
+    {/* item 2 */},
+    // ...
+  ]
+}
+```
+
+### Pagination Fields
+
+| Field | Description |
+|-------|-------------|
+| `total` | Total number of items across all pages |
+| `page` | Current page number |
+| `per_page` | Number of items per page |
+| `total_pages` | Total number of pages |
+| `data` | Array of items for current page |
+
+### Pagination Examples
+
+#### Basic Pagination
+
+```bash
+# First page (default)
+curl "http://localhost:8000/api/v1/resources"
+
+# Second page
+curl "http://localhost:8000/api/v1/resources?page=2"
+
+# Custom page size
+curl "http://localhost:8000/api/v1/resources?page=1&per_page=100"
+```
+
+#### Python Example
+
+```python
+def fetch_all_resources(client):
+    """Fetch all resources across multiple pages"""
+    all_resources = []
+    page = 1
+    per_page = 100
+
+    while True:
+        response = client.list_resources(page=page, per_page=per_page)
+        all_resources.extend(response['data'])
+
+        # Check if we've reached the last page
+        if page >= response['total_pages']:
+            break
+
+        page += 1
+
+    return all_resources
+
+# Usage
+client = CFFClient()
+all_resources = fetch_all_resources(client)
+print(f"Total resources fetched: {len(all_resources)}")
+```
+
+#### JavaScript Example
+
+```javascript
+async function fetchAllResources(client) {
+  const allResources = [];
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const response = await client.listResources({ page, perPage });
+    allResources.push(...response.data);
+
+    // Check if we've reached the last page
+    if (page >= response.total_pages) {
+      break;
+    }
+
+    page++;
+  }
+
+  return allResources;
+}
+
+// Usage
+const client = new CFFClient();
+const allResources = await fetchAllResources(client);
+console.log(`Total resources fetched: ${allResources.length}`);
+```
+
+### Best Practices
+
+1. **Use appropriate page size**: Balance between fewer requests (large pages) and memory usage
+2. **Implement progressive loading**: Load data as needed (infinite scroll, load more buttons)
+3. **Cache results**: Avoid re-fetching the same page
+4. **Handle edge cases**: Empty results, single page, etc.
+5. **Monitor performance**: Larger page sizes may be slower
+
+---
+
+## Filtering and Sorting
+
+### Filtering
+
+Most list endpoints support filtering by common fields.
+
+#### Resource Filters
+
+```bash
+# Filter by type
+curl "http://localhost:8000/api/v1/resources?type=Internal"
+
+# Filter by status
+curl "http://localhost:8000/api/v1/resources?status=Actif"
+
+# Filter by region
+curl "http://localhost:8000/api/v1/resources?region_id=1"
+
+# Filter by team
+curl "http://localhost:8000/api/v1/resources?team_id=2"
+
+# Multiple filters (AND logic)
+curl "http://localhost:8000/api/v1/resources?type=Internal&status=Actif&region_id=1"
+```
+
+#### Absence Filters
+
+```bash
+# Filter by resource
+curl "http://localhost:8000/api/v1/absences?resource_id=RES001"
+
+# Filter by status
+curl "http://localhost:8000/api/v1/absences?status=Approuvé"
+
+# Filter by type
+curl "http://localhost:8000/api/v1/absences?type=Holiday"
+```
+
+#### Request Filters
+
+```bash
+# Filter by status
+curl "http://localhost:8000/api/v1/demands?status=pending"
+
+# Filter by priority
+curl "http://localhost:8000/api/v1/demands?priority=high"
+```
+
+### Sorting
+
+Results are automatically sorted by `created_at` in descending order (newest first).
+
+**Future Enhancement**: Custom sorting by field
+
+```bash
+# Example (not yet implemented)
+curl "http://localhost:8000/api/v1/resources?sort=last_name&order=asc"
+```
+
+---
+
+## Error Handling
+
+### Error Response Format
+
+```json
+{
+  "detail": "Error message describing what went wrong"
+}
+```
+
+### HTTP Status Codes
+
+| Status Code | Meaning | When It Occurs |
+|-------------|---------|----------------|
+| **200 OK** | Success | Request completed successfully |
+| **201 Created** | Created | Resource created successfully |
+| **204 No Content** | Deleted | Resource deleted successfully |
+| **400 Bad Request** | Invalid input | Validation error, missing required fields |
+| **404 Not Found** | Not found | Resource doesn't exist |
+| **422 Unprocessable Entity** | Validation error | Invalid data format or values |
+| **500 Internal Server Error** | Server error | Unexpected server error |
+
+### Error Handling Examples
+
+#### Python
+
+```python
+import requests
+from requests.exceptions import HTTPError
+
+def create_resource_safe(client, data):
+    """Create resource with error handling"""
+    try:
+        resource = client.create_resource(data)
+        return resource
+    except HTTPError as e:
+        if e.response.status_code == 400:
+            print(f"Invalid input: {e.response.json()['detail']}")
+        elif e.response.status_code == 404:
+            print(f"Resource not found: {e.response.json()['detail']}")
+        elif e.response.status_code == 422:
+            print(f"Validation error: {e.response.json()['detail']}")
+        else:
+            print(f"Unexpected error: {e}")
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+# Usage
+resource = create_resource_safe(client, {
+    "resource_id": "RES001",
+    "type": "Internal",
+    "first_name": "John",
+    "last_name": "Doe"
+})
+```
+
+#### JavaScript
+
+```javascript
+async function createResourceSafe(client, data) {
+  try {
+    const resource = await client.createResource(data);
+    return resource;
+  } catch (error) {
+    if (error.response) {
+      // HTTP error response
+      const status = error.response.status;
+      const detail = error.response.data.detail;
+
+      switch (status) {
+        case 400:
+          console.error(`Invalid input: ${detail}`);
+          break;
+        case 404:
+          console.error(`Not found: ${detail}`);
+          break;
+        case 422:
+          console.error(`Validation error: ${detail}`);
+          break;
+        default:
+          console.error(`HTTP ${status}: ${detail}`);
+      }
+    } else if (error.request) {
+      // Network error
+      console.error('Network error:', error.message);
+    } else {
+      // Other error
+      console.error('Error:', error.message);
+    }
+    return null;
+  }
+}
+
+// Usage
+const resource = await createResourceSafe(client, {
+  resource_id: 'RES001',
+  type: 'Internal',
+  first_name: 'John',
+  last_name: 'Doe',
+});
+```
+
+### Common Validation Errors
+
+**Missing Required Fields:**
+```json
+{
+  "detail": "Field required: resource_id"
+}
+```
+
+**Invalid Enum Value:**
+```json
+{
+  "detail": "Invalid value for type. Must be one of: Internal, External"
+}
+```
+
+**Foreign Key Constraint:**
+```json
+{
+  "detail": "Invalid region_id: 999"
+}
+```
+
+**Duplicate Key:**
+```json
+{
+  "detail": "Resource with ID 'RES001' already exists"
+}
+```
+
+---
+
+## Rate Limiting
+
+### Current Status
+
+The API does not currently implement rate limiting.
+
+### Recommended Rate Limiting (Future)
+
+For production deployments:
+
+- **Per IP**: 100 requests per minute
+- **Per API Key**: 1000 requests per minute
+- **Burst**: Allow short bursts up to 2x limit
+
+### Rate Limit Headers (Future)
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1625097600
+```
+
+### Handling Rate Limits
+
+```python
+import time
+from requests.exceptions import HTTPError
+
+def request_with_retry(client, func, *args, **kwargs):
+    """Make request with automatic retry on rate limit"""
+    max_retries = 3
+    retry_delay = 60  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except HTTPError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                if attempt < max_retries - 1:
+                    print(f"Rate limited, retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    raise
+            else:
+                raise
+
+# Usage
+resources = request_with_retry(client, client.list_resources)
+```
+
+---
+
+## Common Integration Patterns
+
+### Pattern 1: Creating a Complete Resource with Hierarchy
+
+```python
+def create_resource_with_hierarchy(client, resource_data, region_name, team_name, group_name):
+    """Create or get region, team, sub-group, then create resource"""
+
+    # 1. Get or create region
+    regions = client.list_regions()
+    region = next((r for r in regions['data'] if r['region_name'] == region_name), None)
+
+    if not region:
+        region = client.create_region(region_name=region_name)
+        print(f"Created region: {region['region_name']}")
+
+    # 2. Get or create team
+    teams = client.list_teams(region_id=region['region_id'])
+    team = next((t for t in teams['data'] if t['team_name'] == team_name), None)
+
+    if not team:
+        team = client.create_team(team_name=team_name, region_id=region['region_id'])
+        print(f"Created team: {team['team_name']}")
+
+    # 3. Get or create sub-group
+    groups = client.list_groups(team_id=team['team_id'])
+    sub_group = next((sg for sg in groups['data'] if sg['group_name'] == group_name), None)
+
+    if not sub_group:
+        sub_group = client.create_sub_group(
+            group_name=group_name,
+            team_id=team['team_id']
+        )
+        print(f"Created sub-group: {sub_group['group_name']}")
+
+    # 4. Create resource
+    resource_data.update({
+        'region_id': region['region_id'],
+        'team_id': team['team_id'],
+        'group_id': sub_group['group_id']
+    })
+
+    resource = client.create_resource(resource_data)
+    print(f"Created resource: {resource['resource_id']}")
+
+    return resource
+
+# Usage
+new_resource = create_resource_with_hierarchy(
+    client,
+    resource_data={
+        'resource_id': 'RES001',
+        'type': 'Internal',
+        'first_name': 'John',
+        'last_name': 'Doe',
+        'email': 'john.doe@example.com',
+        'status': 'Actif'
+    },
+    region_name='Région Ouest',
+    team_name='Equipe Ouest 1',
+    group_name='Entretien'
+)
+```
+
+### Pattern 2: Scheduling Absences
+
+```python
+from datetime import datetime, timedelta
+
+def schedule_vacation(client, resource_id, start_date, days):
+    """Schedule vacation absence for a resource"""
+    end_date = start_date + timedelta(days=days)
+
+    absence_data = {
+        'absence_id': f"ABS-{resource_id}-{start_date.strftime('%Y%m%d')}",
+        'resource_id': resource_id,
+        'type': 'Holiday',
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+        'status': 'En_attente',
+        'notes': f"{days}-day vacation"
+    }
+
+    absence = client.create_absence(absence_data)
+    print(f"Created absence: {absence['absence_id']} for {days} days")
+    return absence
+
+# Usage
+vacation = schedule_vacation(
+    client,
+    resource_id='RES001',
+    start_date=datetime(2025, 12, 20),
+    days=14
+)
+```
+
+### Pattern 3: Managing Requests and Assignments
+
+```python
+def create_demand_and_assign(client, request_data, resource_ids):
+    """Create request and assign resources"""
+
+    # 1. Create request
+    request = client.create_demand(request_data)
+    print(f"Created request: {request['request_id']}")
+
+    # 2. Create assignments for each resource
+    assignments = []
+    for resource_id in resource_ids:
+        assignment_data = {
+            'assignment_id': f"ASG-{request['request_id']}-{resource_id}",
+            'resource_id': resource_id,
+            'request_id': str(request['request_id']),
+            'status': 'Provisoire',
+            'start_date': request_data['start_datetime'].split('T')[0],
+            'end_date': request_data['end_datetime'].split('T')[0]
+        }
+
+        assignment = client.create_assignment(assignment_data)
+        assignments.append(assignment)
+        print(f"Assigned resource {resource_id} to request {request['request_id']}")
+
+    return request, assignments
+
+# Usage
+request, assignments = create_demand_and_assign(
+    client,
+    request_data={
+        'bsa_id': 'BSA-2025-001',
+        'task_name': 'Track Maintenance',
+        'status': 'pending',
+        'start_datetime': '2025-12-01T08:00:00',
+        'end_datetime': '2025-12-01T17:00:00',
+        'people_needed': 2,
+        'priority': 'high'
+    },
+    resource_ids=['RES001', 'RES002']
+)
+```
+
+### Pattern 4: Querying Availability
+
+```python
+from datetime import datetime
+
+def check_resource_availability(client, resource_id, start_date, end_date):
+    """Check if resource is available in date range"""
+
+    # Get resource details
+    resource = client.get_resource(resource_id)
+
+    if resource['status'] != 'Actif':
+        return False, f"Resource is {resource['status']}"
+
+    # Get absences in date range
+    absences = client.list_absences(resource_id=resource_id)
+
+    # Check for overlapping absences
+    for absence in absences['data']:
+        abs_start = datetime.fromisoformat(absence['start_date'])
+        abs_end = datetime.fromisoformat(absence['end_date'])
+
+        if (abs_start <= end_date and abs_end >= start_date):
+            return False, f"Resource has absence: {absence['type']}"
+
+    # Get assignments in date range
+    assignments = client.list_assignments(resource_id=resource_id)
+
+    # Check for overlapping assignments
+    for assignment in assignments['data']:
+        if assignment['status'] in ['Confirmé', 'Provisoire']:
+            asg_start = datetime.fromisoformat(assignment['start_date'])
+            asg_end = datetime.fromisoformat(assignment['end_date'])
+
+            if (asg_start <= end_date and asg_end >= start_date):
+                return False, f"Resource has assignment: {assignment['assignment_id']}"
+
+    return True, "Resource is available"
+
+# Usage
+is_available, reason = check_resource_availability(
+    client,
+    resource_id='RES001',
+    start_date=datetime(2025, 12, 1),
+    end_date=datetime(2025, 12, 5)
+)
+
+if is_available:
+    print("Resource is available")
+else:
+    print(f"Resource is not available: {reason}")
+```
+
+### Pattern 5: Bulk Operations
+
+```python
+def bulk_create_resources(client, resources_data):
+    """Create multiple resources with error handling"""
+    results = {
+        'success': [],
+        'failed': []
+    }
+
+    for data in resources_data:
+        try:
+            resource = client.create_resource(data)
+            results['success'].append(resource['resource_id'])
+        except Exception as e:
+            results['failed'].append({
+                'resource_id': data.get('resource_id'),
+                'error': str(e)
+            })
+
+    print(f"Created: {len(results['success'])}")
+    print(f"Failed: {len(results['failed'])}")
+
+    return results
+
+# Usage
+resources_to_create = [
+    {
+        'resource_id': 'RES001',
+        'type': 'Internal',
+        'first_name': 'John',
+        'last_name': 'Doe',
+        'email': 'john@example.com',
+        'region_id': 1,
+        'team_id': 1,
+        'status': 'Actif'
+    },
+    {
+        'resource_id': 'RES002',
+        'type': 'Internal',
+        'first_name': 'Jane',
+        'last_name': 'Smith',
+        'email': 'jane@example.com',
+        'region_id': 1,
+        'team_id': 1,
+        'status': 'Actif'
+    }
+]
+
+results = bulk_create_resources(client, resources_to_create)
+```
+
+---
+
+## Working with JSONB Fields
+
+Some fields use PostgreSQL JSONB format for flexible data storage.
+
+### Qualifications (JSONB Array)
+
+```json
+{
+  "qualifications": [
+    "Electrician",
+    "First Aid",
+    "Safety Certified"
+  ]
+}
+```
+
+**Creating/Updating with Qualifications:**
+
+```python
+# Create resource with qualifications
+resource = client.create_resource({
+    'resource_id': 'RES001',
+    'type': 'Internal',
+    'first_name': 'John',
+    'last_name': 'Doe',
+    'qualifications': ['Electrician', 'First Aid', 'Safety Certified']
+})
+
+# Update qualifications
+updated_resource = client.update_resource('RES001', {
+    'qualifications': ['Electrician', 'First Aid', 'Safety Certified', 'Fork Lift']
+})
+```
+
+**Querying Resources by Qualification:**
+
+```sql
+-- SQL query (for direct database access)
+SELECT * FROM resources
+WHERE qualifications @> '["Electrician"]'::jsonb;
+```
+
+### Availability Pattern (JSONB Object)
+
+```json
+{
+  "availability_pattern": {
+    "monday": {"available": true, "hours": "08:00-17:00"},
+    "tuesday": {"available": true, "hours": "08:00-17:00"},
+    "wednesday": {"available": true, "hours": "08:00-17:00"},
+    "thursday": {"available": true, "hours": "08:00-17:00"},
+    "friday": {"available": true, "hours": "08:00-17:00"},
+    "saturday": {"available": false},
+    "sunday": {"available": false}
+  }
+}
+```
+
+**Creating Resource with Availability Pattern:**
+
+```python
+resource = client.create_resource({
+    'resource_id': 'RES001',
+    'type': 'Internal',
+    'first_name': 'John',
+    'last_name': 'Doe',
+    'availability_pattern': {
+        'monday': {'available': True, 'hours': '08:00-17:00'},
+        'tuesday': {'available': True, 'hours': '08:00-17:00'},
+        'wednesday': {'available': True, 'hours': '08:00-17:00'},
+        'thursday': {'available': True, 'hours': '08:00-17:00'},
+        'friday': {'available': True, 'hours': '08:00-17:00'},
+        'saturday': {'available': False},
+        'sunday': {'available': False}
+    }
+})
+```
+
+### Required Qualifications (JSONB Array in Requests)
+
+```python
+request = client.create_demand({
+    'bsa_id': 'BSA-2025-001',
+    'task_name': 'Electrical Work',
+    'required_qualifications': ['Electrician', 'Safety Certified'],
+    'people_needed': 2,
+    'start_datetime': '2025-12-01T08:00:00',
+    'end_datetime': '2025-12-01T17:00:00'
+})
+```
+
+---
+
+## Date and Time Handling
+
+### Date Format
+
+**ISO 8601 Date**: `YYYY-MM-DD`
+
+Example: `2025-11-10`
+
+### DateTime Format
+
+**ISO 8601 DateTime**: `YYYY-MM-DDTHH:MM:SS` or `YYYY-MM-DDTHH:MM:SSZ`
+
+Example: `2025-11-10T14:30:00` or `2025-11-10T14:30:00Z`
+
+### Time Format
+
+**24-hour format**: `HH:MM:SS`
+
+Example: `14:30:00`
+
+### Working with Dates
+
+#### Python
+
+```python
+from datetime import datetime, date, time
+
+# Create absence with dates
+absence = client.create_absence({
+    'absence_id': 'ABS001',
+    'resource_id': 'RES001',
+    'type': 'Holiday',
+    'start_date': date(2025, 12, 20).isoformat(),  # "2025-12-20"
+    'end_date': date(2025, 12, 31).isoformat(),     # "2025-12-31"
+    'status': 'En_attente'
+})
+
+# Create request with datetime
+request = client.create_demand({
+    'bsa_id': 'BSA001',
+    'start_datetime': datetime(2025, 12, 1, 8, 0).isoformat(),   # "2025-12-01T08:00:00"
+    'end_datetime': datetime(2025, 12, 1, 17, 0).isoformat(),    # "2025-12-01T17:00:00"
+})
+
+# Parse datetime from response
+response_datetime = datetime.fromisoformat(absence['created_at'])
+```
+
+#### JavaScript
+
+```javascript
+// Create absence with dates
+const absence = await client.createAbsence({
+  absence_id: 'ABS001',
+  resource_id: 'RES001',
+  type: 'Holiday',
+  start_date: new Date('2025-12-20').toISOString().split('T')[0], // "2025-12-20"
+  end_date: new Date('2025-12-31').toISOString().split('T')[0],   // "2025-12-31"
+  status: 'En_attente',
+});
+
+// Create request with datetime
+const request = await client.createRequest({
+  bsa_id: 'BSA001',
+  start_datetime: new Date('2025-12-01T08:00:00').toISOString(), // "2025-12-01T08:00:00.000Z"
+  end_datetime: new Date('2025-12-01T17:00:00').toISOString(),   // "2025-12-01T17:00:00.000Z"
+});
+
+// Parse datetime from response
+const responseDate = new Date(absence.created_at);
+```
+
+### Timezone Handling
+
+The database stores timestamps with timezone information (`TIMESTAMP WITH TIME ZONE`).
+
+**Best Practices:**
+
+1. **Always use UTC** for storing and transmitting dates
+2. **Convert to local timezone** only for display
+3. **Include timezone** in datetime strings when possible
+
+```python
+from datetime import datetime, timezone
+
+# Create datetime in UTC
+utc_now = datetime.now(timezone.utc)
+iso_string = utc_now.isoformat()  # "2025-11-10T14:30:00+00:00"
+
+# Parse datetime with timezone
+parsed_dt = datetime.fromisoformat("2025-11-10T14:30:00+00:00")
+```
+
+---
+
+## Testing Your Integration
+
+### Unit Testing
+
+#### Python with pytest
+
+```python
+# test_cff_integration.py
+
+import pytest
+from cff_client import CFFClient
+
+@pytest.fixture
+def client():
+    return CFFClient("http://localhost:8000")
+
+def test_health_check(client):
+    """Test API health"""
+    health = client.health_check()
+    assert health['status'] == 'healthy'
+    assert health['database'] == 'connected'
+
+def test_list_regions(client):
+    """Test listing regions"""
+    regions = client.list_regions()
+    assert 'total' in regions
+    assert 'data' in regions
+    assert isinstance(regions['data'], list)
+
+def test_create_and_delete_resource(client):
+    """Test resource creation and deletion"""
+    # Create
+    resource_data = {
+        'resource_id': 'TEST001',
+        'type': 'Internal',
+        'first_name': 'Test',
+        'last_name': 'User',
+        'email': 'test@example.com',
+        'region_id': 1,
+        'team_id': 1,
+        'status': 'Actif'
+    }
+    created = client.create_resource(resource_data)
+    assert created['resource_id'] == 'TEST001'
+
+    # Get
+    fetched = client.get_resource('TEST001')
+    assert fetched['resource_id'] == 'TEST001'
+    assert fetched['first_name'] == 'Test'
+
+    # Delete
+    client.delete_resource('TEST001')
+
+    # Verify deleted
+    with pytest.raises(Exception):
+        client.get_resource('TEST001')
+
+def test_pagination(client):
+    """Test pagination"""
+    # Get first page
+    page1 = client.list_resources(page=1, per_page=10)
+    assert page1['page'] == 1
+    assert page1['per_page'] == 10
+    assert len(page1['data']) <= 10
+
+    # Get second page
+    if page1['total_pages'] > 1:
+        page2 = client.list_resources(page=2, per_page=10)
+        assert page2['page'] == 2
+
+def test_filters(client):
+    """Test resource filtering"""
+    # Filter by type
+    internal = client.list_resources(type='Internal')
+    for resource in internal['data']:
+        assert resource['type'] == 'Internal'
+
+    # Filter by status
+    active = client.list_resources(status='Actif')
+    for resource in active['data']:
+        assert resource['status'] == 'Actif'
+```
+
+**Run tests:**
+```bash
+pytest test_cff_integration.py -v
+```
+
+#### JavaScript with Jest
+
+```javascript
+// cff-client.test.js
+
+const CFFClient = require('./cff-client');
+
+describe('CFF API Integration', () => {
+  let client;
+
+  beforeAll(() => {
+    client = new CFFClient('http://localhost:8000');
+  });
+
+  test('health check', async () => {
+    const health = await client.healthCheck();
+    expect(health.status).toBe('healthy');
+    expect(health.database).toBe('connected');
+  });
+
+  test('list regions', async () => {
+    const regions = await client.listRegions();
+    expect(regions).toHaveProperty('total');
+    expect(regions).toHaveProperty('data');
+    expect(Array.isArray(regions.data)).toBe(true);
+  });
+
+  test('create and delete resource', async () => {
+    // Create
+    const resourceData = {
+      resource_id: 'TEST001',
+      type: 'Internal',
+      first_name: 'Test',
+      last_name: 'User',
+      email: 'test@example.com',
+      region_id: 1,
+      team_id: 1,
+      status: 'Actif',
+    };
+    const created = await client.createResource(resourceData);
+    expect(created.resource_id).toBe('TEST001');
+
+    // Get
+    const fetched = await client.getResource('TEST001');
+    expect(fetched.resource_id).toBe('TEST001');
+    expect(fetched.first_name).toBe('Test');
+
+    // Delete
+    await client.deleteResource('TEST001');
+
+    // Verify deleted
+    await expect(client.getResource('TEST001')).rejects.toThrow();
+  });
+
+  test('pagination', async () => {
+    // Get first page
+    const page1 = await client.listResources({ page: 1, perPage: 10 });
+    expect(page1.page).toBe(1);
+    expect(page1.per_page).toBe(10);
+    expect(page1.data.length).toBeLessThanOrEqual(10);
+
+    // Get second page if exists
+    if (page1.total_pages > 1) {
+      const page2 = await client.listResources({ page: 2, perPage: 10 });
+      expect(page2.page).toBe(2);
+    }
+  });
+
+  test('filters', async () => {
+    // Filter by type
+    const internal = await client.listResources({ type: 'Internal' });
+    internal.data.forEach((resource) => {
+      expect(resource.type).toBe('Internal');
+    });
+
+    // Filter by status
+    const active = await client.listResources({ status: 'Actif' });
+    active.data.forEach((resource) => {
+      expect(resource.status).toBe('Actif');
+    });
+  });
+});
+```
+
+**Run tests:**
+```bash
+npm test
+```
+
+### Integration Testing
+
+Create test scenarios that simulate real workflows:
+
+```python
+def test_complete_workflow(client):
+    """Test complete workflow: hierarchy, resource, absence, request, assignment"""
+
+    # 1. Create hierarchy
+    region = client.create_region(region_name='Test Region', region_code='TR')
+    team = client.create_team(team_name='Test Team', region_id=region['region_id'])
+    sub_group = client.create_sub_group(group_name='Test Group', team_id=team['team_id'])
+
+    # 2. Create resource
+    resource = client.create_resource({
+        'resource_id': 'TEST001',
+        'type': 'Internal',
+        'first_name': 'Test',
+        'last_name': 'User',
+        'region_id': region['region_id'],
+        'team_id': team['team_id'],
+        'group_id': sub_group['group_id'],
+        'status': 'Actif'
+    })
+
+    # 3. Create absence
+    absence = client.create_absence({
+        'absence_id': 'ABS-TEST001',
+        'resource_id': 'TEST001',
+        'type': 'Holiday',
+        'start_date': '2025-12-20',
+        'end_date': '2025-12-31',
+        'status': 'Approuvé'
+    })
+
+    # 4. Create request
+    request = client.create_demand({
+        'bsa_id': 'BSA-TEST001',
+        'task_name': 'Test Task',
+        'status': 'pending',
+        'start_datetime': '2025-11-15T08:00:00',
+        'end_datetime': '2025-11-15T17:00:00'
+    })
+
+    # 5. Create assignment
+    assignment = client.create_assignment({
+        'assignment_id': 'ASG-TEST001',
+        'resource_id': 'TEST001',
+        'request_id': str(request['request_id']),
+        'status': 'Confirmé',
+        'start_date': '2025-11-15',
+        'end_date': '2025-11-15'
+    })
+
+    # Verify all created
+    assert resource['resource_id'] == 'TEST001'
+    assert absence['resource_id'] == 'TEST001'
+    assert assignment['resource_id'] == 'TEST001'
+
+    # Cleanup
+    client.delete_assignment(assignment['assignment_id'])
+    client.delete_request(request['request_id'])
+    client.delete_absence(absence['absence_id'])
+    client.delete_resource(resource['resource_id'])
+    client.delete_sub_group(sub_group['group_id'])
+    client.delete_team(team['team_id'])
+    client.delete_region(region['region_id'])
+```
+
+---
+
+## Best Practices
+
+### 1. Error Handling
+
+Always wrap API calls in try-catch blocks:
+
+```python
+try:
+    resource = client.get_resource('RES001')
+except Exception as e:
+    logger.error(f"Failed to get resource: {e}")
+    # Handle error appropriately
+```
+
+### 2. Use Connection Pooling
+
+For high-traffic applications:
+
+```python
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+session = requests.Session()
+retry = Retry(total=3, backoff_factor=0.5)
+adapter = HTTPAdapter(max_retries=retry)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
+```
+
+### 3. Implement Caching
+
+Cache responses for frequently accessed data:
+
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def get_region_cached(client, region_id):
+    return client.get_region(region_id)
+```
+
+### 4. Use Batch Operations
+
+Minimize API calls by batching operations:
+
+```python
+# Instead of multiple individual calls
+# for resource_id in resource_ids:
+#     resource = client.get_resource(resource_id)
+
+# Use pagination to fetch multiple at once
+all_resources = client.list_resources(per_page=200)
+```
+
+### 5. Validate Data Before Sending
+
+```python
+from pydantic import BaseModel, EmailStr, validator
+
+class ResourceInput(BaseModel):
+    resource_id: str
+    type: str
+    first_name: str
+    last_name: str
+    email: EmailStr
+
+    @validator('type')
+    def validate_type(cls, v):
+        if v not in ['Internal', 'External']:
+            raise ValueError('Invalid type')
+        return v
+
+# Validate before sending
+try:
+    validated_data = ResourceInput(**user_input)
+    resource = client.create_resource(validated_data.dict())
+except ValidationError as e:
+    print(f"Validation error: {e}")
+```
+
+### 6. Use Environment Variables
+
+Never hardcode URLs or credentials:
+
+```python
+import os
+
+API_URL = os.getenv('CFF_API_URL', 'http://localhost:8000')
+API_KEY = os.getenv('CFF_API_KEY')
+
+client = CFFClient(API_URL, api_key=API_KEY)
+```
+
+### 7. Log API Interactions
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def create_resource_with_logging(client, data):
+    logger.info(f"Creating resource: {data['resource_id']}")
+    try:
+        resource = client.create_resource(data)
+        logger.info(f"Successfully created resource: {resource['resource_id']}")
+        return resource
+    except Exception as e:
+        logger.error(f"Failed to create resource: {e}")
+        raise
+```
+
+### 8. Implement Timeouts
+
+```python
+import requests
+
+response = requests.get(
+    'http://localhost:8000/api/v1/resources',
+    timeout=10  # 10 seconds
+)
+```
+
+### 9. Handle Pagination Efficiently
+
+```python
+def iterate_all_pages(client, list_func, **kwargs):
+    """Generator that yields items from all pages"""
+    page = 1
+    while True:
+        response = list_func(page=page, **kwargs)
+        yield from response['data']
+
+        if page >= response['total_pages']:
+            break
+
+        page += 1
+
+# Usage
+for resource in iterate_all_pages(client, client.list_resources, status='Actif'):
+    print(resource['resource_id'])
+```
+
+### 10. Test in Staging First
+
+Always test integrations in a staging environment before production deployment.
+
+---
+
+## Additional Resources
+
+### API Documentation
+
+- **Swagger UI**: `http://localhost:8000/docs` - Interactive API documentation
+- **ReDoc**: `http://localhost:8000/redoc` - Alternative documentation view
+- **OpenAPI JSON**: `http://localhost:8000/api/v1/openapi.json` - OpenAPI specification
+
+### Related Documentation
+
+- `API_ENDPOINTS.md` - Detailed endpoint reference
+- `SQL_QUERIES_REFERENCE.md` - SQL query examples
+- `DEPLOYMENT_GUIDE.md` - Deployment instructions
+
+### External Resources
+
+- **FastAPI Documentation**: https://fastapi.tiangolo.com/
+- **PostgreSQL Documentation**: https://www.postgresql.org/docs/
+- **REST API Best Practices**: https://restfulapi.net/
+
+---
+
+## Support and Contact
+
+For integration support:
+- Review API documentation at `/docs`
+- Check logs for error details
+- Contact system administrator
+- Report issues to development team
+
+---
+
+**Last Updated**: 2025-11-10
+**Document Version**: 1.0

@@ -1,0 +1,469 @@
+# Adding New Constraints and Objectives: Step-by-Step Guide
+
+This document provides a complete workflow for adding new constraints and objectives to the CFF Workforce Planning Solver.
+
+**Created:** 2025-12-12
+**Reference Implementation:** HC_01_absence_blocking
+
+---
+
+## Quick Reference Checklist
+
+### For New Constraints
+
+- [ ] Step 1: Create YAML specification in `constraints_v2/`
+- [ ] Step 2: Add configuration settings in `config.py`
+- [ ] Step 3: Update preprocessing in `preprocessing/data_processor.py` (if needed)
+- [ ] Step 4: Implement constraint module in `constraints/`
+- [ ] Step 5: Register constraint in `solver/model.py`
+- [ ] Step 6: Create analyzer in `analysis/constraint_analyzers/`
+- [ ] Step 7: Register analyzer in `analysis/solution_analyzer.py`
+- [ ] Step 8: Test the implementation
+
+### For New Objectives
+
+- [ ] Step 1: Create specification document
+- [ ] Step 2: Add configuration settings in `config.py`
+- [ ] Step 3: Implement objective module in `objectives/`
+- [ ] Step 4: Register objective in `solver/model.py`
+- [ ] Step 5: Create analyzer in `analysis/objective_analyzers/`
+- [ ] Step 6: Register analyzer in `analysis/solution_analyzer.py`
+- [ ] Step 7: Test the implementation
+
+---
+
+## Detailed Steps for Constraints
+
+### Step 1: Create YAML Specification
+
+**Location:** `constraints_v2/{CONSTRAINT_ID}_{constraint_name}.yaml`
+
+**Purpose:** Document the constraint's data sources, parameters, mathematical formulation, and implementation details.
+
+**Key Sections:**
+```yaml
+constraint_metadata:
+  name: "constraint_name"
+  constraint_id: "XX_##"  # HC_01, LC_02, CP_03, etc.
+  category: "Hard Constraint|Soft Constraint|Company Policy"
+  layer: 0-3  # 0=fundamental, 1=legal, 2=company, 3=operational
+  type: "hard_constraint|soft_constraint"
+  description: "What this constraint does"
+
+data_source:
+  api_endpoint: "GET /api/v1/endpoint/"
+  record_fields:
+    - name: "field_name"
+      type: "string|integer|datetime"
+      description: "Field description"
+
+constraint_parameters:
+  - name: "parameter_name"
+    type: "boolean|list|float"
+    default_value: value
+    source: "config.py"
+
+mathematical_formulation:
+  equation: "Mathematical definition"
+  explanation: "Human-readable explanation"
+
+cp_sat_implementation:
+  constraint_type: "hard|soft"
+  implementation_pattern: "Code pattern"
+```
+
+**Before creating:** Always verify API fields by querying the live API:
+```bash
+curl -s "http://150.241.245.65:8002/api/v1/{endpoint}/?per_page=3" | python3 -m json.tool
+```
+
+---
+
+### Step 2: Add Configuration Settings
+
+**File:** `config.py`
+
+Add configuration parameters that control the constraint behavior:
+
+```python
+# =============================================================================
+# {CONSTRAINT_NAME} CONFIGURATION
+# =============================================================================
+ENFORCE_{CONSTRAINT_NAME} = True   # Master switch
+
+# Additional configurable parameters
+{CONSTRAINT_NAME}_PARAMETER_1 = value
+{CONSTRAINT_NAME}_PARAMETER_2 = ["list", "of", "values"]
+```
+
+Add the constraint to `ENABLED_CONSTRAINTS`:
+```python
+ENABLED_CONSTRAINTS = [
+    "{CONSTRAINT_ID}_{constraint_name}",  # New constraint
+    # ... existing constraints
+]
+```
+
+---
+
+### Step 3: Update Preprocessing (if needed)
+
+**File:** `preprocessing/data_processor.py`
+
+If your constraint requires new data processing:
+
+1. **Add imports:**
+```python
+from config import (
+    ENFORCE_{CONSTRAINT_NAME},
+    {CONSTRAINT_NAME}_PARAMETER_1
+)
+```
+
+2. **Add data structure in `__init__`:**
+```python
+# {Constraint name} data
+self.{constraint_data} = {}
+self.{constraint}_stats = {'key': value}
+```
+
+3. **Add processing method:**
+```python
+def _process_{data_type}(self):
+    """Process and index {data} by {key}"""
+    # Processing logic
+```
+
+4. **Add helper methods:**
+```python
+def is_{condition}(self, param1, param2) -> bool:
+    """Check condition for constraint"""
+    # Logic
+```
+
+5. **Call in `__init__`:**
+```python
+self._process_{data_type}()
+```
+
+6. **Update `print_summary`:**
+```python
+print(f"{Data}: {self.{constraint}_stats['key']}")
+```
+
+---
+
+### Step 4: Implement Constraint Module
+
+**File:** `constraints/{constraint_id}_{constraint_name}.py`
+
+**Template:**
+```python
+"""
+{CONSTRAINT_ID}: {Constraint Name} ({CONSTRAINT_TYPE})
+Description of what the constraint does
+
+Based on: ../../constraints_v2/{CONSTRAINT_ID}_{constraint_name}.yaml
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import ENFORCE_{CONSTRAINT_NAME}
+
+
+def add_{constraint_name}_constraints(model: cp_model.CpModel,
+                                       x_vars: dict,
+                                       data,
+                                       constraints) -> tuple:
+    """
+    Add {constraint description} constraints to the model.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        Tuple of (violations, metadata)
+        - violations: List of violation variables (empty for hard constraints)
+        - metadata: List of dicts with constraint application details
+    """
+    print(f"\n[{CONSTRAINT_ID}] Adding {constraint description} constraints...")
+
+    if not ENFORCE_{CONSTRAINT_NAME}:
+        print(f"  {Constraint} is DISABLED in config")
+        return [], []
+
+    blocked_count = 0
+    metadata = []
+
+    # Constraint logic
+    for resource_id in data.resource_ids:
+        for request in data.requests:
+            req_id = request['id']
+
+            # Check condition
+            if should_block(resource_id, request, data):
+                # HARD CONSTRAINT: Block assignment
+                x_var = x_vars[(resource_id, req_id)]
+                model.Add(x_var == 0)
+                blocked_count += 1
+
+                # Store metadata for analysis
+                metadata.append({
+                    'constraint_id': '{CONSTRAINT_ID}',
+                    'constraint_type': 'hard',
+                    'resource_id': resource_id,
+                    'request_id': req_id,
+                    'reason': 'reason_code',
+                    # Additional context
+                })
+
+    print(f"  Blocked assignments: {blocked_count}")
+    return [], metadata  # Empty violations for hard constraints
+
+
+def get_{constraint_name}_metrics(data, x_solution=None) -> dict:
+    """Generate metrics for analysis"""
+    return {
+        'metric_1': value,
+        'metric_2': value
+    }
+```
+
+**Key Points:**
+- Always return tuple: `(violations, metadata)`
+- For hard constraints: violations = [], metadata contains blocking info
+- For soft constraints: violations = list of violation vars, metadata contains context
+- Include print statements for debugging and progress tracking
+
+---
+
+### Step 5: Register Constraint in Solver Model
+
+**File:** `solver/model.py`
+
+1. **Add import:**
+```python
+from constraints.{constraint_id}_{constraint_name} import add_{constraint_name}_constraints
+```
+
+2. **Add in `_add_constraint_modules` method:**
+```python
+# {CONSTRAINT_ID}: {Description} (Layer X - {when processed})
+if "{CONSTRAINT_ID}_{constraint_name}" in ENABLED_CONSTRAINTS:
+    viols, metadata = add_{constraint_name}_constraints(
+        self.model, self.x, self.data, self.constraints
+    )
+    self.violations.extend(viols)
+    self.violation_metadata.extend(metadata)
+```
+
+**Note:** Order matters! Place constraints in order of evaluation:
+- Layer 0: Fundamental availability (HC_*)
+- Layer 1: Legal constraints (LC_*)
+- Layer 2: Company policies (CP_*)
+- Layer 3: Operational preferences
+
+---
+
+### Step 6: Create Analyzer Module
+
+**File:** `analysis/constraint_analyzers/{constraint_id}_analyzer.py`
+
+**Follow:** `analysis/ANALYSIS_METHODOLOGY.md` for detailed instructions.
+
+**Template:**
+```python
+"""
+{CONSTRAINT_ID}: {Constraint Name} Analyzer
+Analyzes {what it analyzes} ({HARD|SOFT} CONSTRAINT)
+"""
+from .base_analyzer import ConstraintAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class {CONSTRAINT_ID}_Analyzer(ConstraintAnalyzer):
+    """Analyzer for {CONSTRAINT_ID} ({constraint_name})"""
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='{CONSTRAINT_ID}',
+            constraint_name='{constraint_name}'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """Analyze {constraint} violations/impact"""
+        # Filter metadata for this constraint
+        my_metadata = [
+            v for v in violation_metadata
+            if v.get('constraint_id') == '{CONSTRAINT_ID}'
+        ]
+
+        # Analysis logic
+        return {
+            "constraint_id": "{CONSTRAINT_ID}",
+            "constraint_name": "{constraint_name}",
+            "constraint_type": "{HARD|SOFT}",
+            # ... analysis results
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """Check if assignment would violate constraint"""
+        # Validation logic
+        return {
+            "would_violate": bool,
+            "violation_type": "legal|company|none",
+            "reason": "explanation"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """Suggest weight adjustments (soft constraints only)"""
+        return {
+            "constraint_id": "{CONSTRAINT_ID}",
+            "constraint_type": "{HARD|SOFT}",
+            "suggested_adjustments": []
+        }
+```
+
+---
+
+### Step 7: Register Analyzer
+
+**File:** `analysis/solution_analyzer.py`
+
+1. **Add import:**
+```python
+from analysis.constraint_analyzers.{constraint_id}_analyzer import {CONSTRAINT_ID}_Analyzer
+```
+
+2. **Add to `constraint_analyzers` dictionary:**
+```python
+self.constraint_analyzers = {
+    '{CONSTRAINT_ID}_{constraint_name}': {CONSTRAINT_ID}_Analyzer(),
+    # ... existing analyzers
+}
+```
+
+---
+
+### Step 8: Test Implementation
+
+**Quick Test:**
+```bash
+cd solver_v2
+python main.py
+```
+
+**Verify:**
+1. Constraint messages appear in console output
+2. No errors during model building
+3. Solution is generated successfully
+4. Analysis report contains constraint section
+
+**Full Validation:**
+```bash
+# Check solution output
+cat solver_v2/output/solution.json | python3 -m json.tool
+
+# Check analysis report
+cat solver_v2/output/analysis_report.json | python3 -m json.tool
+```
+
+---
+
+## Example: HC_01_absence_blocking
+
+This constraint was implemented following these exact steps:
+
+| Step | File Modified/Created |
+|------|----------------------|
+| 1 | `constraints_v2/HC_01_absence_blocking.yaml` |
+| 2 | `config.py` (added `ENFORCE_ABSENCE_BLOCKING`, `ABSENCE_*` settings) |
+| 3 | `preprocessing/data_processor.py` (added `resource_absences`, `_process_absences`) |
+| 4 | `constraints/hc_01_absence_blocking.py` |
+| 5 | `solver/model.py` (added import and constraint call) |
+| 6 | `analysis/constraint_analyzers/hc_01_analyzer.py` |
+| 7 | `analysis/solution_analyzer.py` (added import and registration) |
+
+---
+
+## Configuration Parameters Reference
+
+### Constraint Configuration in config.py
+
+```python
+# =============================================================================
+# ABSENCE HANDLING CONFIGURATION (Example)
+# =============================================================================
+ENFORCE_ABSENCE_BLOCKING = True   # Master switch for absence constraints
+
+# Absence statuses that block assignments
+ABSENCE_APPROVED_STATUSES = ["Approuvé"]
+
+# Absence types to consider (None = all types block)
+# Possible values: "Vacances", "Maladie", "Formation", "Congé", "Autre"
+ABSENCE_BLOCKED_TYPES = None
+
+# =============================================================================
+# ENABLED CONSTRAINTS
+# =============================================================================
+ENABLED_CONSTRAINTS = [
+    "HC_01_absence_blocking",        # Hard constraint: block during absences
+    "LC_01_max_weekly_hours",
+    "LC_02_max_daily_hours_14h_span",
+    "LC_03_max_absolute_daily_hours",
+    "LC_04_max_continuous_work",
+    "CP_02_qualification_matching",
+]
+```
+
+---
+
+## Constraint Naming Conventions
+
+| Prefix | Type | Description | Example |
+|--------|------|-------------|---------|
+| HC_## | Hard Constraint | Cannot be violated | HC_01_absence_blocking |
+| LC_## | Legal Constraint | Swiss LDT requirements | LC_01_max_weekly_hours |
+| CP_## | Company Policy | Internal policies | CP_02_qualification_matching |
+| OP_## | Operational | Preferences | OP_01_location_preference |
+
+---
+
+## Notes and Best Practices
+
+1. **Always verify API fields** before implementing - schemas may change
+2. **Hard constraints** return empty violations, metadata for analysis
+3. **Soft constraints** return violation variables for objective function
+4. **Order matters** in `_add_constraint_modules` - fundamental first
+5. **Test incrementally** - enable one constraint at a time
+6. **Document edge cases** in the YAML specification
+7. **Include print statements** for debugging during development
+8. **Handle missing/null data** gracefully in preprocessing
+
+---
+
+## Troubleshooting
+
+### Constraint not applied
+- Check `ENABLED_CONSTRAINTS` in config.py
+- Verify import in solver/model.py
+- Check if master switch is enabled
+
+### Analysis missing constraint
+- Verify import in solution_analyzer.py
+- Check analyzer is in `constraint_analyzers` dict
+- Ensure constraint_id matches exactly
+
+### Datetime parsing issues
+- API may return various formats
+- Always handle: with/without timezone, with/without time component
+- Use helper functions for consistent parsing
+
+---
+
+*This document was created as part of the HC_01_absence_blocking implementation.*

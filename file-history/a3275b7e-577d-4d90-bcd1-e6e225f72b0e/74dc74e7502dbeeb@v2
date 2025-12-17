@@ -1,0 +1,201 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 01: Maximum Weekly Working Hours
+# Swiss LDT Art. 9
+
+constraint_metadata:
+  name: "max_weekly_hours"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 50 hours in any calendar week"
+  legal_reference: "Swiss LDT Art. 9"
+  modifiable: false
+
+constraint_parameters:
+  - name: "max_hours_per_week"
+    description: "Maximum allowed working hours per week"
+    type: "integer"
+    unit: "hours"
+    default_value: 50
+    min_value: 0
+    max_value: 168                         # Total hours in a week
+    source: "legal_constraints.max_weekly_hours"
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment variable: x[r][t] = 1 if resource r is assigned to task t"
+    type: "boolean"
+    dimensions: "[resources, tasks]"
+    domain: "[0, 1]"
+
+  - name: "work_hours_weekly"
+    description: "Total hours worked by resource r in week w"
+    type: "integer"
+    dimensions: "[resources, weeks]"
+    domain: "[0, 5000]"                    # Scaled by 100 (50h * 100 = 5000)
+
+  - name: "task_duration"
+    description: "Duration of task t in hours (scaled by 100)"
+    type: "integer"
+    dimensions: "[tasks]"
+    domain: "[0, 1250]"                    # Max 12.5 hours scaled
+
+mathematical_formulation:
+  equation: |
+    For each resource r and week w:
+
+    work_hours_weekly[r][w] = sum(x[r][t] * task_duration[t]
+                                   for t in tasks_in_week[w])
+
+    work_hours_weekly[r][w] <= max_hours_per_week * 100
+
+  explanation: |
+    This constraint calculates the total hours worked by each resource in each week
+    by summing up the durations of all tasks assigned to that resource in that week.
+    The total must not exceed 50 hours (5000 when scaled by 100).
+
+    Key points:
+    - Tasks are mapped to weeks based on their scheduled dates
+    - All durations are scaled by 100 to maintain integer domain
+    - The constraint is enforced for every resource-week combination
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Constants
+    MAX_WEEKLY_HOURS = 50
+    SCALING_FACTOR = 100
+
+    # Create auxiliary variables for weekly hours
+    work_hours_weekly = {}
+    for r in resources:
+        for w in weeks:
+            work_hours_weekly[(r, w)] = model.NewIntVar(
+                0,
+                MAX_WEEKLY_HOURS * SCALING_FACTOR,
+                f'work_hours_r{r}_w{w}'
+            )
+
+    # Calculate weekly hours for each resource
+    for r in resources:
+        for w in weeks:
+            tasks_in_w = get_tasks_in_week(w)
+
+            # Sum of assigned task durations
+            model.Add(
+                work_hours_weekly[(r, w)] ==
+                sum(x[(r, t)] * task_duration[t] for t in tasks_in_w)
+            )
+
+            # Enforce maximum weekly hours
+            model.Add(
+                work_hours_weekly[(r, w)] <= MAX_WEEKLY_HOURS * SCALING_FACTOR
+            )
+
+validation_rules:
+  - rule: "Weekly hours must be non-negative"
+    condition: "work_hours_weekly[r][w] >= 0"
+  - rule: "Maximum cannot exceed total hours in week"
+    condition: "max_hours_per_week <= 168"
+  - rule: "Task durations must be properly scaled"
+    condition: "all task_duration values are integers"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_daily_hours_14h_span"
+    relationship: "Daily limits (7 days * 12.5h = 87.5h) must respect weekly limit (50h)"
+  - related_constraint: "min_weekly_rest"
+    relationship: "Work hours + rest hours (35h min) must fit in 168h week"
+  - related_constraint: "max_consecutive_work_days"
+    relationship: "6 consecutive days at 8.3h/day = 49.8h fits within 50h limit"
+
+penalty_configuration:
+  applicable: false                         # Hard constraint - no penalties
+  penalty_weight: null
+  penalty_calculation: null
+
+examples:
+  - scenario: "Normal 40-hour work week"
+    input:
+      resource: "RES-001"
+      week: "2025-W48"
+      assigned_tasks:
+        - task_id: "T001"
+          duration_hours: 8
+          day: "Monday"
+        - task_id: "T002"
+          duration_hours: 8
+          day: "Tuesday"
+        - task_id: "T003"
+          duration_hours: 8
+          day: "Wednesday"
+        - task_id: "T004"
+          duration_hours: 8
+          day: "Thursday"
+        - task_id: "T005"
+          duration_hours: 8
+          day: "Friday"
+    output:
+      work_hours_weekly: 4000              # 40 hours * 100
+      constraint_satisfied: true
+      margin: 1000                         # 10 hours below limit
+
+  - scenario: "Week with overtime - at limit"
+    input:
+      resource: "RES-002"
+      week: "2025-W48"
+      assigned_tasks:
+        - task_id: "T101"
+          duration_hours: 10
+          day: "Monday"
+        - task_id: "T102"
+          duration_hours: 10
+          day: "Tuesday"
+        - task_id: "T103"
+          duration_hours: 10
+          day: "Wednesday"
+        - task_id: "T104"
+          duration_hours: 10
+          day: "Thursday"
+        - task_id: "T105"
+          duration_hours: 10
+          day: "Friday"
+    output:
+      work_hours_weekly: 5000              # 50 hours * 100
+      constraint_satisfied: true
+      margin: 0                             # Exactly at limit
+
+  - scenario: "Violation case"
+    input:
+      resource: "RES-003"
+      week: "2025-W48"
+      assigned_tasks:
+        - task_id: "T201"
+          duration_hours: 9
+          day: "Monday"
+        - task_id: "T202"
+          duration_hours: 9
+          day: "Tuesday"
+        - task_id: "T203"
+          duration_hours: 9
+          day: "Wednesday"
+        - task_id: "T204"
+          duration_hours: 9
+          day: "Thursday"
+        - task_id: "T205"
+          duration_hours: 9
+          day: "Friday"
+        - task_id: "T206"
+          duration_hours: 8
+          day: "Saturday"
+    output:
+      work_hours_weekly: 5300              # 53 hours * 100
+      constraint_satisfied: false
+      violation_amount: 300                # 3 hours over limit
+
+notes:
+  - "Week definition: Monday 00:00 to Sunday 23:59"
+  - "Include break times in task duration if paid"
+  - "Travel time counts as working time if during normal hours"
+  - "Standby time may count differently - needs separate handling"
+  - "This is a rolling constraint - checked for every calendar week"

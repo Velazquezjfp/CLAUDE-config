@@ -1,0 +1,335 @@
+# Absence Handling Status Report
+## CFF Workforce Planning Solver v2
+
+**Generated:** 2025-12-11
+**Critical Finding:** Absences are NOT enforced in solver constraints
+
+---
+
+## Executive Summary
+
+⚠️ **CRITICAL GAP IDENTIFIED:** The solver currently does NOT respect resource absences when making assignments. Absences are only used for post-solve visualization in the calendar, meaning resources can be assigned to demands even when they are on vacation, training, or sick leave.
+
+---
+
+## 1. Current Absence Handling
+
+### 1.1 Data Fetching ✅
+- **API Endpoint:** `/api/v1/absences/`
+- **Fetched by:** `api/client.py` → `get_absences(resource_id)`
+- **When:** During data collection phase in `main.py`
+- **Status:** Working correctly
+
+### 1.2 Absence Fields Used
+
+| Field | Data Type | Purpose |
+|-------|-----------|---------|
+| `resource_id` | string | Link absence to specific resource |
+| `start_date` | date/datetime string | Absence start date |
+| `end_date` | date/datetime string | Absence end date |
+| `absence_type` | string | Type (vacation, training, sick leave) |
+| `type` | string | Fallback field name |
+| `reason` | string | Reason for absence |
+| `description` | string | Fallback field name |
+
+### 1.3 Current Usage: Visualization Only 📊
+
+**File:** `visualize_calendar.py`
+
+**Purpose:** Display resource availability in interactive HTML calendar
+
+**Implementation:**
+```python
+# Lines 94-121: Add absences to resource map
+for absence in absences:
+    res_id = absence.get('resource_id')
+    if res_id and res_id in resource_map:
+        # Parse date range
+        start = datetime.fromisoformat(absence['start_date'])
+        end = datetime.fromisoformat(absence['end_date'])
+
+        # Mark each day as blocked
+        current = start
+        while current <= end:
+            date_key = current.strftime('%Y-%m-%d')
+            resource_map[res_id]['blocked_dates'][date_key] = {
+                'type': absence.get('absence_type', 'Absence'),
+                'reason': absence.get('reason', 'N/A')
+            }
+            current += timedelta(days=1)
+```
+
+**Result:** Calendar shows red "blocked" cells for absence days
+
+---
+
+## 2. CRITICAL GAP: No Solver Constraints ❌
+
+### 2.1 What's Missing
+
+The solver does NOT have any constraints that prevent assignment during absences:
+
+- ❌ No absence blocking constraint
+- ❌ Resources can be assigned during vacation
+- ❌ Resources can be assigned during training
+- ❌ Resources can be assigned during sick leave
+
+### 2.2 Impact
+
+**Severity:** HIGH
+
+**Consequences:**
+1. Solver produces invalid solutions
+2. Assignments conflict with absences
+3. Manual review required to catch conflicts
+4. Post-solve analysis doesn't detect absence violations
+
+### 2.3 Example Invalid Assignment
+
+```
+Resource: RES_001
+Absence: 2025-12-15 to 2025-12-20 (vacation)
+Assignment: Demand_042 on 2025-12-17 (8 hours)
+Status: ✅ Solver allows this (INVALID!)
+```
+
+---
+
+## 3. Required Implementation
+
+### 3.1 New Constraint: Absence Blocking
+
+**Constraint ID:** `HC_01_absence_blocking` (Hard Constraint)
+
+**Logic:**
+```
+For each resource R:
+    For each absence A of resource R:
+        For each demand D:
+            If demand_time_period(D) overlaps absence_period(A):
+                BLOCK assignment x[R, D] = 0
+```
+
+**Implementation Location:** `constraints/hc_01_absence_blocking.py`
+
+### 3.2 Preprocessing Required
+
+**File:** `preprocessing/data_processor.py`
+
+**Add:**
+```python
+class PreprocessedData:
+    def __init__(self, requests_data, resources_data, absences_data):
+        # ... existing code ...
+
+        # NEW: Process absences
+        self.resource_absences = {}  # {resource_id: [(start, end), ...]}
+        self._process_absences()
+
+    def _process_absences(self):
+        """Process and index absences by resource"""
+        for absence in self.raw_absences:
+            res_id = absence['resource_id']
+            start = datetime.fromisoformat(absence['start_date'])
+            end = datetime.fromisoformat(absence['end_date'])
+
+            if res_id not in self.resource_absences:
+                self.resource_absences[res_id] = []
+            self.resource_absences[res_id].append((start, end))
+
+    def is_resource_available(self, resource_id: str,
+                             demand_start: datetime,
+                             demand_end: datetime) -> bool:
+        """Check if resource is available (not on absence) during demand period"""
+        if resource_id not in self.resource_absences:
+            return True
+
+        for absence_start, absence_end in self.resource_absences[resource_id]:
+            # Check for overlap
+            if not (demand_end <= absence_start or demand_start >= absence_end):
+                return False  # Overlap detected
+
+        return True
+```
+
+### 3.3 Constraint Implementation
+
+**File:** `constraints/hc_01_absence_blocking.py` (NEW)
+
+```python
+def add_absence_blocking_constraints(model, x_vars, data, constraints):
+    """
+    Add HARD absence blocking constraints
+    Resources cannot be assigned to demands during absence periods
+    """
+    print(f"\n[HC_01] Adding absence blocking constraints...")
+
+    blocked_count = 0
+
+    for resource_id in data.resource_ids:
+        for request in data.requests:
+            req_id = request['id']
+            req_start = datetime.fromisoformat(request['shift_start_time'])
+            req_end = datetime.fromisoformat(request['shift_finish_time'])
+
+            # Check if resource is available
+            if not data.is_resource_available(resource_id, req_start, req_end):
+                # BLOCK this assignment
+                x_var = x_vars[(resource_id, req_id)]
+                model.Add(x_var == 0)
+                blocked_count += 1
+
+    print(f"  Blocked assignments (absence conflicts): {blocked_count}")
+
+    return [], []  # No violations for hard constraints
+```
+
+### 3.4 Enable in Config
+
+**File:** `config.py`
+
+```python
+ENABLED_CONSTRAINTS = [
+    "HC_01_absence_blocking",      # NEW: Block assignments during absences
+    "LC_01_max_weekly_hours",
+    "LC_02_max_daily_hours_14h_span",
+    "LC_03_max_absolute_daily_hours",
+    "LC_04_max_continuous_work",
+    "CP_02_qualification_matching",
+]
+```
+
+### 3.5 Register in Model Builder
+
+**File:** `solver/model.py`
+
+```python
+from constraints.hc_01_absence_blocking import add_absence_blocking_constraints
+
+# In _add_constraint_modules():
+if "HC_01_absence_blocking" in ENABLED_CONSTRAINTS:
+    viols, metadata = add_absence_blocking_constraints(
+        self.model, self.x, self.data, self.constraints
+    )
+    self.violations.extend(viols)
+    self.violation_metadata.extend(metadata)
+```
+
+---
+
+## 4. Date Format Handling
+
+### 4.1 Absence Date Formats
+
+**API Returns:** Either format
+- ISO 8601 full: `"2025-12-15T00:00:00+00:00"`
+- Date only: `"2025-12-15"`
+
+**Preprocessing Required:**
+```python
+# Handle both formats
+if 'T' not in absence['start_date']:
+    absence['start_date'] = absence['start_date'] + 'T00:00:00Z'
+if 'T' not in absence['end_date']:
+    absence['end_date'] = absence['end_date'] + 'T23:59:59Z'
+
+start = datetime.fromisoformat(absence['start_date'].replace('Z', '+00:00'))
+end = datetime.fromisoformat(absence['end_date'].replace('Z', '+00:00'))
+```
+
+**Status:** ✅ Already implemented in visualization script (lines 104-108)
+
+### 4.2 Demand Date Formats
+
+**API Returns:** ISO 8601 with timezone
+- `"2025-12-17T08:00:00+00:00"`
+
+**Preprocessing:** Already handled correctly
+- Using `datetime.fromisoformat()` throughout
+
+**Status:** ✅ Working correctly
+
+---
+
+## 5. Testing Recommendations
+
+### 5.1 Before Implementing Absence Constraints
+
+**Current Test:**
+```bash
+cd /home/javiervel/clients/CFF/solver_v2
+python main.py  # Run solver
+python visualize_calendar.py  # Generate calendar
+```
+
+**Expected Result:**
+- Solver: ✅ Finds optimal solution (ignores absences)
+- Calendar: ⚠️ Shows red blocks for absences, but assignments may overlap
+
+### 5.2 After Implementing Absence Constraints
+
+**Test Cases:**
+
+1. **No Conflicts:**
+   - Resource has no absences
+   - Should assign normally
+
+2. **Full Conflict:**
+   - Resource on absence during entire demand period
+   - Should block assignment completely
+
+3. **Partial Conflict:**
+   - Demand spans multiple days, some with absence
+   - Should block assignment if ANY overlap
+
+4. **Multiple Resources:**
+   - Demand can be assigned to Resource A (available) or Resource B (on absence)
+   - Should prefer Resource A
+
+---
+
+## 6. Implementation Priority
+
+### Priority 1: CRITICAL (Current Sprint)
+1. ✅ Fix field names in `solver/model.py` (DONE)
+2. ✅ Fix field names in `visualize_calendar.py` (DONE)
+3. ⏳ Add absence preprocessing to `data_processor.py`
+4. ⏳ Implement `hc_01_absence_blocking.py` constraint
+5. ⏳ Enable in config and model builder
+6. ⏳ Test with real absence data
+
+### Priority 2: Enhancement (Next Sprint)
+1. Add absence violation detection in post-solve analysis
+2. Generate recommendations for conflicts
+3. Add calendar tooltips showing why assignment was blocked
+
+---
+
+## 7. Summary
+
+### What Works ✅
+- Absence data fetching from API
+- Absence visualization in calendar
+- Date format handling for both formats
+
+### What's Broken ❌
+- **CRITICAL:** No solver constraints for absences
+- Resources can be assigned during vacation/training/sick leave
+- Invalid solutions are produced
+
+### What Needs To Be Done ⏳
+1. Add absence preprocessing
+2. Implement hard constraint HC_01
+3. Enable constraint in config
+4. Test with real data
+5. Update documentation
+
+---
+
+## CHANGELOG
+
+**2025-12-11:**
+- Identified critical gap: absences not enforced in solver
+- Documented current visualization-only usage
+- Designed absence blocking constraint implementation
+- Fixed field name bugs in visualization script

@@ -1,0 +1,71 @@
+"""
+LC_03: Maximum Absolute Daily Hours
+Legal Constraint: 12.5 hours per calendar day (hard)
+Company Policy: 10 hours (soft, dynamic)
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_absolute_daily_constraints(model: cp_model.CpModel,
+                                   x_vars: dict,
+                                   data,
+                                   constraints) -> list:
+    """
+    Add maximum absolute daily hours constraints to the model
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        List of violation variables (for soft constraints)
+    """
+    MAX_HOURS_LEGAL = constraints.get_legal_value('max_hours_per_day')
+    MAX_HOURS_COMPANY = constraints.get_company_value('max_hours_per_day')
+
+    violations = []
+
+    print(f"\n[LC_03] Adding absolute daily hours constraints...")
+    print(f"  Legal limit: {MAX_HOURS_LEGAL}h per day (hard)")
+    print(f"  Company limit: {MAX_HOURS_COMPANY}h per day (soft)")
+
+    for resource_id in data.resource_ids:
+        for day_idx in range(len(data.days)):
+            # Calculate total hours for this resource on this calendar day
+            daily_hours_terms = []
+
+            for request_id in data.request_ids:
+                hours_in_day = data.get_task_hours_in_day(request_id, day_idx)
+                if hours_in_day > 0:
+                    daily_hours_terms.append(
+                        x_vars[(resource_id, request_id)] * hours_in_day
+                    )
+
+            if not daily_hours_terms:
+                continue  # No tasks on this day
+
+            daily_sum = sum(daily_hours_terms)
+
+            # Hard constraint: legal limit
+            model.Add(daily_sum <= int(MAX_HOURS_LEGAL * SCALING_FACTOR))
+
+            # Soft constraint: company policy
+            if USE_SOFT_CONSTRAINTS:
+                violation = model.NewIntVar(
+                    0, 250,
+                    f'violation_daily_{resource_id}_d{day_idx}'
+                )
+                model.Add(
+                    daily_sum <= int(MAX_HOURS_COMPANY * SCALING_FACTOR) + violation
+                )
+                violations.append(violation)
+
+    print(f"  Added constraints for {len(data.resource_ids)} resources × {len(data.days)} days")
+    print(f"  Soft violations tracked: {len(violations)}")
+
+    return violations

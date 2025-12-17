@@ -1,0 +1,51 @@
+"""
+Router exports for CFF Personnel Planning API
+
+External Database Routers (data tables):
+- resources, demands, demands_list, assignments, absences
+- regions, teams, groups, divisions
+- locations, qualifications, resource_categories, operation_points
+
+Internal Database Routers (parameter tables):
+- constraints (legal_constraints - read-only)
+- company_policies, objective_weights, utilization_targets
+"""
+from .resources import router as resources_router
+from .regions import router as regions_router
+from .teams import router as teams_router
+from .groups import router as groups_router
+from .divisions import router as divisions_router
+from .absences import router as absences_router
+from .demands import router as demands_router
+from .demands_list import router as demands_list_router
+from .assignments import router as assignments_router
+from .locations import router as locations_router
+from .qualifications import router as qualifications_router
+from .resource_categories import router as resource_categories_router
+from .operation_points import router as operation_points_router
+from .constraints import router as constraints_router
+from .company_policies import router as company_policies_router
+from .objective_weights import router as objective_weights_router
+from .utilization_targets import router as utilization_targets_router
+
+__all__ = [
+    # External DB routers
+    "resources_router",
+    "regions_router",
+    "teams_router",
+    "groups_router",
+    "divisions_router",
+    "absences_router",
+    "demands_router",
+    "demands_list_router",
+    "assignments_router",
+    "locations_router",
+    "qualifications_router",
+    "resource_categories_router",
+    "operation_points_router",
+    # Internal DB routers
+    "constraints_router",
+    "company_policies_router",
+    "objective_weights_router",
+    "utilization_targets_router",
+]

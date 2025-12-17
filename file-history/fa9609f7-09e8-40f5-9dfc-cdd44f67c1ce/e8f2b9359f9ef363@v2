@@ -1,0 +1,1025 @@
+# Analysis System Methodology
+
+## Overview
+
+The analysis system provides comprehensive post-solve metrics and recommendations. It follows a **modular plugin architecture** where each constraint and objective has its own analyzer module.
+
+**Key Principles:**
+- 🔧 **Modular**: Each constraint/objective has its own analyzer
+- 📖 **Self-documenting**: This guide explains how to add new analyzers
+- 🎯 **Actionable**: Provides specific, implementable recommendations
+- 🔬 **Multi-constraint aware**: Considers all constraints when suggesting actions
+- ⚖️ **Weight-aware**: Suggests which weights to adjust for better results
+
+---
+
+## ⚠️ Critical: SCALING_FACTOR Handling
+
+The CP-SAT solver requires integer values, so all hour values are stored **scaled** by `SCALING_FACTOR = 100`. When analyzing violations, you **MUST convert back to actual hours**.
+
+### The Problem
+
+```python
+# In preprocessing/time_windows.py - hours are SCALED when stored:
+allocation[week_idx] = int(hours * SCALING_FACTOR)  # 9h → 900
+
+# In data_processor.py - get_task_hours_in_week() returns SCALED values:
+return self.task_hours_in_week.get((request_id, week_idx), 0)  # Returns 900, not 9
+```
+
+### The Solution
+
+**Always divide by `SCALING_FACTOR` when calculating actual hours in analyzers:**
+
+```python
+from config import SCALING_FACTOR
+
+def _calculate_actual_hours(self, solution, data, resource_id, week_idx):
+    """Calculate actual hours worked in a week"""
+    assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+    total_hours_scaled = 0  # Use integer for scaled sum
+    for assignment in assignments:
+        if assignment['resource_id'] == resource_id:
+            req_id = assignment['request_id']
+            hours_in_week = data.get_task_hours_in_week(req_id, week_idx)
+            total_hours_scaled += hours_in_week
+
+    # ⚠️ CRITICAL: Convert from scaled integers back to actual hours
+    return total_hours_scaled / SCALING_FACTOR
+```
+
+### Common Mistakes to Avoid
+
+❌ **Wrong** - Using scaled values directly:
+```python
+total_hours = data.get_task_hours_in_week(req_id, week_idx)  # Returns 900
+if total_hours > 45:  # Compares 900 > 45 = always true!
+```
+
+✅ **Correct** - Dividing by SCALING_FACTOR:
+```python
+total_hours_scaled = data.get_task_hours_in_week(req_id, week_idx)  # Returns 900
+total_hours = total_hours_scaled / SCALING_FACTOR  # Returns 9.0
+if total_hours > 45:  # Compares 9 > 45 = false (correct)
+```
+
+---
+
+## ⚠️ Critical: Resource-Specific Assignment Filtering
+
+When reporting `affected_assignments`, you must filter to show only assignments **actually assigned to that specific resource**, not all requests in the time period.
+
+### The Problem
+
+Violation metadata is created during constraint building (before solution exists), so `assignments_in_week` in metadata contains ALL requests in that week:
+
+```python
+# In constraints/lc_01_weekly_hours.py - WRONG approach in metadata:
+assignments_in_week = [
+    req_id for req_id in data.request_ids
+    if data.get_task_hours_in_week(req_id, week_idx) > 0
+]  # Lists ALL 42 requests in week, regardless of resource!
+```
+
+### The Solution
+
+**Filter assignments in the analyzer based on actual solution:**
+
+```python
+def _get_resource_assignments_in_week(self, solution, data, resource_id, week_idx):
+    """Get list of request IDs assigned to this resource in this week"""
+    assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+    resource_assignments = []
+    for assignment in assignments:
+        if assignment['resource_id'] == resource_id:  # Filter by resource!
+            req_id = assignment['request_id']
+            hours_in_week = data.get_task_hours_in_week(req_id, week_idx)
+            if hours_in_week > 0:
+                resource_assignments.append(req_id)
+
+    return resource_assignments  # Returns only 1-3 requests per resource
+```
+
+**Then use this in analyze_violations():**
+
+```python
+# Instead of: 'affected_assignments': viol_meta['assignments_in_week']
+# Use:
+actual_assignments = self._get_resource_assignments_in_week(
+    solution, data, resource_id, viol_meta['week_idx']
+)
+violations_by_resource[resource_id].append({
+    ...
+    'affected_assignments': actual_assignments,  # Correct!
+    ...
+})
+```
+
+---
+
+## ⚠️ Critical: Datetime Formatting
+
+Time period values (weeks, days, windows) stored in metadata are often raw datetime objects or tuples. These must be **formatted as human-readable strings** for output.
+
+### The Problem
+
+```python
+# Raw output looks like this:
+"week": "(datetime.datetime(2025, 12, 15, 0, 0, tzinfo=datetime.timezone.utc), ...)"
+"how_to_fix": ["Remove assignment REQ-X to reduce hours in (datetime.datetime(...)"]
+```
+
+### The Solution
+
+**Add formatting helper methods:**
+
+```python
+def _format_week(self, week):
+    """Format week tuple as readable string"""
+    if isinstance(week, (list, tuple)) and len(week) == 2:
+        start, end = week
+        if hasattr(start, 'strftime'):
+            return f"Week of {start.strftime('%b %d')} - {end.strftime('%b %d, %Y')}"
+        return f"Week {start} to {end}"
+    return str(week)
+
+def _format_window(self, window):
+    """Format 14h window as readable string"""
+    if isinstance(window, (list, tuple)) and len(window) == 2:
+        start, end = window
+        if hasattr(start, 'strftime'):
+            return f"{start.strftime('%b %d %H:%M')} - {end.strftime('%H:%M')}"
+        return f"{start} to {end}"
+    return str(window)
+
+def _format_day(self, day):
+    """Format day as readable string"""
+    if hasattr(day, 'strftime'):
+        return day.strftime('%b %d, %Y')
+    return str(day)
+```
+
+**Apply formatting in both context and suggestions:**
+
+```python
+violations_by_resource[resource_id].append({
+    'context': {
+        'week': self._format_week(week),  # Formatted!
+        'week_idx': viol_meta['week_idx']
+    },
+    ...
+    'how_to_fix': self._generate_fix_suggestions(...)
+})
+
+def _generate_fix_suggestions(self, viol_meta, ...):
+    week_str = self._format_week(viol_meta['week'])  # Format here too!
+    return [
+        f"Remove assignment {req_id} to reduce hours in {week_str}",
+        f"Reassign some {week_str} assignments to underutilized resources"
+    ]
+```
+
+**Output after formatting:**
+```json
+{
+  "context": {
+    "week": "Week of Dec 15 - Dec 21, 2025"
+  },
+  "how_to_fix": [
+    "Remove assignment REQ-X to reduce hours in Week of Dec 15 - Dec 21, 2025"
+  ]
+}
+```
+
+## Architecture
+
+```
+analysis/
+├── constraint_analyzers/       # One analyzer per constraint
+│   ├── base_analyzer.py       # Abstract base class (DO NOT MODIFY)
+│   ├── lc_01_analyzer.py      # Weekly hours analysis
+│   ├── lc_02_analyzer.py      # 14h span analysis
+│   └── ...                    # More constraint analyzers
+├── objective_analyzers/        # One analyzer per objective
+│   ├── base_analyzer.py       # Abstract base class (DO NOT MODIFY)
+│   ├── coverage_analyzer.py   # Coverage gap analysis
+│   └── workload_analyzer.py   # Workload distribution analysis
+├── recommendations/
+│   ├── training_analyzer.py   # Multi-constraint training impact
+│   └── capacity_analyzer.py   # Resource capacity analysis
+├── tests/                      # ⭐ Unit tests for analyzers
+│   ├── README.md              # Test documentation
+│   ├── test_lc_02_analyzer.py # Test LC_02 analyzer
+│   ├── test_lc_03_analyzer.py # Test LC_03 analyzer
+│   └── test_cp_02_analyzer.py # Test CP_02 analyzer
+├── solution_analyzer.py        # Main orchestrator
+└── ANALYSIS_METHODOLOGY.md     # This file
+```
+
+---
+
+## Adding a New Constraint Analyzer
+
+When you add a new constraint (e.g., `LC_05_min_daily_rest`), follow these steps to enable full analysis support.
+
+### Step 1: Update Constraint Module to Return Metadata
+
+**File:** `constraints/lc_05_min_daily_rest.py`
+
+Modify the constraint function to return **both violations and metadata**:
+
+```python
+def add_daily_rest_constraints(model: cp_model.CpModel,
+                               x_vars: dict,
+                               data,
+                               constraints) -> tuple:
+    """
+    Returns:
+        (violations, metadata) tuple
+    """
+    violations = []
+    violation_metadata = []  # NEW: Track metadata
+
+    MIN_REST_LEGAL = constraints.get_legal_value('min_rest_hours_daily')
+    MIN_REST_COMPANY = constraints.get_company_value('min_rest_company_daily')
+
+    for resource_id in data.resource_ids:
+        # ... constraint logic ...
+
+        if USE_SOFT_CONSTRAINTS:
+            violation_var = model.NewIntVar(...)
+            violations.append(violation_var)
+
+            # NEW: Store metadata for analysis
+            violation_metadata.append({
+                'constraint_id': 'LC_05',
+                'constraint_name': 'min_daily_rest',
+                'violation_var_name': violation_var.Name(),
+                'resource_id': resource_id,
+                'shift_pair': (req_i_id, req_j_id),  # Context-specific
+                'rest_hours': rest_hours,
+                'legal_limit': MIN_REST_LEGAL,
+                'company_limit': MIN_REST_COMPANY,
+                'affected_assignments': [req_i_id, req_j_id]
+            })
+
+    return violations, violation_metadata  # Return tuple!
+```
+
+**Key Points:**
+- Always return a tuple: `(violations, metadata)`
+- Metadata is a list of dicts
+- Include `constraint_id`, `constraint_name`, `violation_var_name`
+- Add constraint-specific context (e.g., `week`, `day`, `shift_pair`)
+- Include limits and affected assignments
+
+### Step 2: Create Analyzer Module
+
+**File:** `analysis/constraint_analyzers/lc_05_analyzer.py`
+
+```python
+"""
+LC_05: Minimum Daily Rest Analyzer
+Analyzes violations of minimum rest periods between shifts
+"""
+from .base_analyzer import ConstraintAnalyzer
+from datetime import datetime
+import sys
+sys.path.append('../..')
+from config import SCALING_FACTOR
+
+
+class LC_05_Analyzer(ConstraintAnalyzer):
+    """Analyzer for LC_05 (minimum daily rest)"""
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='LC_05',
+            constraint_name='min_daily_rest'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze minimum daily rest violations
+
+        Args:
+            solution: Solved model with assignments
+            data: PreprocessedData object
+            constraints: ConstraintValues object
+            violation_metadata: List of metadata from constraint module
+
+        Returns:
+            Detailed violation analysis dict
+        """
+        # Filter metadata for this constraint
+        my_violations = [
+            v for v in violation_metadata
+            if v['constraint_id'] == 'LC_05'
+        ]
+
+        if not my_violations:
+            return {
+                "constraint_id": "LC_05",
+                "constraint_name": "min_daily_rest",
+                "total_violations": 0,
+                "message": "No violations detected"
+            }
+
+        # Group by resource
+        violations_by_resource = {}
+        total_violation_amount = 0
+
+        for viol_meta in my_violations:
+            # Get violation value from solver
+            viol_var_name = viol_meta['violation_var_name']
+            # Find variable in solution
+            violation_value = self._get_violation_value(solution, viol_var_name)
+
+            if violation_value == 0:
+                continue  # No actual violation
+
+            violation_amount = violation_value / SCALING_FACTOR
+            total_violation_amount += violation_amount
+
+            resource_id = viol_meta['resource_id']
+            if resource_id not in violations_by_resource:
+                violations_by_resource[resource_id] = []
+
+            # Calculate actual rest hours
+            rest_hours = viol_meta['rest_hours']
+            shortage = viol_meta['company_limit'] - rest_hours
+
+            violations_by_resource[resource_id].append({
+                'context': {
+                    'shift_pair': viol_meta['shift_pair'],
+                    'rest_hours': rest_hours
+                },
+                'legal_limit': viol_meta['legal_limit'],
+                'company_limit': viol_meta['company_limit'],
+                'actual_value': rest_hours,
+                'violation_amount': shortage,
+                'severity': self.classify_severity(
+                    shortage,
+                    viol_meta['legal_limit'],
+                    viol_meta['company_limit']
+                ),
+                'affected_assignments': viol_meta['affected_assignments'],
+                'how_to_fix': self._generate_fix_suggestions(
+                    viol_meta, data
+                )
+            })
+
+        # Build severity breakdown
+        severity_breakdown = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+        for resource_viols in violations_by_resource.values():
+            for v in resource_viols:
+                severity_breakdown[v['severity']] += 1
+
+        # Format detailed violations
+        detailed_violations = [
+            {
+                'resource_id': resource_id,
+                'total_violations': len(viols),
+                'violations': viols
+            }
+            for resource_id, viols in violations_by_resource.items()
+        ]
+
+        return {
+            "constraint_id": "LC_05",
+            "constraint_name": "min_daily_rest",
+            "total_violations": len(my_violations),
+            "total_violation_amount": total_violation_amount,
+            "affected_resources": len(violations_by_resource),
+            "severity_breakdown": severity_breakdown,
+            "detailed_violations": detailed_violations
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check if adding this assignment would violate rest requirements
+        """
+        MIN_REST_LEGAL = constraints.get_legal_value('min_rest_hours_daily')
+        MIN_REST_COMPANY = constraints.get_company_value('min_rest_company_daily')
+
+        sim_start = datetime.fromisoformat(simulated_assignment['start'])
+        sim_end = datetime.fromisoformat(simulated_assignment['end'])
+
+        # Check rest before and after this assignment
+        for existing in existing_assignments:
+            exist_start = datetime.fromisoformat(existing['start'])
+            exist_end = datetime.fromisoformat(existing['end'])
+
+            # Rest before new assignment
+            if exist_end < sim_start:
+                rest_hours = (sim_start - exist_end).total_seconds() / 3600
+                if rest_hours < MIN_REST_LEGAL:
+                    return {
+                        "would_violate": True,
+                        "violation_type": "legal",
+                        "violation_amount": MIN_REST_LEGAL - rest_hours,
+                        "reason": f"Only {rest_hours:.1f}h rest between shifts (legal: {MIN_REST_LEGAL}h)",
+                        "details": {
+                            "previous_assignment": existing['request_id'],
+                            "rest_hours": rest_hours
+                        }
+                    }
+                elif rest_hours < MIN_REST_COMPANY:
+                    return {
+                        "would_violate": True,
+                        "violation_type": "company",
+                        "violation_amount": MIN_REST_COMPANY - rest_hours,
+                        "reason": f"Only {rest_hours:.1f}h rest between shifts (company: {MIN_REST_COMPANY}h)",
+                        "details": {
+                            "previous_assignment": existing['request_id'],
+                            "rest_hours": rest_hours
+                        }
+                    }
+
+            # Rest after new assignment
+            if sim_end < exist_start:
+                rest_hours = (exist_start - sim_end).total_seconds() / 3600
+                if rest_hours < MIN_REST_LEGAL:
+                    return {
+                        "would_violate": True,
+                        "violation_type": "legal",
+                        "violation_amount": MIN_REST_LEGAL - rest_hours,
+                        "reason": f"Only {rest_hours:.1f}h rest before next shift (legal: {MIN_REST_LEGAL}h)",
+                        "details": {
+                            "next_assignment": existing['request_id'],
+                            "rest_hours": rest_hours
+                        }
+                    }
+                elif rest_hours < MIN_REST_COMPANY:
+                    return {
+                        "would_violate": True,
+                        "violation_type": "company",
+                        "violation_amount": MIN_REST_COMPANY - rest_hours,
+                        "reason": f"Only {rest_hours:.1f}h rest before next shift (company: {MIN_REST_COMPANY}h)",
+                        "details": {
+                            "next_assignment": existing['request_id'],
+                            "rest_hours": rest_hours
+                        }
+                    }
+
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "violation_amount": 0,
+            "reason": "Sufficient rest periods maintained"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """Suggest weight adjustments"""
+        total_viols = violations.get('total_violations', 0)
+
+        if total_viols == 0:
+            return {
+                "constraint_id": "LC_05",
+                "current_weight": 1000,
+                "suggested_adjustments": []
+            }
+
+        suggestions = []
+
+        if total_viols > 100:
+            suggestions.append({
+                "new_weight": 1500,
+                "expected_impact": "Stronger enforcement of rest periods",
+                "trade_offs": "May reduce coverage by 2-5% as more assignments become infeasible"
+            })
+
+        if total_viols < 50:
+            suggestions.append({
+                "new_weight": 700,
+                "expected_impact": "More flexibility with rest periods",
+                "trade_offs": "May increase coverage by 1-3% but reduce worker rest quality"
+            })
+
+        return {
+            "constraint_id": "LC_05",
+            "current_weight": 1000,
+            "suggested_adjustments": suggestions
+        }
+
+    def _get_violation_value(self, solution, var_name):
+        """Extract violation value from solution"""
+        # This would need to access the solver's variable values
+        # For now, return placeholder
+        return 0
+
+    def _generate_fix_suggestions(self, violation_meta, data):
+        """Generate specific fix suggestions"""
+        shift_pair = violation_meta['shift_pair']
+        return [
+            f"Increase gap between {shift_pair[0]} and {shift_pair[1]}",
+            f"Reassign one of the shifts to a different resource",
+            "Accept violation if operationally necessary (within legal limit)"
+        ]
+```
+
+### Step 3: Register Analyzer
+
+**File:** `analysis/solution_analyzer.py`
+
+Add your analyzer to the registry:
+
+```python
+from .constraint_analyzers.lc_05_analyzer import LC_05_Analyzer
+
+# In __init__ or get_analyzers() method:
+self.constraint_analyzers = {
+    'LC_01_max_weekly_hours': LC_01_Analyzer(),
+    'LC_02_max_daily_hours_14h_span': LC_02_Analyzer(),
+    'LC_03_max_absolute_daily_hours': LC_03_Analyzer(),
+    'LC_04_max_continuous_work': LC_04_Analyzer(),
+    'LC_05_min_daily_rest': LC_05_Analyzer(),  # ADD HERE
+    'CP_02_qualification_matching': CP_02_Analyzer(),
+}
+```
+
+### Step 4: Test Your Analyzer
+
+Run analysis to verify:
+```bash
+python main.py
+# Check output/analysis_report.json for LC_05 section
+```
+
+---
+
+## Adding a New Objective Analyzer
+
+Similar process for objectives (e.g., `minimize_idle_time`):
+
+### Step 1: Create Analyzer Module
+
+**File:** `analysis/objective_analyzers/idle_time_analyzer.py`
+
+```python
+"""
+Idle Time Objective Analyzer
+Analyzes resource idle time and utilization
+"""
+from .base_analyzer import ObjectiveAnalyzer
+
+
+class IdleTimeAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for minimize_idle_time objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='minimize_idle_time',
+            objective_name='Minimize Resource Idle Time'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """Analyze idle time performance"""
+        # Calculate utilization for each resource
+        total_idle_time = 0
+        resource_utilization = {}
+
+        for resource in data.resources:
+            res_id = resource['resource_id']
+            assignments = [
+                a for a in solution.assignments
+                if a['resource_id'] == res_id
+            ]
+
+            total_hours = sum(a['duration_hours'] for a in assignments)
+            max_capacity = self._calculate_max_capacity(resource, data, constraints)
+            idle_time = max_capacity - total_hours
+            utilization_rate = (total_hours / max_capacity * 100) if max_capacity > 0 else 0
+
+            total_idle_time += idle_time
+            resource_utilization[res_id] = {
+                'total_hours': total_hours,
+                'max_capacity': max_capacity,
+                'idle_time': idle_time,
+                'utilization_rate': utilization_rate
+            }
+
+        # Calculate achievement (lower idle time is better)
+        total_capacity = sum(u['max_capacity'] for u in resource_utilization.values())
+        total_used = total_capacity - total_idle_time
+        achievement_rate = (total_used / total_capacity * 100) if total_capacity > 0 else 0
+
+        return {
+            "objective_id": "minimize_idle_time",
+            "objective_name": "Minimize Resource Idle Time",
+            "target_description": "Maximize resource utilization",
+            "achieved_value": total_idle_time,
+            "max_possible_value": total_capacity,
+            "achievement_rate": achievement_rate,
+            "performance_category": self.classify_performance(achievement_rate),
+            "gaps": self.get_gap_details(solution, data),
+            "metrics": {
+                "total_idle_hours": total_idle_time,
+                "average_utilization": achievement_rate,
+                "idle_resources": [
+                    res_id for res_id, util in resource_utilization.items()
+                    if util['utilization_rate'] == 0
+                ],
+                "underutilized_resources": [
+                    res_id for res_id, util in resource_utilization.items()
+                    if 0 < util['utilization_rate'] < 50
+                ]
+            }
+        }
+
+    def get_gap_details(self, solution, data):
+        """Get details about utilization gaps"""
+        gaps = []
+        # ... implementation ...
+        return gaps
+```
+
+### Step 2: Register Objective Analyzer
+
+**File:** `analysis/solution_analyzer.py`
+
+```python
+from .objective_analyzers.idle_time_analyzer import IdleTimeAnalyzer
+
+self.objective_analyzers = {
+    'maximize_coverage': CoverageAnalyzer(),
+    'balance_workload': WorkloadAnalyzer(),
+    'minimize_idle_time': IdleTimeAnalyzer(),  # ADD HERE
+}
+```
+
+---
+
+## Output Format Standards
+
+### Violation Detail Structure
+
+All constraint analyzers must return violations in this format:
+
+```json
+{
+  "constraint_id": "LC_XX",
+  "constraint_name": "constraint_name",
+  "total_violations": 150,
+  "total_violation_amount": 225.5,
+  "affected_resources": 12,
+  "severity_breakdown": {
+    "LOW": 100,
+    "MEDIUM": 40,
+    "HIGH": 10
+  },
+  "detailed_violations": [
+    {
+      "resource_id": "RES-INT-0040",
+      "total_violations": 3,
+      "violations": [
+        {
+          "context": {
+            "week": "2025-W50"
+          },
+          "legal_limit": 50,
+          "company_limit": 45,
+          "actual_value": 48,
+          "violation_amount": 3,
+          "severity": "MEDIUM",
+          "affected_assignments": ["REQ-X", "REQ-Y"],
+          "how_to_fix": [
+            "Remove assignment REQ-Y to reduce to 39h",
+            "Reassign REQ-Y to RES-INT-0025 (18h available)"
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Objective Performance Structure
+
+All objective analyzers must return performance in this format:
+
+```json
+{
+  "objective_id": "objective_name",
+  "objective_name": "Human Readable Name",
+  "target_description": "What we're trying to achieve",
+  "achieved_value": 43,
+  "max_possible_value": 50,
+  "achievement_rate": 86.0,
+  "performance_category": "GOOD",
+  "gaps": [
+    {
+      "gap_type": "QUALIFICATION_GAP",
+      "description": "7 requests uncovered due to qualification requirements",
+      "impact": "14% coverage loss",
+      "recommendations": [
+        "Train RES-INT-0025 on FORKLIFT",
+        "Hire resource with [NIGHT_SHIFT, FORKLIFT]"
+      ]
+    }
+  ],
+  "metrics": {
+    "specific_metric_1": value,
+    "specific_metric_2": value
+  }
+}
+```
+
+---
+
+## Testing Your Analyzer
+
+### Unit Testing (Recommended)
+
+Before integrating your analyzer into the full system, create a unit test to verify it works correctly in isolation.
+
+**Location:** `analysis/tests/test_YOUR_CONSTRAINT_analyzer.py`
+
+#### Step 1: Create Test File
+
+Use existing tests as templates:
+
+```bash
+# Copy a similar test as template
+cp analysis/tests/test_lc_02_analyzer.py analysis/tests/test_lc_05_analyzer.py
+```
+
+#### Step 2: Implement Unit Test
+
+**Structure of a unit test:**
+
+```python
+"""
+Test script for LC_05 analyzer
+"""
+import json
+from datetime import datetime, timedelta
+
+from analysis.constraint_analyzers.lc_05_analyzer import LC_05_Analyzer
+from preprocessing.constraints import ConstraintValues
+
+
+class MockSolution:
+    """Mock solution object with test data"""
+    def __init__(self):
+        self.solution_assignments = [{
+            'resource_id': 'RES-001',
+            'request_id': 'REQ-001',
+            'start': '2024-11-18T08:00:00',
+            'end': '2024-11-18T17:00:00',
+            'duration_hours': 9.0
+        }]
+
+
+class MockData:
+    """Mock data object with test resources/requests"""
+    def __init__(self):
+        self.request_ids = ['REQ-001', 'REQ-002']
+        self.resource_ids = ['RES-001', 'RES-002']
+        self.resources = [
+            {'resource_id': 'RES-001', 'qualifications': []},
+            {'resource_id': 'RES-002', 'qualifications': []}
+        ]
+        self.requests = [
+            {'request_id': 'REQ-001', 'required_qualifications': []},
+            {'request_id': 'REQ-002', 'required_qualifications': []}
+        ]
+        # Add constraint-specific data (days, weeks, windows, etc.)
+
+
+def test_lc05_analyzer():
+    print("=" * 60)
+    print("TESTING LC_05 ANALYZER")
+    print("=" * 60)
+
+    # 1. Initialize components
+    print("\n1. Initializing components...")
+    constraints = ConstraintValues(planning_mode="Balanced")
+    constraints.legal['min_rest_hours_daily'] = 11.0
+    constraints.company['min_rest_hours_daily'] = 12.0
+
+    solution = MockSolution()
+    data = MockData()
+
+    # 2. Create mock violation metadata
+    print("\n2. Creating mock violation metadata...")
+    violation_metadata = [
+        {
+            'constraint_id': 'LC_05',
+            'constraint_name': 'min_daily_rest',
+            'violation_var_name': 'violation_rest_RES-001_0',
+            'resource_id': 'RES-001',
+            'shift_pair': ('REQ-001', 'REQ-002'),
+            'rest_hours': 10.0,
+            'legal_limit': 11.0,
+            'company_limit': 12.0,
+            'affected_assignments': ['REQ-001', 'REQ-002']
+        }
+    ]
+
+    # 3. Run analyzer
+    print("\n3. Running LC_05 analyzer...")
+    analyzer = LC_05_Analyzer()
+    result = analyzer.analyze_violations(solution, data, constraints, violation_metadata)
+
+    # 4. Display results
+    print("\n4. ANALYSIS RESULTS:")
+    print("-" * 60)
+    print(json.dumps(result, indent=2, default=str))
+
+    # 5. Test check_would_violate
+    print("\n5. Testing check_would_violate method...")
+    test_assignment = {
+        'resource_id': 'RES-001',
+        'request_id': 'REQ-002',
+        'start': '2024-11-18T22:00:00',
+        'end': '2024-11-19T06:00:00',
+        'duration_hours': 8.0
+    }
+    existing = [solution.solution_assignments[0]]
+    check_result = analyzer.check_would_violate(test_assignment, existing, data, constraints)
+    print(json.dumps(check_result, indent=2, default=str))
+
+    # 6. Test weight suggestions
+    print("\n6. Testing weight adjustment suggestions...")
+    weight_suggestions = analyzer.suggest_weight_adjustment(result)
+    print(json.dumps(weight_suggestions, indent=2))
+
+    print("\n" + "=" * 60)
+    print("✓ LC_05 ANALYZER TEST COMPLETE")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    test_lc05_analyzer()
+```
+
+#### Step 3: Run Unit Test
+
+```bash
+# From solver_v2/ directory
+python analysis/tests/test_lc_05_analyzer.py
+```
+
+**Expected output:**
+- Violation analysis results (severity, amounts, affected resources)
+- check_would_violate() results for simulated assignments
+- Weight adjustment suggestions
+
+#### Step 4: Verify Results
+
+Check that your analyzer produces:
+- ✅ Correct violation counts
+- ✅ Proper severity classification (LOW/MEDIUM/HIGH)
+- ✅ Specific fix suggestions
+- ✅ Appropriate weight adjustment recommendations
+- ✅ No errors or exceptions
+
+### Integration Testing
+
+After unit testing, test the full integration:
+
+```bash
+# Run full solver with analysis
+python main.py
+```
+
+**Verify:**
+1. Your analyzer appears in `output/analysis_report.json`
+2. Violation data is correctly formatted
+3. Recommendations are actionable
+4. No errors in console output
+
+### When to Create Tests
+
+**ALWAYS create a unit test when:**
+- Adding a new constraint analyzer
+- Adding a new objective analyzer
+- Modifying analysis logic significantly
+- Debugging unexpected analyzer behavior
+
+**Unit tests are OPTIONAL for:**
+- Minor tweaks to fix suggestions
+- Cosmetic changes to output format
+- Simple parameter adjustments
+
+### Test File Naming Convention
+
+```
+analysis/tests/
+├── test_lc_01_analyzer.py    # For LC_01 constraint
+├── test_lc_02_analyzer.py    # For LC_02 constraint
+├── test_cp_02_analyzer.py    # For CP_02 constraint
+├── test_coverage_analyzer.py # For coverage objective
+└── test_workload_analyzer.py # For workload objective
+```
+
+**Pattern:** `test_<constraint_or_objective_name>_analyzer.py`
+
+### Common Testing Issues
+
+#### Issue: "Module not found"
+**Solution:** Run tests from `solver_v2/` directory, not from `analysis/tests/`
+
+#### Issue: "Constraint values not found"
+**Solution:** Manually set constraint values in test:
+```python
+constraints = ConstraintValues(planning_mode="Balanced")
+constraints.legal['your_constraint_key'] = 50.0
+constraints.company['your_constraint_key'] = 45.0
+```
+
+#### Issue: "No violations detected in test"
+**Solution:** Ensure mock data creates actual violations:
+```python
+# Mock should have hours OVER the limit
+violation_metadata = [{
+    'actual_hours': 46.0,  # Over company limit of 45h
+    'company_limit': 45.0
+}]
+```
+
+#### Issue: "AttributeError: no attribute 'solution_assignments'"
+**Solution:** Use `solution_assignments` not `assignments`:
+```python
+assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+```
+
+---
+
+## Best Practices
+
+### 1. Keep Analyzers Independent
+- Each analyzer should work standalone
+- Don't depend on other analyzers' results
+- Use only data, constraints, and solution as inputs
+
+### 2. Provide Actionable Suggestions
+- Be specific: "Remove REQ-X" not "Reduce assignments"
+- Include alternatives: "Option 1: ..., Option 2: ..."
+- Explain trade-offs clearly
+
+### 3. Use Severity Classification
+- LOW: < 10% over company limit
+- MEDIUM: 10-20% over company limit
+- HIGH: > 20% over company limit
+
+### 4. Context is Key
+- Include enough context to understand the violation
+- Reference specific weeks, days, shift pairs, etc.
+- Show which assignments are involved
+
+### 5. Test Thoroughly
+- Test with violations present
+- Test with no violations
+- Test edge cases (all resources violated, single resource violated, etc.)
+
+---
+
+## Troubleshooting
+
+### "Analyzer not found" error
+- Check that analyzer is registered in `solution_analyzer.py`
+- Verify import path is correct
+- Ensure `__init__.py` files exist in all directories
+
+### Violation metadata is empty
+- Verify constraint module returns tuple: `(violations, metadata)`
+- Check that metadata list is populated in constraint module
+- Ensure `solver/model.py` collects metadata
+
+### check_would_violate() always returns False
+- Verify you're checking against correct limits
+- Ensure datetime parsing is correct
+- Test with known violation scenarios
+
+---
+
+## Summary Checklist
+
+When adding a new constraint analyzer:
+- [ ] Update constraint module to return `(violations, metadata)` tuple
+- [ ] Create analyzer class inheriting from `ConstraintAnalyzer`
+- [ ] Implement `analyze_violations()` method
+- [ ] Implement `check_would_violate()` method
+- [ ] Implement `suggest_weight_adjustment()` method
+- [ ] **Create unit test in `analysis/tests/test_YOUR_CONSTRAINT_analyzer.py`**
+- [ ] **Run unit test: `python analysis/tests/test_YOUR_CONSTRAINT_analyzer.py`**
+- [ ] **Verify unit test passes with expected output**
+- [ ] Register analyzer in `solution_analyzer.py`
+- [ ] Test integration with `python main.py`
+- [ ] Verify output in `output/analysis_report.json`
+
+When adding a new objective analyzer:
+- [ ] Create analyzer class inheriting from `ObjectiveAnalyzer`
+- [ ] Implement `analyze_performance()` method
+- [ ] Implement `get_gap_details()` method
+- [ ] **Create unit test in `analysis/tests/test_YOUR_OBJECTIVE_analyzer.py`**
+- [ ] **Run unit test: `python analysis/tests/test_YOUR_OBJECTIVE_analyzer.py`**
+- [ ] **Verify unit test passes with expected output**
+- [ ] Register analyzer in `solution_analyzer.py`
+- [ ] Test integration with `python main.py`
+- [ ] Verify output in `output/analysis_report.json`

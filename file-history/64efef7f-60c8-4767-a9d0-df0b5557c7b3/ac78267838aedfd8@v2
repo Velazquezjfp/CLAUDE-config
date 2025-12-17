@@ -1,0 +1,96 @@
+"""
+Base Analyzer Class for Objectives
+All objective analyzers must inherit from this class and implement the required methods
+"""
+from abc import ABC, abstractmethod
+from typing import Dict, List, Any
+
+
+class ObjectiveAnalyzer(ABC):
+    """
+    Base class for objective-specific analyzers
+
+    Each objective (maximize_coverage, balance_workload, etc.) should have
+    its own analyzer that inherits from this class and implements all abstract methods.
+    """
+
+    def __init__(self, objective_id: str, objective_name: str):
+        """
+        Initialize the analyzer
+
+        Args:
+            objective_id: Objective identifier (e.g., "maximize_coverage")
+            objective_name: Human-readable name
+        """
+        self.objective_id = objective_id
+        self.objective_name = objective_name
+
+    @abstractmethod
+    def analyze_performance(self,
+                           solution,
+                           data,
+                           constraints) -> Dict[str, Any]:
+        """
+        Analyze how well the objective was achieved
+
+        Args:
+            solution: Solved model with assignments
+            data: PreprocessedData object
+            constraints: ConstraintValues object
+
+        Returns:
+            {
+                "objective_id": str,
+                "objective_name": str,
+                "target_description": str,
+                "achieved_value": float,
+                "max_possible_value": float,
+                "achievement_rate": float,  # Percentage
+                "performance_category": "EXCELLENT|GOOD|FAIR|POOR",
+                "gaps": [
+                    {
+                        "gap_type": str,
+                        "description": str,
+                        "impact": str,
+                        "recommendations": [str]
+                    }
+                ],
+                "metrics": {}  # Objective-specific metrics
+            }
+        """
+        pass
+
+    @abstractmethod
+    def get_gap_details(self,
+                       solution,
+                       data) -> List[Dict[str, Any]]:
+        """
+        Get detailed information about gaps preventing optimal performance
+
+        Args:
+            solution: Solved model with assignments
+            data: PreprocessedData object
+
+        Returns:
+            List of gap details with actionable information
+        """
+        pass
+
+    def classify_performance(self, achievement_rate: float) -> str:
+        """
+        Classify objective achievement performance
+
+        Args:
+            achievement_rate: Percentage achieved (0-100)
+
+        Returns:
+            "EXCELLENT" | "GOOD" | "FAIR" | "POOR"
+        """
+        if achievement_rate >= 95:
+            return "EXCELLENT"
+        elif achievement_rate >= 80:
+            return "GOOD"
+        elif achievement_rate >= 60:
+            return "FAIR"
+        else:
+            return "POOR"

@@ -1,0 +1,161 @@
+2025-12-16T09:00:37.703Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json...
+2025-12-16T09:00:37.801Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-16T09:00:37.801Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-16T09:00:37.801Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-16T09:00:37.806Z [DEBUG] LSP server manager initialized successfully
+2025-12-16T09:00:37.806Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-16T09:00:37.828Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-16T09:00:37.843Z [DEBUG] Stats cache is up to date
+2025-12-16T09:00:37.854Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (10.1ms): ldd /bin/ls 2>/dev/null
+2025-12-16T09:00:37.859Z [DEBUG] Loading skills from directories: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=[]
+2025-12-16T09:00:37.863Z [DEBUG] Loaded 0 installed plugins from /home/javiervel/.claude/plugins/installed_plugins.json
+2025-12-16T09:00:38.155Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2025-12-16T09:00:38.155Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2025-12-16T09:00:38.156Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2025-12-16T09:00:38.156Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765875638155-v8rd4o.sh
+2025-12-16T09:00:38.157Z [DEBUG] Shell binary exists: true
+2025-12-16T09:00:38.157Z [DEBUG] Execution timeout: 10000ms
+2025-12-16T09:00:38.163Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/534acaef-7eba-47da-9c12-5ed6359d10dc-agent-534acaef-7eba-47da-9c12-5ed6359d10dc.json.tmp.6196.1765875638163
+2025-12-16T09:00:38.174Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (10.6ms)
+2025-12-16T09:00:38.174Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-16T09:00:38.174Z [DEBUG] Renaming /home/javiervel/.claude/todos/534acaef-7eba-47da-9c12-5ed6359d10dc-agent-534acaef-7eba-47da-9c12-5ed6359d10dc.json.tmp.6196.1765875638163 to /home/javiervel/.claude/todos/534acaef-7eba-47da-9c12-5ed6359d10dc-agent-534acaef-7eba-47da-9c12-5ed6359d10dc.json
+2025-12-16T09:00:38.174Z [DEBUG] File /home/javiervel/.claude/todos/534acaef-7eba-47da-9c12-5ed6359d10dc-agent-534acaef-7eba-47da-9c12-5ed6359d10dc.json written atomically
+2025-12-16T09:00:38.469Z [DEBUG] Auto-updating 1 installed marketplaces in background
+2025-12-16T09:00:38.469Z [DEBUG] Auto-updating marketplace "claude-plugins-official"
+2025-12-16T09:00:38.483Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-16T09:00:38.483Z [DEBUG] Total plugin skills loaded: 0
+2025-12-16T09:00:38.483Z [DEBUG] Total plugin commands loaded: 0
+2025-12-16T09:00:38.483Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-16T09:00:39.194Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-16T09:00:39.389Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills
+2025-12-16T09:00:39.422Z [DEBUG] Git remote URL: null
+2025-12-16T09:00:39.422Z [DEBUG] No git remote URL found
+2025-12-16T09:00:39.422Z [DEBUG] Not in a GitHub repository, skipping path mapping update
+2025-12-16T09:00:39.422Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/fnm/node-versions/v22.16.0/installation/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2025-12-16T09:00:39.424Z [DEBUG] Shell snapshot created successfully (4898 bytes)
+2025-12-16T09:00:39.430Z [DEBUG] Total plugin agents loaded: 0
+2025-12-16T09:00:39.480Z [DEBUG] MCP server "context7": Starting connection with timeout of 30000ms
+2025-12-16T09:00:39.508Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-16T09:00:39.508Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:39.508Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-16T09:00:39.513Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-16T09:00:39.513Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:39.513Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-16T09:00:39.524Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.4ms)
+2025-12-16T09:00:39.533Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.6ms)
+2025-12-16T09:00:39.541Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.9ms)
+2025-12-16T09:00:39.579Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6196.1765875639579
+2025-12-16T09:00:39.579Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T09:00:39.585Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.8ms)
+2025-12-16T09:00:39.585Z [DEBUG] Temp file written successfully, size: 90341 bytes
+2025-12-16T09:00:39.585Z [DEBUG] Applied original permissions to temp file
+2025-12-16T09:00:39.585Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.6196.1765875639579 to /home/javiervel/.claude.json
+2025-12-16T09:00:39.585Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T09:00:39.840Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (6.0ms)
+2025-12-16T09:00:39.840Z [DEBUG] Successfully refreshed marketplace: claude-plugins-official
+2025-12-16T09:00:39.840Z [DEBUG] Successfully auto-updated marketplace "claude-plugins-official"
+2025-12-16T09:00:41.010Z [DEBUG] Stream started - received first chunk
+2025-12-16T09:00:41.576Z [ERROR] MCP server "context7" Server stderr: WARNING: Using default CLIENT_IP_ENCRYPTION_KEY.
+2025-12-16T09:00:42.003Z [ERROR] MCP server "context7" Server stderr: Context7 Documentation MCP Server running on stdio
+2025-12-16T09:00:42.005Z [DEBUG] Stream started - received first chunk
+2025-12-16T09:00:42.025Z [DEBUG] MCP server "context7": Successfully connected to stdio server in 2563ms
+2025-12-16T09:00:42.026Z [DEBUG] MCP server "context7": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Context7","version":"1.0.13"}}
+2025-12-16T09:00:42.054Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2025-12-16T09:00:42.056Z [DEBUG] [ColorDiff] Not in bundled mode, using JS fallback
+2025-12-16T09:00:42.065Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6196.1765875642065
+2025-12-16T09:00:42.065Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T09:00:42.073Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (7.7ms)
+2025-12-16T09:00:42.073Z [DEBUG] Temp file written successfully, size: 90341 bytes
+2025-12-16T09:00:42.073Z [DEBUG] Applied original permissions to temp file
+2025-12-16T09:00:42.073Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.6196.1765875642065 to /home/javiervel/.claude.json
+2025-12-16T09:00:42.073Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T09:00:42.093Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2025-12-16T09:00:42.093Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:42.093Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2025-12-16T09:00:43.036Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6196.1765875643036
+2025-12-16T09:00:43.036Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T09:00:43.041Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.2ms)
+2025-12-16T09:00:43.041Z [DEBUG] Temp file written successfully, size: 90268 bytes
+2025-12-16T09:00:43.041Z [DEBUG] Applied original permissions to temp file
+2025-12-16T09:00:43.041Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.6196.1765875643036 to /home/javiervel/.claude.json
+2025-12-16T09:00:43.041Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T09:00:43.056Z [DEBUG] Official marketplace auto-install skipped: already_attempted
+2025-12-16T09:00:43.056Z [DEBUG] performStartupChecks called
+2025-12-16T09:00:43.057Z [DEBUG] Starting background plugin installations
+2025-12-16T09:00:43.058Z [DEBUG] performBackgroundPluginInstallations called
+2025-12-16T09:00:43.459Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (398.9ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T09:00:43.472Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.7ms)
+2025-12-16T09:00:43.483Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.5ms)
+2025-12-16T09:00:43.519Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6196.1765875643519
+2025-12-16T09:00:43.519Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T09:00:43.533Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (13.7ms)
+2025-12-16T09:00:43.533Z [DEBUG] Temp file written successfully, size: 90341 bytes
+2025-12-16T09:00:43.533Z [DEBUG] Applied original permissions to temp file
+2025-12-16T09:00:43.533Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.6196.1765875643519 to /home/javiervel/.claude.json
+2025-12-16T09:00:43.533Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T09:00:43.933Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (397.6ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T09:00:43.947Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (6.4ms)
+2025-12-16T09:00:43.962Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (8.3ms)
+2025-12-16T09:00:43.968Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (6.0ms)
+2025-12-16T09:00:43.969Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2025-12-16T09:00:43.972Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2025-12-16T09:00:44.007Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-16T09:00:44.007Z [DEBUG] Slash commands included in SlashCommand tool: /read-kg, /update-code-graph, /analyze-impact, /start-test-requirement, /kg-infra, /start-pm, /update-docs-apis, /start-requirement, /update-docs-database
+2025-12-16T09:00:44.030Z [DEBUG] AutoUpdaterWrapper: Installation type: unknown
+2025-12-16T09:00:44.053Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-16T09:00:44.054Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-16T09:00:44.054Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-16T09:00:44.054Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-16T09:00:44.065Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T09:00:44.066Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:44.066Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T09:00:44.081Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-16T09:00:44.093Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.6196.1765875644093
+2025-12-16T09:00:44.093Z [DEBUG] Preserving file permissions: 100644
+2025-12-16T09:00:44.101Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (8.5ms)
+2025-12-16T09:00:44.101Z [DEBUG] Temp file written successfully, size: 90341 bytes
+2025-12-16T09:00:44.101Z [DEBUG] Applied original permissions to temp file
+2025-12-16T09:00:44.101Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.6196.1765875644093 to /home/javiervel/.claude.json
+2025-12-16T09:00:44.102Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2025-12-16T09:00:44.120Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 44ms
+2025-12-16T09:00:44.120Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.62"}}
+2025-12-16T09:00:44.134Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-16T09:00:44.134Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:44.135Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T09:00:44.140Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-16T09:00:44.150Z [DEBUG] FileHistory: Added snapshot for b8ae43e8-7f41-4e6f-a480-e29d72dd7ff3, tracking 0 files
+2025-12-16T09:00:44.618Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (410.8ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T09:00:44.630Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.1ms)
+2025-12-16T09:00:44.641Z [DEBUG] [SLOW OPERATION DETECTED] fs.readdirSync (5.7ms)
+2025-12-16T09:00:45.018Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (373.3ms): powershell.exe -Command '$env:USERPROFILE'
+2025-12-16T09:00:45.052Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-16T09:00:45.052Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:45.052Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-16T09:00:47.090Z [DEBUG] Stream started - received first chunk
+2025-12-16T09:00:47.944Z [DEBUG] Getting matching hook commands for SessionEnd with query: prompt_input_exit
+2025-12-16T09:00:47.944Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:47.944Z [DEBUG] Matched 0 unique hooks for query "prompt_input_exit" (0 before deduplication)
+2025-12-16T09:00:47.954Z [DEBUG] Cleaned up session snapshot: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1765875638155-v8rd4o.sh
+2025-12-16T09:00:47.957Z [DEBUG] MCP server "context7": Sending SIGINT to MCP server process
+2025-12-16T09:00:47.961Z [DEBUG] MCP server "ide": WebSocket transport closed/disconnected, attempting automatic reconnection
+2025-12-16T09:00:47.964Z [DEBUG] LSP server manager shut down successfully
+2025-12-16T09:00:47.970Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2025-12-16T09:00:48.004Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 38ms
+2025-12-16T09:00:48.005Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.0.62"}}
+2025-12-16T09:00:48.012Z [DEBUG] MCP server "ide": WebSocket reconnection successful after 49ms (attempt 1)
+2025-12-16T09:00:48.059Z [DEBUG] MCP server "context7": SIGINT failed, sending SIGTERM to MCP server process
+2025-12-16T09:00:48.119Z [DEBUG] MCP server "context7": MCP server process exited cleanly
+2025-12-16T09:00:48.327Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=false
+2025-12-16T09:00:48.632Z [DEBUG] BigQuery metrics exported successfully
+2025-12-16T09:00:48.632Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 12,
+  "rejected_count": 0
+}
+2025-12-16T09:00:48.633Z [DEBUG] BigQuery metrics exporter flush complete
+2025-12-16T09:00:48.633Z [DEBUG] BigQuery metrics exporter flush complete
+2025-12-16T09:00:48.633Z [DEBUG] BigQuery metrics exporter shutdown complete
+2025-12-16T09:00:48.750Z [DEBUG] executePreToolHooks called for tool: Bash
+2025-12-16T09:00:48.761Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2025-12-16T09:00:48.761Z [DEBUG] Found 0 hook matchers in settings
+2025-12-16T09:00:48.761Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2025-12-16T09:00:48.784Z [DEBUG] tree-sitter: WASM files not found

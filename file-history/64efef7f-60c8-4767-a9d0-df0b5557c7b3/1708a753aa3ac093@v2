@@ -1,0 +1,115 @@
+"""
+Test script for CP_02 analyzer
+"""
+import json
+
+from analysis.constraint_analyzers.cp_02_analyzer import CP_02_Analyzer
+from preprocessing.constraints import ConstraintValues
+
+
+class MockSolution:
+    def __init__(self):
+        # Only one assignment - REQ-001 covered, REQ-002 uncovered
+        self.assignments = [{
+            'resource_id': 'RES-001',
+            'request_id': 'REQ-001',
+            'start': '2024-11-18T08:00:00',
+            'end': '2024-11-18T17:00:00',
+            'duration_hours': 9.0
+        }]
+
+
+class MockData:
+    def __init__(self):
+        self.request_ids = ['REQ-001', 'REQ-002', 'REQ-003']
+        self.resource_ids = ['RES-001', 'RES-002', 'RES-003']
+
+        self.requests = [
+            {
+                'request_id': 'REQ-001',
+                'required_qualifications': ['FORKLIFT']
+            },
+            {
+                'request_id': 'REQ-002',
+                'required_qualifications': ['FORKLIFT', 'NIGHT_SHIFT']
+            },
+            {
+                'request_id': 'REQ-003',
+                'required_qualifications': ['CRANE', 'HEIGHTS']
+            }
+        ]
+
+        self.resources = [
+            {
+                'resource_id': 'RES-001',
+                'qualifications': ['FORKLIFT']  # Can do REQ-001
+            },
+            {
+                'resource_id': 'RES-002',
+                'qualifications': ['FORKLIFT']  # Missing NIGHT_SHIFT for REQ-002
+            },
+            {
+                'resource_id': 'RES-003',
+                'qualifications': []  # No qualifications
+            }
+        ]
+
+
+def test_cp02_analyzer():
+    print("=" * 60)
+    print("TESTING CP_02 ANALYZER")
+    print("=" * 60)
+
+    print("\n1. Initializing components...")
+    constraints = ConstraintValues(planning_mode="Balanced")
+    solution = MockSolution()
+    data = MockData()
+
+    print(f"   Loaded {len(solution.assignments)} assignments")
+    print(f"   Total requests: {len(data.requests)}")
+    print(f"   Total resources: {len(data.resources)}")
+
+    # CP_02 doesn't use violation_metadata (hard constraint)
+    print("\n2. Running CP_02 analyzer...")
+    analyzer = CP_02_Analyzer()
+    result = analyzer.analyze_violations(solution, data, constraints, [])
+
+    print("\n3. ANALYSIS RESULTS:")
+    print("-" * 60)
+    print(json.dumps(result, indent=2, default=str))
+
+    # Test check_would_violate
+    print("\n4. Testing check_would_violate method...")
+
+    # Test 1: Resource with qualifications
+    test_assignment_1 = {
+        'resource_id': 'RES-001',
+        'request_id': 'REQ-001',
+        'duration_hours': 9.0
+    }
+    check_1 = analyzer.check_would_violate(test_assignment_1, [], data, constraints)
+    print("\n   Test 1 (qualified resource):")
+    print(json.dumps(check_1, indent=2))
+
+    # Test 2: Resource without qualifications
+    test_assignment_2 = {
+        'resource_id': 'RES-002',
+        'request_id': 'REQ-002',  # Requires FORKLIFT + NIGHT_SHIFT
+        'duration_hours': 9.0
+    }
+    check_2 = analyzer.check_would_violate(test_assignment_2, [], data, constraints)
+    print("\n   Test 2 (missing qualifications):")
+    print(json.dumps(check_2, indent=2))
+
+    # Test weight suggestions (should be N/A)
+    print("\n5. Testing weight adjustment (should be N/A for hard constraints)...")
+    weight_suggestions = analyzer.suggest_weight_adjustment(result)
+    print(json.dumps(weight_suggestions, indent=2))
+
+    print("\n" + "=" * 60)
+    print("✓ CP_02 ANALYZER TEST COMPLETE")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    test_cp02_analyzer()

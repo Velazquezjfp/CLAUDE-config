@@ -212,3 +212,19 @@
 [DEBUG] Applied original permissions to temp file
 [DEBUG] Renaming /home/javiervel/.claude.json.tmp.45488.1761911008126 to /home/javiervel/.claude.json
 [DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: unknown
+[DEBUG] AutoUpdater: Unknown installation type, falling back to config
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.45488.1761912723665
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.45488.1761912723665 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically
+[DEBUG] AutoUpdater: Detected installation type: unknown
+[DEBUG] AutoUpdater: Unknown installation type, falling back to config
+[DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.45488.1761914439131
+[DEBUG] Preserving file permissions: 100644
+[DEBUG] Temp file written successfully, size: 66362 bytes
+[DEBUG] Applied original permissions to temp file
+[DEBUG] Renaming /home/javiervel/.claude.json.tmp.45488.1761914439131 to /home/javiervel/.claude.json
+[DEBUG] File /home/javiervel/.claude.json written atomically

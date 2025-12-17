@@ -1,0 +1,53 @@
+"""
+LC_04: Maximum Continuous Work Without Break
+Legal Constraint: 5.5 hours continuous work (hard)
+Company Policy: 5 hours (soft, dynamic)
+
+IMPLEMENTATION NOTE:
+Breaks are assumed to be handled OUTSIDE the solver.
+The solver does not enforce break requirements within shifts.
+This constraint exists for completeness but does not add restrictions
+to the model, as break scheduling is managed separately.
+
+Rationale:
+- Shifts may be 9+ hours but include mandatory breaks (e.g., 15min after 5.5h)
+- Break scheduling is handled by operational procedures, not optimization
+- The solver focuses on assignment feasibility, not micro-level break timing
+"""
+from ortools.sat.python import cp_model
+import sys
+sys.path.append('..')
+from config import SCALING_FACTOR, USE_SOFT_CONSTRAINTS
+
+
+def add_continuous_work_constraints(model: cp_model.CpModel,
+                                   x_vars: dict,
+                                   data,
+                                   constraints) -> list:
+    """
+    Add maximum continuous work constraints to the model
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        List of violation variables (for soft constraints)
+    """
+    MAX_HOURS_LEGAL = constraints.get_legal_value('max_continuous_hours')
+    MAX_HOURS_COMPANY = constraints.get_company_value('max_continuous_hours')
+
+    violations = []
+
+    print(f"\n[LC_04] Continuous work constraint (breaks assumed external)...")
+    print(f"  Legal limit: {MAX_HOURS_LEGAL}h continuous")
+    print(f"  Company limit: {MAX_HOURS_COMPANY}h continuous")
+    print(f"  ASSUMPTION: Breaks are scheduled externally, not enforced by solver")
+    print(f"  No constraints added - break management handled operationally")
+
+    # No actual constraints added - breaks are assumed to be managed externally
+    # This constraint remains for documentation and potential future enhancement
+
+    return violations

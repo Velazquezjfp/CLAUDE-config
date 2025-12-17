@@ -1,0 +1,290 @@
+# CFF Database Schema - Entity Relationship Diagram
+
+## Mermaid ERD (Relationships Focus)
+
+```mermaid
+erDiagram
+    %% User Management Domain
+    cff_users {
+        uuid id PK "NOT NULL"
+        timestamp created_at
+        varchar email UK "NOT NULL, UNIQUE"
+        varchar employee_id UK "NOT NULL, UNIQUE"
+        varchar first_name
+        varchar last_name
+        varchar middle_name
+        varchar password
+        varchar status
+        timestamp updated_at
+    }
+
+    cff_roles {
+        bigint id PK "NOT NULL"
+        varchar role_name UK "NOT NULL, UNIQUE"
+    }
+
+    cff_user_roles {
+        uuid user_id PK_FK "NOT NULL"
+        bigint role_id PK_FK "NOT NULL"
+    }
+
+    cff_user_activations {
+        uuid id PK "NOT NULL"
+        timestamp expires_at
+        varchar status
+        varchar token UK "NOT NULL, UNIQUE"
+        uuid user_id FK_UK "NOT NULL, UNIQUE"
+    }
+
+    %% Organizational Domain
+    regions {
+        integer region_id PK "NOT NULL"
+        timestamp created_at
+        varchar created_by
+        varchar region_code UK "UNIQUE"
+        varchar region_name UK "NOT NULL, UNIQUE"
+        varchar updated_by
+        timestamp updated_at
+    }
+
+    teams {
+        integer team_id PK "NOT NULL"
+        timestamp created_at
+        varchar created_by
+        varchar team_code
+        varchar team_name UK "NOT NULL, UNIQUE"
+        varchar updated_by
+        timestamp updated_at
+        integer region_id FK
+    }
+
+    sub_groups {
+        integer sub_group_id PK "NOT NULL"
+        varchar color_code
+        timestamp created_at
+        varchar created_by
+        varchar sub_group_name "NOT NULL"
+        varchar updated_by
+        timestamp updated_at
+        integer team_id FK "NOT NULL"
+    }
+
+    %% Resources Domain
+    resources {
+        integer resource_id PK "NOT NULL"
+        varchar address
+        jsonb availability_pattern
+        varchar contract
+        numeric cost_per_hour
+        timestamp created_at
+        varchar created_by
+        varchar email UK "UNIQUE"
+        varchar first_name "NOT NULL"
+        date hire_date
+        varchar home_location
+        varchar last_name "NOT NULL"
+        varchar npa
+        varchar number
+        varchar phone
+        jsonb qualifications
+        jsonb resource_categories
+        varchar shift_preference
+        varchar status "NOT NULL"
+        varchar team_salon_hr
+        varchar updated_by
+        timestamp updated_at
+        varchar user_name UK "NOT NULL, UNIQUE"
+        integer weekly_hours
+        integer region_id FK
+        integer sub_group_id FK
+        integer team_id FK
+    }
+
+    resource_category {
+        integer id PK "NOT NULL"
+        varchar name UK "NOT NULL, UNIQUE"
+    }
+
+    qualifications {
+        integer qualification_id PK "NOT NULL"
+        boolean certification_required
+        timestamp created_at
+        varchar created_by
+        text description
+        varchar qualification_category
+        varchar qualification_name UK "NOT NULL, UNIQUE"
+        varchar updated_by
+        timestamp updated_at
+        integer validity_months
+    }
+
+    %% Operations Domain
+    operation_points {
+        integer operation_points_id PK "NOT NULL"
+        timestamp created_at
+        varchar created_by
+        numeric km
+        varchar line_number "NOT NULL"
+        varchar station_code "NOT NULL"
+        varchar station_name "NOT NULL"
+        varchar updated_by
+        timestamp updated_at
+        integer team_id FK
+    }
+
+    %% Demands & Requests Domain
+    demands_list {
+        integer id PK "NOT NULL"
+        varchar branch
+        varchar bsa_id
+        date start_date
+        date end_date
+        varchar mandate_name
+        varchar status
+        integer team_id FK
+    }
+
+    requests {
+        integer id PK "NOT NULL"
+        varchar bsa_id PK "NOT NULL"
+        jsonb assigned_resources
+        varchar branch
+        varchar task_name
+        jsonb required_qualifications
+        varchar assignment_status
+        integer team_id FK
+    }
+
+    assignments {
+        integer id PK "NOT NULL"
+        varchar bsa_id
+        varchar family_name
+        varchar resource_id
+        varchar request_id
+        varchar calendar_start
+        varchar calendar_end
+    }
+
+    %% Import Domain
+    import_job_details {
+        bigint id PK "NOT NULL"
+        varchar created_by "NOT NULL"
+        timestamp created_time "NOT NULL"
+        varchar file_url "NOT NULL"
+        varchar import_type "NOT NULL"
+        timestamp job_completion_time
+        varchar job_no "NOT NULL"
+        integer records_not_processed
+        integer records_processed
+        varchar status "NOT NULL"
+    }
+
+    import_job_logs {
+        integer id PK "NOT NULL"
+        timestamp created_time "NOT NULL"
+        varchar error_message "NOT NULL"
+        varchar file "NOT NULL"
+        bigint job_id FK "NOT NULL"
+        varchar source_row_no "NOT NULL"
+    }
+
+    %% RELATIONSHIPS (12 Foreign Keys)
+    cff_users ||--o{ cff_user_roles : "has"
+    cff_roles ||--o{ cff_user_roles : "assigned_to"
+    cff_users ||--o| cff_user_activations : "has"
+
+    regions ||--o{ teams : "contains"
+    teams ||--o{ sub_groups : "has"
+
+    regions ||--o{ resources : "employs"
+    sub_groups ||--o{ resources : "contains"
+    teams ||--o{ resources : "manages"
+
+    teams ||--o{ operation_points : "operates"
+    teams ||--o{ demands_list : "receives"
+    teams ||--o{ requests : "handles"
+
+    import_job_details ||--o{ import_job_logs : "logs"
+```
+
+## Foreign Key Summary Table
+
+| Source Table | Source Column | Target Table | Target Column | Constraint Name |
+|-------------|---------------|--------------|---------------|-----------------|
+| cff_user_activations | user_id | cff_users | id | fk1wjvm4yxugxhs1ul88eunvts8 |
+| cff_user_roles | role_id | cff_roles | id | fk4ktpuq8ddopk9gpxchprpkcav |
+| cff_user_roles | user_id | cff_users | id | fk9bhxurvjnfl6i7tgbxq18cv30 |
+| demands_list | team_id | teams | team_id | demandslist_team_id_fkey |
+| import_job_logs | job_id | import_job_details | id | fkpaffgmih0wmapca8k1reqnnhg |
+| operation_points | team_id | teams | team_id | operation_points_team_fk |
+| requests | team_id | teams | team_id | opendemands_team_id_fkey |
+| resources | region_id | regions | region_id | resources_region_id_fkey |
+| resources | sub_group_id | sub_groups | sub_group_id | resources_sub_group_id_fkey |
+| resources | team_id | teams | team_id | resources_team_id_fkey |
+| sub_groups | team_id | teams | team_id | fk9rvl8qvsvtsth9j4statulhv3 |
+| teams | region_id | regions | region_id | teams_region_id_fkey |
+
+## Primary Keys Summary
+
+| Table | Primary Key Column(s) | Type |
+|-------|----------------------|------|
+| assignments | id | integer |
+| cff_roles | id | bigint |
+| cff_user_activations | id | uuid |
+| cff_user_roles | user_id, role_id | uuid, bigint (composite) |
+| cff_users | id | uuid |
+| demands_list | id | integer |
+| import_job_details | id | bigint |
+| import_job_logs | id | integer |
+| operation_points | operation_points_id | integer |
+| qualifications | qualification_id | integer |
+| regions | region_id | integer |
+| requests | id, bsa_id | integer, varchar (composite) |
+| resource_category | id | integer |
+| resources | resource_id | integer |
+| sub_groups | sub_group_id | integer |
+| teams | team_id | integer |
+
+## Unique Constraints Summary
+
+| Table | Column(s) | Constraint Name |
+|-------|-----------|-----------------|
+| cff_roles | role_name | uknubfy3ec1v7596dyrx66o7sh3 |
+| cff_user_activations | token | ukqibbbxlgd7dejene5v2a82qq9 |
+| cff_user_activations | user_id | ukt9bnslhiv3y9171yv9fdi6gnb |
+| cff_users | email | ukm5op41qipsj0dh5iq51xdqvrr |
+| cff_users | employee_id | ukpegq351mfq1eu6oim0w69ra4t |
+| operation_points | station_name, station_code, line_number, km, team_id | operation_points_uk |
+| qualifications | qualification_name | qualifications_qualification_name_key |
+| regions | region_code | regions_region_code_key |
+| regions | region_name | regions_region_name_key |
+| resource_category | name | ukm93cwlodygarym58kww75utgn |
+| resources | email | resources_email_key |
+| resources | user_name | resources_uname_key |
+| sub_groups | sub_group_name, team_id | sub_group_name_team_id_key |
+| teams | team_name | teams_team_name_key |
+| teams | team_name, region_id | teams_team_name_region_id_key |
+
+## Tables Without Foreign Key Relationships
+
+The following tables have NO foreign key constraints pointing to other tables:
+- **assignments** - Contains `bsa_id`, `resource_id`, `request_id` as varchar but no FK constraints
+- **resource_category** - Standalone lookup table
+- **qualifications** - Standalone lookup table
+
+## Notes for Database Validation
+
+1. **Composite Primary Keys**:
+   - `cff_user_roles` has composite PK (user_id + role_id)
+   - `requests` has composite PK (id + bsa_id)
+
+2. **Orphan References**: The `assignments` table contains `resource_id` and `request_id` fields stored as VARCHAR, but these are NOT enforced by foreign key constraints. This could lead to data integrity issues.
+
+3. **JSONB Fields**: Several tables use JSONB for flexible data:
+   - `resources.qualifications` - Array of qualification names
+   - `resources.resource_categories` - Array of category names
+   - `resources.availability_pattern` - Weekly availability schedule
+   - `requests.assigned_resources` - Array of assigned resources
+   - `requests.required_qualifications` - Array of required qualifications
+
+4. **Empty Table**: `regions` table has 0 rows but is referenced by `teams` and `resources`.

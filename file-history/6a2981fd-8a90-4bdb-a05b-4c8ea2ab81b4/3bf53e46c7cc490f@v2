@@ -1,0 +1,170 @@
+"""
+Coverage Objective Analyzer
+Analyzes request coverage performance and identifies gaps
+"""
+from .base_analyzer import ObjectiveAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class CoverageAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for maximize_coverage objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='maximize_coverage',
+            objective_name='Maximize Request Coverage'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """
+        Analyze coverage performance
+        """
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        total_requests = len(data.request_ids)
+        covered_requests = len(assignments)
+        uncovered_requests = total_requests - covered_requests
+        achievement_rate = (covered_requests / total_requests * 100) if total_requests > 0 else 0
+
+        # Get uncovered request details
+        covered_ids = {a['request_id'] for a in assignments}
+        uncovered = [
+            req for req in data.requests
+            if req['id'] not in covered_ids
+        ]
+
+        # Analyze gaps
+        gaps = self.get_gap_details(solution, data, uncovered)
+
+        return {
+            "objective_id": "maximize_coverage",
+            "objective_name": "Maximize Request Coverage",
+            "target_description": "Cover as many requests as possible",
+            "achieved_value": covered_requests,
+            "max_possible_value": total_requests,
+            "achievement_rate": round(achievement_rate, 2),
+            "performance_category": self.classify_performance(achievement_rate),
+            "gaps": gaps,
+            "metrics": {
+                "total_requests": total_requests,
+                "covered_requests": covered_requests,
+                "uncovered_requests": uncovered_requests,
+                "coverage_percentage": round(achievement_rate, 2),
+                "uncovered_request_ids": [r['id'] for r in uncovered]
+            }
+        }
+
+    def get_gap_details(self, solution, data, uncovered_requests):
+        """
+        Analyze why requests weren't covered
+        """
+        gaps = []
+
+        if not uncovered_requests:
+            return gaps
+
+        # Analyze qualification gaps
+        qualification_gaps = []
+        capacity_gaps = []
+        constraint_gaps = []
+
+        for request in uncovered_requests:
+            req_id = request['id']
+            req_quals = set(request.get('required_qualifications', []))
+
+            # Check if ANY resource has the qualifications
+            has_qualified = False
+            near_matches = []
+
+            for resource in data.resources:
+                res_quals = set(resource.get('qualifications', []))
+                missing = req_quals - res_quals
+
+                if len(missing) == 0:
+                    has_qualified = True
+                    break
+                elif len(missing) <= 2:
+                    near_matches.append({
+                        'resource_id': resource['resource_id'],
+                        'missing_qualifications': list(missing)
+                    })
+
+            if not has_qualified:
+                qualification_gaps.append({
+                    'request_id': req_id,
+                    'required_qualifications': list(req_quals),
+                    'near_matches': near_matches[:3]  # Top 3
+                })
+            else:
+                # Has qualified resources but not assigned = capacity or constraint issue
+                capacity_gaps.append(req_id)
+
+        # Build gap report
+        if qualification_gaps:
+            gaps.append({
+                "gap_type": "QUALIFICATION_GAP",
+                "description": f"{len(qualification_gaps)} requests lack qualified resources",
+                "impact": f"{len(qualification_gaps) / len(uncovered_requests) * 100:.1f}% of uncovered requests",
+                "recommendations": self._generate_qualification_recommendations(qualification_gaps)
+            })
+
+        if capacity_gaps:
+            gaps.append({
+                "gap_type": "CAPACITY_GAP",
+                "description": f"{len(capacity_gaps)} requests have qualified resources but weren't assigned",
+                "impact": f"{len(capacity_gaps) / len(uncovered_requests) * 100:.1f}% of uncovered requests",
+                "recommendations": [
+                    "Check resource availability and capacity constraints",
+                    "Consider relaxing weekly/daily hour limits",
+                    "Add more resources to increase capacity"
+                ]
+            })
+
+        return gaps
+
+    def _generate_qualification_recommendations(self, qualification_gaps):
+        """Generate training/hiring recommendations"""
+        recommendations = []
+
+        # Analyze near-matches for training opportunities
+        training_candidates = {}
+        for gap in qualification_gaps:
+            for near_match in gap['near_matches']:
+                res_id = near_match['resource_id']
+                missing_quals = near_match['missing_qualifications']
+
+                for qual in missing_quals:
+                    if qual not in training_candidates:
+                        training_candidates[qual] = set()
+                    training_candidates[qual].add(res_id)
+
+        # Sort by impact
+        for qual, resources in sorted(training_candidates.items(),
+                                     key=lambda x: len(x[1]),
+                                     reverse=True):
+            if len(resources) >= 2:
+                recommendations.append(
+                    f"HIGH PRIORITY: Train {len(resources)} resources on {qual} "
+                    f"(enables {len([g for g in qualification_gaps if qual in str(g)])} requests)"
+                )
+
+        # Hiring recommendations for missing qualifications
+        missing_qual_sets = set()
+        for gap in qualification_gaps:
+            if not gap['near_matches']:  # No near matches = need hire
+                qual_set = frozenset(gap['required_qualifications'])
+                missing_qual_sets.add(qual_set)
+
+        for qual_set in missing_qual_sets:
+            recommendations.append(
+                f"HIRE: Resource with qualifications {list(qual_set)}"
+            )
+
+        if not recommendations:
+            recommendations.append(
+                "Review qualification requirements - may be too restrictive"
+            )
+
+        return recommendations

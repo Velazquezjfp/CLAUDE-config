@@ -1,0 +1,472 @@
+"""
+Assignments router - Full CRUD for assignments table with pagination
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import List, Optional
+from datetime import date
+import math
+
+from database import get_db
+from models import (
+    Assignment,
+    AssignmentCreate,
+    AssignmentUpdate,
+    PaginatedResponse,
+    AssignmentStatus,
+)
+
+
+router = APIRouter(prefix="/assignments", tags=["Assignments"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_assignments(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    request_id: Optional[str] = Query(None, description="Filter by request ID (BSA-ID)"),
+    status: Optional[AssignmentStatus] = Query(None, description="Filter by status"),
+    type: Optional[str] = Query(None, description="Filter by type (Internal/External)"),
+    start_date: Optional[date] = Query(None, description="Filter by start date (from)"),
+    end_date: Optional[date] = Query(None, description="Filter by end date (to)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List all assignments with pagination and optional filters
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause dynamically
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if resource_id:
+            where_clauses.append("resource_id = :resource_id")
+            params["resource_id"] = resource_id
+
+        if request_id:
+            where_clauses.append("request_id = :request_id")
+            params["request_id"] = request_id
+
+        if status:
+            where_clauses.append("status = :status")
+            params["status"] = status.value
+
+        if type:
+            where_clauses.append("type = :type")
+            params["type"] = type
+
+        if start_date:
+            where_clauses.append("start_date >= :start_date")
+            params["start_date"] = start_date
+
+        if end_date:
+            where_clauses.append("end_date <= :end_date")
+            params["end_date"] = end_date
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM assignments {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch assignments
+        query = text(f"""
+            SELECT
+                assignment_id, resource_id, request_id, type, status,
+                start_date, end_date, enterprise, calendar_type, qualifications,
+                region, team, sub_group, meeting_location, meeting_time,
+                mandate_name, technical_service, branch, resource_category,
+                required_skills, personnel_count, work_type, pe_from, pe_to,
+                external_company, estimated_cost_chf, responsible, notes,
+                created_at, updated_at, created_by
+            FROM assignments
+            {where_sql}
+            ORDER BY start_date DESC, created_at DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        assignments = [dict(row._mapping) for row in rows]
+
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=assignments,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching assignments: {str(e)}",
+        )
+
+
+@router.get("/{assignment_id}", response_model=Assignment)
+async def get_assignment(
+    assignment_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get a single assignment by ID
+    """
+    try:
+        query = text("""
+            SELECT
+                assignment_id, resource_id, request_id, type, status,
+                start_date, end_date, enterprise, calendar_type, qualifications,
+                region, team, sub_group, meeting_location, meeting_time,
+                mandate_name, technical_service, branch, resource_category,
+                required_skills, personnel_count, work_type, pe_from, pe_to,
+                external_company, estimated_cost_chf, responsible, notes,
+                created_at, updated_at, created_by
+            FROM assignments
+            WHERE assignment_id = :assignment_id
+        """)
+
+        result = await db.execute(query, {"assignment_id": assignment_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching assignment: {str(e)}",
+        )
+
+
+@router.post("/", response_model=Assignment, status_code=status.HTTP_201_CREATED)
+async def create_assignment(
+    assignment: AssignmentCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new assignment
+    """
+    try:
+        # Check if assignment_id already exists
+        check_query = text("SELECT assignment_id FROM assignments WHERE assignment_id = :assignment_id")
+        check_result = await db.execute(check_query, {"assignment_id": assignment.assignment_id})
+        if check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Assignment with ID {assignment.assignment_id} already exists",
+            )
+
+        # Verify resource exists
+        resource_check = text("SELECT resource_id FROM resources WHERE resource_id = :resource_id")
+        resource_result = await db.execute(resource_check, {"resource_id": assignment.resource_id})
+        if not resource_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Resource with ID {assignment.resource_id} not found",
+            )
+
+        # Validate dates
+        if assignment.start_date and assignment.end_date:
+            if assignment.end_date < assignment.start_date:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="End date must be greater than or equal to start date",
+                )
+
+        insert_query = text("""
+            INSERT INTO assignments (
+                assignment_id, resource_id, request_id, type, status,
+                start_date, end_date, enterprise, calendar_type, qualifications,
+                region, team, sub_group, meeting_location, meeting_time,
+                mandate_name, technical_service, branch, resource_category,
+                required_skills, personnel_count, work_type, pe_from, pe_to,
+                external_company, estimated_cost_chf, responsible, notes
+            ) VALUES (
+                :assignment_id, :resource_id, :request_id, :type, :status,
+                :start_date, :end_date, :enterprise, :calendar_type, :qualifications,
+                :region, :team, :sub_group, :meeting_location, :meeting_time,
+                :mandate_name, :technical_service, :branch, :resource_category,
+                :required_skills, :personnel_count, :work_type, :pe_from, :pe_to,
+                :external_company, :estimated_cost_chf, :responsible, :notes
+            )
+            RETURNING
+                assignment_id, resource_id, request_id, type, status,
+                start_date, end_date, enterprise, calendar_type, qualifications,
+                region, team, sub_group, meeting_location, meeting_time,
+                mandate_name, technical_service, branch, resource_category,
+                required_skills, personnel_count, work_type, pe_from, pe_to,
+                external_company, estimated_cost_chf, responsible, notes,
+                created_at, updated_at, created_by
+        """)
+
+        result = await db.execute(
+            insert_query,
+            {
+                "assignment_id": assignment.assignment_id,
+                "resource_id": assignment.resource_id,
+                "request_id": assignment.request_id,
+                "type": assignment.type,
+                "status": assignment.status.value if assignment.status else AssignmentStatus.PROVISOIRE.value,
+                "start_date": assignment.start_date,
+                "end_date": assignment.end_date,
+                "enterprise": assignment.enterprise,
+                "calendar_type": assignment.calendar_type,
+                "qualifications": assignment.qualifications,
+                "region": assignment.region,
+                "team": assignment.team,
+                "sub_group": assignment.sub_group,
+                "meeting_location": assignment.meeting_location,
+                "meeting_time": assignment.meeting_time,
+                "mandate_name": assignment.mandate_name,
+                "technical_service": assignment.technical_service,
+                "branch": assignment.branch,
+                "resource_category": assignment.resource_category,
+                "required_skills": assignment.required_skills,
+                "personnel_count": assignment.personnel_count,
+                "work_type": assignment.work_type,
+                "pe_from": assignment.pe_from,
+                "pe_to": assignment.pe_to,
+                "external_company": assignment.external_company,
+                "estimated_cost_chf": assignment.estimated_cost_chf,
+                "responsible": assignment.responsible,
+                "notes": assignment.notes,
+            },
+        )
+
+        await db.commit()
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating assignment: {str(e)}",
+        )
+
+
+@router.put("/{assignment_id}", response_model=Assignment)
+async def update_assignment(
+    assignment_id: str,
+    assignment: AssignmentUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update an existing assignment
+    """
+    try:
+        # Check if assignment exists
+        check_query = text("SELECT assignment_id FROM assignments WHERE assignment_id = :assignment_id")
+        check_result = await db.execute(check_query, {"assignment_id": assignment_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        # Build UPDATE clause dynamically
+        update_fields = []
+        params = {"assignment_id": assignment_id}
+
+        if assignment.resource_id is not None:
+            # Verify resource exists
+            resource_check = text("SELECT resource_id FROM resources WHERE resource_id = :resource_id")
+            resource_result = await db.execute(resource_check, {"resource_id": assignment.resource_id})
+            if not resource_result.fetchone():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Resource with ID {assignment.resource_id} not found",
+                )
+            update_fields.append("resource_id = :resource_id")
+            params["resource_id"] = assignment.resource_id
+
+        if assignment.request_id is not None:
+            update_fields.append("request_id = :request_id")
+            params["request_id"] = assignment.request_id
+
+        if assignment.type is not None:
+            update_fields.append("type = :type")
+            params["type"] = assignment.type
+
+        if assignment.status is not None:
+            update_fields.append("status = :status")
+            params["status"] = assignment.status.value
+
+        if assignment.start_date is not None:
+            update_fields.append("start_date = :start_date")
+            params["start_date"] = assignment.start_date
+
+        if assignment.end_date is not None:
+            update_fields.append("end_date = :end_date")
+            params["end_date"] = assignment.end_date
+
+        if assignment.enterprise is not None:
+            update_fields.append("enterprise = :enterprise")
+            params["enterprise"] = assignment.enterprise
+
+        if assignment.calendar_type is not None:
+            update_fields.append("calendar_type = :calendar_type")
+            params["calendar_type"] = assignment.calendar_type
+
+        if assignment.qualifications is not None:
+            update_fields.append("qualifications = :qualifications")
+            params["qualifications"] = assignment.qualifications
+
+        if assignment.region is not None:
+            update_fields.append("region = :region")
+            params["region"] = assignment.region
+
+        if assignment.team is not None:
+            update_fields.append("team = :team")
+            params["team"] = assignment.team
+
+        if assignment.sub_group is not None:
+            update_fields.append("sub_group = :sub_group")
+            params["sub_group"] = assignment.sub_group
+
+        if assignment.meeting_location is not None:
+            update_fields.append("meeting_location = :meeting_location")
+            params["meeting_location"] = assignment.meeting_location
+
+        if assignment.meeting_time is not None:
+            update_fields.append("meeting_time = :meeting_time")
+            params["meeting_time"] = assignment.meeting_time
+
+        if assignment.mandate_name is not None:
+            update_fields.append("mandate_name = :mandate_name")
+            params["mandate_name"] = assignment.mandate_name
+
+        if assignment.technical_service is not None:
+            update_fields.append("technical_service = :technical_service")
+            params["technical_service"] = assignment.technical_service
+
+        if assignment.branch is not None:
+            update_fields.append("branch = :branch")
+            params["branch"] = assignment.branch
+
+        if assignment.resource_category is not None:
+            update_fields.append("resource_category = :resource_category")
+            params["resource_category"] = assignment.resource_category
+
+        if assignment.required_skills is not None:
+            update_fields.append("required_skills = :required_skills")
+            params["required_skills"] = assignment.required_skills
+
+        if assignment.personnel_count is not None:
+            update_fields.append("personnel_count = :personnel_count")
+            params["personnel_count"] = assignment.personnel_count
+
+        if assignment.work_type is not None:
+            update_fields.append("work_type = :work_type")
+            params["work_type"] = assignment.work_type
+
+        if assignment.pe_from is not None:
+            update_fields.append("pe_from = :pe_from")
+            params["pe_from"] = assignment.pe_from
+
+        if assignment.pe_to is not None:
+            update_fields.append("pe_to = :pe_to")
+            params["pe_to"] = assignment.pe_to
+
+        if assignment.external_company is not None:
+            update_fields.append("external_company = :external_company")
+            params["external_company"] = assignment.external_company
+
+        if assignment.estimated_cost_chf is not None:
+            update_fields.append("estimated_cost_chf = :estimated_cost_chf")
+            params["estimated_cost_chf"] = assignment.estimated_cost_chf
+
+        if assignment.responsible is not None:
+            update_fields.append("responsible = :responsible")
+            params["responsible"] = assignment.responsible
+
+        if assignment.notes is not None:
+            update_fields.append("notes = :notes")
+            params["notes"] = assignment.notes
+
+        if not update_fields:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No fields to update",
+            )
+
+        update_query = text(f"""
+            UPDATE assignments
+            SET {', '.join(update_fields)}
+            WHERE assignment_id = :assignment_id
+            RETURNING
+                assignment_id, resource_id, request_id, type, status,
+                start_date, end_date, enterprise, calendar_type, qualifications,
+                region, team, sub_group, meeting_location, meeting_time,
+                mandate_name, technical_service, branch, resource_category,
+                required_skills, personnel_count, work_type, pe_from, pe_to,
+                external_company, estimated_cost_chf, responsible, notes,
+                created_at, updated_at, created_by
+        """)
+
+        result = await db.execute(update_query, params)
+        await db.commit()
+
+        row = result.fetchone()
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating assignment: {str(e)}",
+        )
+
+
+@router.delete("/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_assignment(
+    assignment_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete an assignment
+    """
+    try:
+        # Check if assignment exists
+        check_query = text("SELECT assignment_id FROM assignments WHERE assignment_id = :assignment_id")
+        check_result = await db.execute(check_query, {"assignment_id": assignment_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Assignment with ID {assignment_id} not found",
+            )
+
+        delete_query = text("DELETE FROM assignments WHERE assignment_id = :assignment_id")
+        await db.execute(delete_query, {"assignment_id": assignment_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting assignment: {str(e)}",
+        )

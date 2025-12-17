@@ -1,0 +1,392 @@
+# CFF Workforce Planning System - Constraint Specification
+# Legal Constraint 03: Maximum Absolute Daily Hours (Database-Aligned Version)
+# Swiss LDT Art. 10
+
+constraint_metadata:
+  name: "max_absolute_daily_hours"
+  category: "Legal Constraints - Working Time Limits"
+  layer: 1                                   # Legal layer (immutable)
+  type: "hard_constraint"
+  description: "Ensures no resource works more than 12.5 hours in any calendar day"
+  legal_reference: "Swiss LDT Art. 10"
+  modifiable: false
+  constraint_id: 3                          # From database
+
+constraint_parameters:
+  - name: "max_hours_per_day"
+    description: "Absolute maximum working hours per calendar day - LEGAL LIMIT"
+    type: "float"
+    unit: "hours"
+    default_value: 12.5                     # From legal_constraints API
+    min_value: 0
+    max_value: 24
+    source: "legal_constraints.constraint_id=3"
+    api_endpoint: "GET /api/v1/legal-constraints/?constraint_name=max_absolute_daily_hours"
+    dynamic: false                          # Legal limits don't change
+
+  - name: "max_hours_company_daily"
+    description: "Company preferred maximum daily hours - DYNAMICALLY FETCHED"
+    type: "float"
+    unit: "hours"
+    default_value: 10                       # Current value from API (can change!)
+    min_value: 0
+    max_value: 12.5                        # Cannot exceed legal limit
+    source: "company_policy_constraints.constraint_id=2"
+    api_endpoint: "GET /api/v1/company-policy-constraints/?policy_name=Preferred%20Max%20Daily%20Hours"
+    dynamic: true                           # Value changes based on planning mode or policy updates
+    notes: |
+      This value is NOT hardcoded. It's fetched dynamically from the database and can vary:
+      - Different planning modes (Conservative/Balanced/Aggressive) may have different values
+      - HR can update this value through the API without code changes
+      - Special periods (holidays, emergencies) can have adjusted values
+      - Value is validated to ensure it doesn't exceed legal limit (12.5h)
+
+data_inputs_from_database:
+  - name: "requests"
+    description: "Task/request data from database"
+    source_table: "requests"
+    api_endpoint: "GET /api/v1/requests/"
+    required_fields:
+      - "request_id"                       # REQ-828796-41 format
+      - "start_datetime"                   # "2025-12-18T21:00:00Z" - can cross midnight
+      - "end_datetime"                     # "2025-12-19T06:00:00Z"
+      - "shift_service_type"                # "Service de jour" / "Service de nuit"
+      - "resource_category"
+      - "assignment_status"
+      - "locked"
+
+  - name: "resources"
+    description: "Resource data from database"
+    source_table: "resources"
+    api_endpoint: "GET /api/v1/resources/"
+    required_fields:
+      - "resource_id"                      # RES-INT-0001 format
+      - "type"                             # Internal/External
+      - "contract"                         # full_time/part_time/temporary_full_time
+      - "shift_pref"                       # day/night/weekend/any
+      - "availability_pattern"
+
+  - name: "absences"
+    description: "Resource absences including blocked time"
+    source_table: "absences"
+    api_endpoint: "GET /api/v1/absences/"
+    required_fields:
+      - "absence_id"
+      - "resource_id"
+      - "type"                             # Holiday, Sick_Leave, Assignment_Blocked
+      - "start_date"                       # "2025-12-25" format
+      - "end_date"
+      - "status"
+
+preprocessed_data:
+  - name: "calendar_days"
+    description: "List of calendar days in planning period"
+    type: "list[date]"
+    calculation: |
+      def generate_calendar_days(planning_start, planning_end):
+          """Generate all calendar days to check"""
+          days = []
+          current = planning_start.date()
+          end_date = planning_end.date()
+
+          while current <= end_date:
+              days.append(current)
+              current += timedelta(days=1)
+
+          return days
+
+  - name: "task_hours_per_day"
+    description: "Hours of each task allocated to each calendar day (scaled)"
+    type: "dict[(request_id, date), int]"
+    calculation: |
+      def allocate_task_to_calendar_days(request):
+          """Split task hours across calendar days"""
+          task_start = datetime.fromisoformat(request['start_datetime'])
+          task_end = datetime.fromisoformat(request['end_datetime'])
+
+          hours_per_day = {}
+          current = task_start
+
+          while current < task_end:
+              # Find end of current calendar day (23:59:59)
+              day_end = datetime.combine(
+                  current.date(),
+                  time(23, 59, 59),
+                  tzinfo=current.tzinfo
+              )
+
+              # Calculate hours in this calendar day
+              segment_end = min(task_end, day_end)
+              hours = (segment_end - current).total_seconds() / 3600
+
+              if hours > 0:
+                  day_key = current.date()
+                  hours_per_day[day_key] = int(hours * 100)  # Scale by 100
+
+              # Move to next day
+              current = day_end + timedelta(seconds=1)
+
+          return hours_per_day
+
+decision_variables:
+  - name: "x"
+    description: "Binary assignment: x[r][req] = 1 if resource r assigned to request req"
+    type: "boolean"
+    dimensions: "[resources, requests]"
+    domain: "[0, 1]"
+
+  - name: "daily_work_hours"
+    description: "Total hours worked by resource r on calendar day d (scaled)"
+    type: "integer"
+    dimensions: "[resources, calendar_days]"
+    domain: "[0, 1250]"                    # Max 12.5 hours * 100
+
+  - name: "violation_daily"
+    description: "Soft violation variable for company policy (if using soft constraints)"
+    type: "integer"
+    dimensions: "[resources, calendar_days]"
+    domain: "[0, 250]"                     # Max 2.5 hour violation * 100
+
+mathematical_formulation:
+  equation: |
+    Preprocessing:
+    1. Generate calendar days in planning period
+    2. For each request, allocate hours to calendar days (handle midnight crossings)
+
+    Hard Constraint (Legal - 12.5h):
+    For each resource r and calendar day d:
+        daily_work_hours[r][d] = Σ(x[r][req] × task_hours_on_day[req][d])
+                                  for all requests req
+
+        daily_work_hours[r][d] ≤ max_hours_per_day × 100
+
+    Soft Constraint (Company Policy - 10h or dynamic):
+    For each resource r and calendar day d:
+        daily_work_hours[r][d] ≤ max_hours_company_daily × 100 + violation_daily[r][d]
+
+    Add to objective: minimize Σ(violation_daily[r][d]) with appropriate weight
+
+  explanation: |
+    This constraint limits total work within a calendar day (00:00-23:59).
+
+    Key concepts:
+    1. **Calendar day**: Midnight to midnight, NOT a 24-hour rolling window
+    2. **Cross-midnight tasks**: Night shifts split between two calendar days
+    3. **Absolute limit**: Harder limit than 14h-span constraint (12.5h vs 9h)
+
+    Example: Night shift 21:00-06:00 (9 hours total)
+    - Day 1: 21:00-23:59 = 3 hours
+    - Day 2: 00:00-06:00 = 6 hours
+    Both days respect the 12.5h limit despite 9h continuous work
+
+cp_sat_implementation:
+  scaling_factor: 100
+
+  implementation_notes: |
+    # Step 1: Fetch constraint data from API (DYNAMIC VALUES)
+    async def fetch_daily_constraints(planning_mode=None):
+        async with httpx.AsyncClient() as client:
+            # Get legal constraint
+            legal_response = await client.get(
+                f"{API_URL}/legal-constraints/?constraint_name=max_absolute_daily_hours"
+            )
+            legal = legal_response.json()[0]
+
+            # Get company policy - DYNAMIC based on context
+            params = {"policy_name": "Preferred Max Daily Hours"}
+            if planning_mode:
+                params["planning_mode"] = planning_mode
+
+            company_response = await client.get(
+                f"{API_URL}/company-policy-constraints/",
+                params=params
+            )
+            company = company_response.json()[0]
+
+            return legal, company
+
+    # Step 2: Preprocess task allocation to calendar days
+    def preprocess_daily_allocations(requests_data, calendar_days):
+        task_hours_per_day = {}
+
+        for req in requests_data['data']:
+            req_id = req['request_id']
+            hours_per_day = allocate_task_to_calendar_days(req)
+
+            for day, hours in hours_per_day.items():
+                if day in calendar_days:  # Only consider days in planning period
+                    task_hours_per_day[(req_id, day)] = hours
+
+        return task_hours_per_day
+
+    # Step 3: Add constraints with DYNAMIC values
+    def add_daily_hours_constraints(model, x, resources, requests, calendar_days,
+                                     task_hours_per_day, legal_constraint, company_policy):
+
+        # DYNAMIC VALUES FROM API
+        MAX_HOURS_LEGAL = legal_constraint['parameter_value']['value']      # 12.5 from API
+        MAX_HOURS_COMPANY = company_policy['parameter_value']['value']      # 10 (or varies!)
+        SCALING_FACTOR = 100
+
+        violations = []
+
+        for r in resources:
+            r_id = r['resource_id']
+
+            for day in calendar_days:
+                # Calculate total hours on this calendar day
+                daily_sum = sum(
+                    x[(r_id, req['request_id'])] *
+                    task_hours_per_day.get((req['request_id'], day), 0)
+                    for req in requests
+                )
+
+                # Hard constraint (legal limit)
+                model.Add(daily_sum <= int(MAX_HOURS_LEGAL * SCALING_FACTOR))
+
+                # Soft constraint (company preference)
+                if USE_SOFT_CONSTRAINTS:
+                    violation = model.NewIntVar(
+                        0, 250,
+                        f'violation_daily_{r_id}_{day.isoformat()}'
+                    )
+                    model.Add(
+                        daily_sum <= int(MAX_HOURS_COMPANY * SCALING_FACTOR) + violation
+                    )
+                    violations.append(violation)
+
+        return violations
+
+    # Step 4: Handle cross-midnight tasks correctly
+    def validate_calendar_day_allocation(task):
+        """Ensure task hours are properly split across calendar days"""
+        start = datetime.fromisoformat(task['start_datetime'])
+        end = datetime.fromisoformat(task['end_datetime'])
+
+        if start.date() != end.date():
+            # Task crosses midnight - must split hours
+            print(f"Task {task['request_id']} crosses midnight:")
+            print(f"  Day {start.date()}: {start.time()} to 23:59:59")
+            print(f"  Day {end.date()}: 00:00:00 to {end.time()}")
+
+        return True
+
+validation_rules:
+  - rule: "Calendar day boundaries at midnight local time"
+    condition: "00:00:00 to 23:59:59 defines one calendar day"
+  - rule: "Company limit must not exceed legal limit"
+    condition: "max_hours_company_daily <= max_hours_per_day"
+  - rule: "Cross-midnight tasks split correctly"
+    condition: "Night shifts allocated to appropriate calendar days"
+  - rule: "Time zone consistency"
+    condition: "All times in UTC, converted to local for day boundaries"
+
+interaction_with_other_constraints:
+  - related_constraint: "max_daily_hours_14h_span"
+    relationship: "14h-span (9h) is more restrictive than daily absolute (12.5h)"
+  - related_constraint: "min_daily_rest"
+    relationship: "11h rest + 12.5h work = 23.5h, fits in 24h day"
+  - related_constraint: "max_continuous_work"
+    relationship: "5.5h continuous work fits within 12.5h daily limit"
+  - related_constraint: "absences"
+    relationship: "Absent days have 0 work hours"
+
+dynamic_value_examples:
+  - planning_mode: "Conservative"
+    max_hours_company_daily: 9.0           # Very strict for safety
+    notes: "Conservative mode prioritizes work-life balance"
+
+  - planning_mode: "Balanced"
+    max_hours_company_daily: 10.0          # Default balanced approach
+
+  - planning_mode: "Aggressive"
+    max_hours_company_daily: 12.5          # Use full legal limit
+    notes: "Emergency coverage - legal maximum allowed"
+
+  - custom_policy: "Night Work Period"
+    max_hours_company_daily: 9.0           # Stricter for night shifts
+    notes: "Reduced hours for safety during night operations"
+
+  - custom_policy: "Summer Vacation Period"
+    max_hours_company_daily: 8.0           # Even stricter during vacation
+    notes: "Prevent burnout during high vacation period"
+
+penalty_configuration:
+  applicable: true                          # Company policy can be soft
+  penalty_weight: 75                        # Per 0.01 hour over company limit
+  penalty_calculation: "linear"
+  notes: |
+    - Legal limit (12.5h) is ALWAYS hard constraint
+    - Company limit (10h or dynamic) can be soft with penalties
+    - Higher penalty than weekly violations (more immediate impact)
+
+examples:
+  - scenario: "Standard day shift"
+    input:
+      resource: "RES-INT-0001"
+      date: "2025-12-18"
+      assigned_tasks:
+        - request_id: "REQ-001"
+          start_datetime: "2025-12-18T08:00:00Z"
+          end_datetime: "2025-12-18T17:00:00Z"  # 9 hours
+    output:
+      daily_work_hours: 900                 # 9 hours * 100
+      legal_constraint_satisfied: true      # Below 12.5h
+      company_constraint_satisfied: true    # Below 10h
+      violation: 0
+
+  - scenario: "Long day with overtime"
+    input:
+      resource: "RES-INT-0002"
+      date: "2025-12-18"
+      planning_mode: "Balanced"
+      company_limit: 10                     # From API
+      assigned_tasks:
+        - request_id: "REQ-002"
+          start_datetime: "2025-12-18T07:00:00Z"
+          end_datetime: "2025-12-18T18:30:00Z"  # 11.5 hours
+    output:
+      daily_work_hours: 1150                # 11.5 * 100
+      legal_constraint_satisfied: true      # Below 12.5h ✓
+      company_constraint_satisfied: false   # Exceeds 10h ✗
+      violation_amount: 150                 # 1.5 hours over company limit
+
+  - scenario: "Night shift crossing midnight"
+    input:
+      resource: "RES-INT-0003"
+      assigned_task:
+        request_id: "REQ-828796-41"
+        start_datetime: "2025-12-18T21:00:00Z"
+        end_datetime: "2025-12-19T06:00:00Z"  # 9 hours total
+    output:
+      day_2025_12_18:
+        hours: 3                            # 21:00-24:00
+        daily_work_hours: 300
+        constraints_satisfied: true
+      day_2025_12_19:
+        hours: 6                            # 00:00-06:00
+        daily_work_hours: 600
+        constraints_satisfied: true
+      notes: "Task properly split across calendar days"
+
+  - scenario: "Multiple tasks same day"
+    input:
+      resource: "RES-INT-0004"
+      date: "2025-12-18"
+      assigned_tasks:
+        - morning: "07:00-12:00"            # 5 hours
+        - afternoon: "13:00-19:00"          # 6 hours
+        - evening: "20:00-22:00"            # 2 hours
+    output:
+      total_hours: 13                       # Exceeds legal limit!
+      daily_work_hours: 1300
+      legal_constraint_satisfied: false     # Exceeds 12.5h ✗
+      notes: "INFEASIBLE - solver would prevent this assignment"
+
+notes:
+  - "Calendar day definition crucial for cross-midnight shifts"
+  - "Night shifts often split: less restrictive than appears"
+  - "This constraint is less restrictive than 14h-span for continuous work"
+  - "Dynamic values allow seasonal/emergency adjustments"
+  - "Assignment_Blocked absences prevent work on specific dates"
+  - "Consider local time zones for international operations"

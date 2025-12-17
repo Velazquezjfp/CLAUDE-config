@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""
+Test script for PUT/DELETE operations on all endpoints.
+Creates test records, updates them, then deletes them.
+"""
+
+import requests
+import json
+from datetime import datetime
+
+BASE_URL = "http://localhost:8002/api/v1"
+
+def test_endpoint(name, endpoint, create_data, update_data, id_field):
+    """Test POST, PUT, DELETE for an endpoint."""
+    print(f"\n{'='*60}")
+    print(f"Testing: {name}")
+    print(f"{'='*60}")
+
+    # 1. POST - Create
+    print(f"\n1. POST {endpoint}")
+    try:
+        resp = requests.post(f"{BASE_URL}{endpoint}", json=create_data)
+        if resp.status_code == 201:
+            created = resp.json()
+            record_id = created.get(id_field)
+            print(f"   Created: {id_field}={record_id}")
+        else:
+            print(f"   FAILED: {resp.status_code} - {resp.text}")
+            return False
+    except Exception as e:
+        print(f"   ERROR: {e}")
+        return False
+
+    # 2. PUT - Update
+    print(f"\n2. PUT {endpoint}{record_id}")
+    try:
+        resp = requests.put(f"{BASE_URL}{endpoint}{record_id}", json=update_data)
+        if resp.status_code == 200:
+            updated = resp.json()
+            print(f"   Updated: {json.dumps(update_data)}")
+        else:
+            print(f"   FAILED: {resp.status_code} - {resp.text}")
+            return False
+    except Exception as e:
+        print(f"   ERROR: {e}")
+        return False
+
+    # 3. DELETE
+    print(f"\n3. DELETE {endpoint}{record_id}")
+    try:
+        resp = requests.delete(f"{BASE_URL}{endpoint}{record_id}")
+        if resp.status_code == 204:
+            print(f"   Deleted successfully")
+        else:
+            print(f"   FAILED: {resp.status_code} - {resp.text}")
+            return False
+    except Exception as e:
+        print(f"   ERROR: {e}")
+        return False
+
+    print(f"\n   PASSED")
+    return True
+
+def main():
+    print("="*60)
+    print("CFF API PUT/DELETE Test Suite")
+    print(f"Base URL: {BASE_URL}")
+    print(f"Timestamp: {datetime.now().isoformat()}")
+    print("="*60)
+
+    results = {}
+
+    # Test Teams
+    results["teams"] = test_endpoint(
+        name="Teams",
+        endpoint="/teams/",
+        create_data={"team_name": "TEST_TEAM_" + datetime.now().strftime("%H%M%S")},
+        update_data={"team_code": "TEST"},
+        id_field="team_id"
+    )
+
+    # Test Groups (needs existing team_id)
+    # First get a valid team_id
+    resp = requests.get(f"{BASE_URL}/teams/")
+    if resp.status_code == 200 and resp.json():
+        team_id = resp.json()[0]["team_id"]
+        results["groups"] = test_endpoint(
+            name="Groups",
+            endpoint="/groups/",
+            create_data={"group_name": "TEST_GROUP_" + datetime.now().strftime("%H%M%S"), "team_id": team_id},
+            update_data={"color_code": "TEST_COLOR"},
+            id_field="group_id"
+        )
+    else:
+        print("\nSkipping groups test - no teams available")
+        results["groups"] = None
+
+    # Test Divisions
+    results["divisions"] = test_endpoint(
+        name="Divisions",
+        endpoint="/divisions/",
+        create_data={"division_name": "TEST_DIV_" + datetime.now().strftime("%H%M%S"), "division_code": "TD" + datetime.now().strftime("%S")},
+        update_data={"division_name": "UPDATED_DIV"},
+        id_field="division_id"
+    )
+
+    # Test Regions
+    results["regions"] = test_endpoint(
+        name="Regions",
+        endpoint="/regions/",
+        create_data={"region_name": "TEST_REGION_" + datetime.now().strftime("%H%M%S"), "region_code": "TR" + datetime.now().strftime("%S")},
+        update_data={"region_name": "UPDATED_REGION"},
+        id_field="region_id"
+    )
+
+    # Test Locations
+    results["locations"] = test_endpoint(
+        name="Locations",
+        endpoint="/locations/",
+        create_data={"location_name": "TEST_LOC_" + datetime.now().strftime("%H%M%S"), "location_code": "TL" + datetime.now().strftime("%S")},
+        update_data={"canton": "TEST"},
+        id_field="location_id"
+    )
+
+    # Test Qualifications
+    results["qualifications"] = test_endpoint(
+        name="Qualifications",
+        endpoint="/qualifications/",
+        create_data={"qualification_name": "TEST_QUAL_" + datetime.now().strftime("%H%M%S")},
+        update_data={"qualification_category": "TEST_CAT"},
+        id_field="qualification_id"
+    )
+
+    # Summary
+    print("\n" + "="*60)
+    print("TEST SUMMARY")
+    print("="*60)
+    for name, result in results.items():
+        status = "PASSED" if result else ("SKIPPED" if result is None else "FAILED")
+        print(f"  {name}: {status}")
+
+    passed = sum(1 for r in results.values() if r is True)
+    failed = sum(1 for r in results.values() if r is False)
+    skipped = sum(1 for r in results.values() if r is None)
+    print(f"\nTotal: {passed} passed, {failed} failed, {skipped} skipped")
+
+if __name__ == "__main__":
+    main()

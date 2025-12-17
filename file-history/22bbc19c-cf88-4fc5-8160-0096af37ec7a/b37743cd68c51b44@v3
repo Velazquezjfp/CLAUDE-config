@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImpactPath | ESG-Hub - Open-Source ESG Coach for SMEs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --primary-light: #D1FAE5;
+            --secondary: #3B82F6;
+            --accent: #8B5CF6;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --dark: #1F2937;
+            --darker: #111827;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --white: #FFFFFF;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F0F9FF 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--gray-200);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 0 2rem;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--dark);
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.4rem;
+        }
+
+        .logo span {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            color: var(--gray-600);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            padding: 8px 16px;
+            border-radius: 8px;
+        }
+
+        .header-nav a:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            padding-top: 70px;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--white);
+            border-right: 1px solid var(--gray-200);
+            padding: 2rem 1.5rem;
+            position: fixed;
+            top: 70px;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--gray-400);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .module-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .module-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .module-item:hover {
+            background: var(--gray-50);
+        }
+
+        .module-item.active {
+            background: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .module-item.active .module-icon {
+            background: var(--primary);
+            color: white;
+        }
+
+        .module-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .module-icon.env {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .module-icon.social {
+            background: #DBEAFE;
+            color: #2563EB;
+        }
+
+        .module-icon.gov {
+            background: #EDE9FE;
+            color: #7C3AED;
+        }
+
+        .module-info h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .module-info p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .module-badge {
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .badge-soon {
+            background: var(--gray-200);
+            color: var(--gray-500);
+        }
+
+        .progress-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            color: white;
+            margin-top: 1rem;
+        }
+
+        .progress-card h4 {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-card .progress-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .progress-bar-container {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 4px;
+            width: 35%;
+            transition: width 1s ease;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            max-width: calc(100% - 280px);
+        }
+
+        /* Chat Section */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ai-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.4rem;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--primary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: 500px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.ai {
+            flex-direction: row;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .message.ai .message-content {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .quick-action {
+            padding: 8px 16px;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .quick-action:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .chat-input-area {
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            background: var(--gray-50);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            background: var(--white);
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            transition: var(--transition);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .input-wrapper textarea {
+            width: 100%;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            min-height: 24px;
+            max-height: 120px;
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .input-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: var(--gray-100);
+            color: var(--gray-500);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .input-action-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius);
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .panel-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-header h3 i {
+            color: var(--primary);
+        }
+
+        .view-all-btn {
+            font-size: 0.85rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Todo List */
+        .todo-list {
+            padding: 1rem 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .todo-item:last-child {
+            border-bottom: none;
+        }
+
+        .todo-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--gray-300);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .todo-checkbox:hover {
+            border-color: var(--primary);
+        }
+
+        .todo-checkbox.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .todo-content h4 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .todo-content p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .todo-priority {
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: #FEE2E2;
+            color: #DC2626;
+        }
+
+        .priority-medium {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .priority-low {
+            background: #DBEAFE;
+            color: #2563EB;
+        }
+
+        /* Documents */
+        .document-list {
+            padding: 1rem 1.5rem;
+        }
+
+        .document-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-bottom: 8px;
+        }
+
+        .document-item:hover {
+            background: var(--gray-50);
+        }
+
+        .document-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .doc-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .doc-icon.draft {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .doc-icon.ready {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        .doc-info h4 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .doc-info p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .doc-status {
+            margin-left: auto;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-draft {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .status-ready {
+            background: #D1FAE5;
+            color: #059669;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--gray-400);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            .right-panel {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .right-panel {
+                grid-template-columns: 1fr;
+            }
+            .header-nav {
+                display: none;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+
+        /* Open Source Badge */
+        .opensource-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--darker);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* Feature Highlight */
+        .feature-highlight {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .feature-highlight h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-highlight p {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--dark);
+            color: white;
+            padding: 14px 24px;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: var(--shadow-xl);
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast i {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="ri-leaf-line"></i>
+            </div>
+            <span>ImpactPath</span>
+            <span class="opensource-badge">
+                <i class="ri-open-source-line"></i>
+                Open Source
+            </span>
+        </div>
+        <nav class="header-nav">
+            <a href="javascript:void(0)" onclick="showToast('Dashboard')"><i class="ri-dashboard-line"></i> Dashboard</a>
+            <a href="javascript:void(0)" onclick="showToast('Documents')"><i class="ri-file-list-3-line"></i> Documents</a>
+            <a href="javascript:void(0)" onclick="showToast('Reports')"><i class="ri-bar-chart-box-line"></i> Reports</a>
+            <a href="javascript:void(0)" onclick="showToast('Settings')"><i class="ri-settings-3-line"></i> Settings</a>
+        </nav>
+        <div class="user-menu">
+            <div class="user-avatar">JV</div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">ESG Modules</div>
+                <div class="module-list">
+                    <div class="module-item active">
+                        <div class="module-icon env">
+                            <i class="ri-plant-line"></i>
+                        </div>
+                        <div class="module-info">
+                            <h3>Environment</h3>
+                            <p>Umwelt & Klima</p>
+                        </div>
+                        <span class="module-badge badge-active">Aktiv</span>
+                    </div>
+                    <div class="module-item">
+                        <div class="module-icon social">
+                            <i class="ri-group-line"></i>
+                        </div>
+                        <div class="module-info">
+                            <h3>Social</h3>
+                            <p>Arbeits- & Menschenrechte</p>
+                        </div>
+                        <span class="module-badge badge-soon">Stage 2</span>
+                    </div>
+                    <div class="module-item">
+                        <div class="module-icon gov">
+                            <i class="ri-building-line"></i>
+                        </div>
+                        <div class="module-info">
+                            <h3>Governance</h3>
+                            <p>Unternehmensführung</p>
+                        </div>
+                        <span class="module-badge badge-soon">Stage 2</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Ihr Fortschritt</div>
+                <div class="progress-card">
+                    <h4>Umweltmodul</h4>
+                    <div class="progress-value">35%</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Quick Links</div>
+                <div class="module-list">
+                    <div class="module-item">
+                        <div class="module-icon" style="background: #FEE2E2; color: #DC2626;">
+                            <i class="ri-file-text-line"></i>
+                        </div>
+                        <div class="module-info">
+                            <h3>EcoVadis Guide</h3>
+                            <p>Bewertungskriterien</p>
+                        </div>
+                    </div>
+                    <div class="module-item">
+                        <div class="module-icon" style="background: #E0E7FF; color: #4F46E5;">
+                            <i class="ri-book-open-line"></i>
+                        </div>
+                        <div class="module-info">
+                            <h3>Documentation</h3>
+                            <p>Hilfe & Anleitungen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Chat Section -->
+            <section class="chat-section">
+                <div class="chat-header">
+                    <div class="ai-avatar">
+                        <i class="ri-robot-2-line"></i>
+                    </div>
+                    <div>
+                        <h2>ESG Dialog-Assistent</h2>
+                        <div class="ai-status">
+                            <span class="status-dot"></span>
+                            Powered by Gemma 3:12B (Lokal)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-messages">
+                    <div class="message ai">
+                        <div class="message-avatar">
+                            <i class="ri-robot-2-line"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Willkommen bei ImpactPath! Ich bin Ihr KI-gestützter ESG-Assistent und helfe Ihnen dabei, Ihr Unternehmen auf Nachhaltigkeitsbewertungen wie EcoVadis vorzubereiten.</p>
+                            <p style="margin-top: 12px;">Lassen Sie uns mit dem <strong>Umweltmodul</strong> beginnen. Ich werde Ihnen einige Fragen zu Ihren aktuellen Umweltpraktiken stellen und daraus eine To-do-Liste sowie erste Dokumententwürfe erstellen.</p>
+                            <div class="quick-actions">
+                                <button class="quick-action">Los geht's!</button>
+                                <button class="quick-action">Was ist EcoVadis?</button>
+                                <button class="quick-action">Mehr erfahren</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="message user">
+                        <div class="message-avatar">
+                            <i class="ri-user-line"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Los geht's! Wir sind ein kleines IT-Unternehmen mit 15 Mitarbeitern und haben bisher keine Umweltdokumentation.</p>
+                        </div>
+                    </div>
+
+                    <div class="message ai">
+                        <div class="message-avatar">
+                            <i class="ri-robot-2-line"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Perfekt, danke für die Information! Ein IT-Unternehmen mit 15 Mitarbeitern ist ein guter Ausgangspunkt. Keine Sorge, dass Sie noch keine Dokumentation haben - genau dabei helfe ich Ihnen.</p>
+                            <p style="margin-top: 12px;"><strong>Erste Frage zum Thema Energie:</strong></p>
+                            <p>Nutzen Sie in Ihrem Büro bereits erneuerbare Energien (z.B. Ökostrom) oder haben Sie Maßnahmen zur Energieeinsparung umgesetzt (z.B. LED-Beleuchtung, energieeffiziente Geräte)?</p>
+                            <div class="feature-highlight">
+                                <h4><i class="ri-lightbulb-line"></i> Warum ist das wichtig?</h4>
+                                <p>Energieverbrauch ist einer der Hauptfaktoren bei ESG-Bewertungen. Auch kleine Maßnahmen wie Ökostrom können Ihre Bewertung verbessern.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="message user">
+                        <div class="message-avatar">
+                            <i class="ri-user-line"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Wir haben LED-Beleuchtung, aber keinen Ökostrom. Die Server laufen bei einem Cloud-Anbieter.</p>
+                        </div>
+                    </div>
+
+                    <div class="message ai">
+                        <div class="message-avatar">
+                            <i class="ri-robot-2-line"></i>
+                        </div>
+                        <div class="message-content">
+                            <p>Sehr gut! LED-Beleuchtung ist bereits ein positiver Schritt. Das Cloud-Hosting ist interessant - viele große Anbieter wie AWS, Google Cloud oder Azure haben eigene Nachhaltigkeitsziele.</p>
+                            <p style="margin-top: 12px;"><strong>Ich habe folgende To-dos für Sie erstellt:</strong></p>
+                            <ul style="margin-top: 8px; padding-left: 20px;">
+                                <li>Ökostrom-Anbieter recherchieren</li>
+                                <li>Nachhaltigkeitszertifikate des Cloud-Anbieters prüfen</li>
+                            </ul>
+                            <p style="margin-top: 12px;"><strong>Nächste Frage zum Thema Abfall & Ressourcen:</strong></p>
+                            <p>Wie gehen Sie mit Elektroschrott um (alte Computer, Monitore)? Haben Sie Recycling-Maßnahmen im Büro?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="input-container">
+                        <div class="input-wrapper">
+                            <textarea placeholder="Ihre Nachricht eingeben..." rows="1"></textarea>
+                            <div class="input-actions">
+                                <button class="input-action-btn" title="Bild hochladen">
+                                    <i class="ri-image-line"></i>
+                                </button>
+                                <button class="input-action-btn" title="Dokument hochladen">
+                                    <i class="ri-attachment-line"></i>
+                                </button>
+                                <button class="input-action-btn" title="Spracheingabe">
+                                    <i class="ri-mic-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="send-btn">
+                            <i class="ri-send-plane-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel -->
+            <div class="right-panel">
+                <!-- Todo List -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="ri-checkbox-circle-line"></i> To-do Liste</h3>
+                        <a href="javascript:void(0)" class="view-all-btn" onclick="showToast('To-do Liste')">Alle anzeigen</a>
+                    </div>
+                    <div class="todo-list">
+                        <div class="todo-item">
+                            <div class="todo-checkbox">
+                                <i class="ri-check-line" style="display: none;"></i>
+                            </div>
+                            <div class="todo-content">
+                                <h4>Ökostrom-Anbieter recherchieren</h4>
+                                <p>Vergleich von 3 regionalen Anbietern</p>
+                            </div>
+                            <span class="todo-priority priority-high">Hoch</span>
+                        </div>
+                        <div class="todo-item">
+                            <div class="todo-checkbox">
+                                <i class="ri-check-line" style="display: none;"></i>
+                            </div>
+                            <div class="todo-content">
+                                <h4>Cloud-Anbieter Zertifikate prüfen</h4>
+                                <p>ISO 14001, RE100 Status</p>
+                            </div>
+                            <span class="todo-priority priority-medium">Mittel</span>
+                        </div>
+                        <div class="todo-item">
+                            <div class="todo-checkbox checked">
+                                <i class="ri-check-line"></i>
+                            </div>
+                            <div class="todo-content">
+                                <h4>LED-Beleuchtung dokumentieren</h4>
+                                <p>Fotos und Rechnungen sammeln</p>
+                            </div>
+                            <span class="todo-priority priority-low">Niedrig</span>
+                        </div>
+                        <div class="todo-item">
+                            <div class="todo-checkbox">
+                                <i class="ri-check-line" style="display: none;"></i>
+                            </div>
+                            <div class="todo-content">
+                                <h4>Elektroschrott-Entsorgung klären</h4>
+                                <p>Zertifizierten Partner finden</p>
+                            </div>
+                            <span class="todo-priority priority-medium">Mittel</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="ri-file-text-line"></i> Dokumente</h3>
+                        <a href="javascript:void(0)" class="view-all-btn" onclick="showToast('Export')">Export</a>
+                    </div>
+                    <div class="document-list">
+                        <div class="document-item">
+                            <div class="doc-icon draft">
+                                <i class="ri-draft-line"></i>
+                            </div>
+                            <div class="doc-info">
+                                <h4>Umweltleitlinie</h4>
+                                <p>Entwurf wird generiert...</p>
+                            </div>
+                            <span class="doc-status status-draft">Entwurf</span>
+                        </div>
+                        <div class="document-item">
+                            <div class="doc-icon draft">
+                                <i class="ri-file-list-2-line"></i>
+                            </div>
+                            <div class="doc-info">
+                                <h4>Energiebericht</h4>
+                                <p>Basisdaten erfasst</p>
+                            </div>
+                            <span class="doc-status status-draft">Entwurf</span>
+                        </div>
+                        <div class="document-item">
+                            <div class="doc-icon ready">
+                                <i class="ri-checkbox-circle-line"></i>
+                            </div>
+                            <div class="doc-info">
+                                <h4>Checkliste Umwelt</h4>
+                                <p>35% abgeschlossen</p>
+                            </div>
+                            <span class="doc-status status-ready">Bereit</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="ri-bar-chart-2-line"></i> Übersicht</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--primary);">7</div>
+                            <div class="stat-label">Fragen beantwortet</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--secondary);">4</div>
+                            <div class="stat-label">Offene To-dos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--warning);">2</div>
+                            <div class="stat-label">Dokumente</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--accent);">35%</div>
+                            <div class="stat-label">Fortschritt</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="ri-information-line"></i>
+        <span id="toast-message">Feature coming soon!</span>
+    </div>
+
+    <script>
+        // Toast notification function
+        function showToast(feature) {
+            const toast = document.getElementById('toast');
+            const message = document.getElementById('toast-message');
+            message.textContent = feature + ' - Feature coming in full version!';
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Interactive elements
+        document.querySelectorAll('.todo-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('click', function() {
+                this.classList.toggle('checked');
+                const icon = this.querySelector('i');
+                icon.style.display = this.classList.contains('checked') ? 'block' : 'none';
+            });
+        });
+
+        document.querySelectorAll('.quick-action').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const textarea = document.querySelector('.input-wrapper textarea');
+                textarea.value = this.textContent;
+                textarea.focus();
+            });
+        });
+
+        document.querySelectorAll('.module-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.module-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Auto-resize textarea
+        const textarea = document.querySelector('.input-wrapper textarea');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Document item clicks
+        document.querySelectorAll('.document-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const docName = this.querySelector('.doc-info h4').textContent;
+                showToast(docName);
+            });
+        });
+    </script>
+</body>
+</html>

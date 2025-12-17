@@ -1,0 +1,116 @@
+# CFF Workforce Planning System - Constraint Template
+# For use with Google OR-tools CP-SAT Solver
+# Version: 1.0
+# Purpose: Template for modeling all constraints and objectives
+
+constraint_metadata:
+  name: "constraint_name"                    # Unique identifier (e.g., "max_weekly_hours")
+  category: "category_name"                  # Legal, Company Policy, Operational, Matching, Objective
+  layer: 1                                   # Protection layer (1: Legal, 2: Company, 3: Operational)
+  type: "constraint_type"                    # hard_constraint, soft_constraint, objective_function
+  description: "Human-readable description"   # What this constraint does
+  legal_reference: "Reference if applicable"  # e.g., "Swiss LDT Art. 9"
+  modifiable: false                          # Can be modified by user/LLM
+
+constraint_parameters:
+  # List of input parameters needed for this constraint
+  - name: "parameter_name"
+    description: "Parameter description"
+    type: "data_type"                       # int, float, boolean, time, list
+    unit: "unit_of_measure"                 # hours, minutes, km, percentage, count
+    default_value: 50
+    min_value: 0                            # Optional: minimum allowed value
+    max_value: 168                          # Optional: maximum allowed value
+    source: "database_table.column"         # Where this value comes from
+
+decision_variables:
+  # Variables that the solver will determine
+  - name: "x_assignment"
+    description: "Binary assignment variable"
+    type: "boolean"                         # boolean, integer, interval
+    dimensions: "[resources, requests]"     # Array dimensions
+    domain: "[0, 1]"                       # Valid range for the variable
+
+  # Auxiliary variables for complex constraints
+  - name: "work_hours_per_day"
+    description: "Hours worked by resource r on day d"
+    type: "integer"
+    dimensions: "[resources, days]"
+    domain: "[0, 1250]"                    # Scaled by 100 to avoid floats (12.5h = 1250)
+
+mathematical_formulation:
+  # The mathematical equation/inequality
+  equation: |
+    For each resource r and week w:
+    sum(work_hours[r][d] for d in days_of_week[w]) <= max_weekly_hours * 100
+
+  # Explanation of the equation
+  explanation: |
+    This constraint ensures that the total hours worked by any resource r
+    in any week w does not exceed the maximum weekly hours limit.
+    All values are scaled by 100 to maintain integer domain.
+
+cp_sat_implementation:
+  # OR-tools specific implementation details
+  scaling_factor: 100                       # Factor to convert floats to integers
+
+  # Python pseudo-code for implementation
+  implementation_notes: |
+    # Create auxiliary variables for weekly hours
+    for r in resources:
+      for w in weeks:
+        weekly_hours[r][w] = model.NewIntVar(0, max_weekly_hours * scaling_factor, f'weekly_hours_{r}_{w}')
+
+    # Add constraint
+    for r in resources:
+      for w in weeks:
+        days_in_week = get_days_in_week(w)
+        model.Add(sum(work_hours[r][d] for d in days_in_week) == weekly_hours[r][w])
+        model.Add(weekly_hours[r][w] <= max_weekly_hours * scaling_factor)
+
+validation_rules:
+  # Rules for validating this constraint
+  - rule: "max_weekly_hours must be positive"
+    condition: "max_weekly_hours > 0"
+  - rule: "max_weekly_hours cannot exceed 168 (total hours in week)"
+    condition: "max_weekly_hours <= 168"
+
+interaction_with_other_constraints:
+  # How this constraint relates to others
+  - related_constraint: "max_daily_hours"
+    relationship: "Daily limits must sum to less than weekly limit"
+  - related_constraint: "min_weekly_rest"
+    relationship: "Work hours + rest hours must equal 168"
+
+penalty_configuration:
+  # For soft constraints and objectives
+  applicable: false                         # true for soft constraints/objectives
+  penalty_weight: 1000                      # Weight in objective function
+  penalty_calculation: "linear"             # linear, quadratic, exponential
+
+examples:
+  - scenario: "Normal work week"
+    input:
+      resource: "RES-001"
+      week: "2025-W48"
+      daily_hours: [8, 8, 8, 8, 8, 0, 0]
+    output:
+      total_hours: 40
+      constraint_satisfied: true
+      margin: 10                            # Hours below limit
+
+  - scenario: "Violation case"
+    input:
+      resource: "RES-002"
+      week: "2025-W48"
+      daily_hours: [10, 10, 10, 10, 10, 5, 0]
+    output:
+      total_hours: 55
+      constraint_satisfied: false
+      violation_amount: 5                   # Hours over limit
+
+notes:
+  # Additional implementation notes
+  - "All time values must be scaled to integers for CP-SAT solver"
+  - "Consider time zones for cross-border assignments"
+  - "Account for break times in total hours calculation"

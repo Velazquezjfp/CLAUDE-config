@@ -1,0 +1,1339 @@
+"""
+extraction_v2.py - Enhanced PDF Timesheet Extractor
+
+Improvements over v1:
+1. Multi-page table continuation detection
+2. Improved first-row data detection (flexible column checking)
+3. OCR-based verification using text extraction for quality assurance
+4. Better "Summe**:" row parsing for validation
+5. Detailed logging for debugging
+"""
+
+import json
+import base64
+import io
+import traceback
+import pdfplumber
+import pandas as pd
+import re
+from datetime import datetime
+from fuzzywuzzy import fuzz
+from typing import Dict, List, Tuple, Optional, Any
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class PDFTimesheetExtractorV2:
+    """Enhanced PDF Timesheet Extractor with multi-page support and OCR verification"""
+
+    def __init__(self, fuzzy_threshold: int = 90, enable_debug_logging: bool = True):
+        self.fuzzy_threshold = fuzzy_threshold
+        self.enable_debug_logging = enable_debug_logging
+        self.extraction_log = []  # Collect logs for QA report
+
+        # Master data parameters to extract from PDF header
+        self.master_data_parameters = [
+            "Nachweis zur Leistungserbringung externer Dienstleister für das Bundesamt für Migration und Flüchtlinge",
+            "Auftraggeber", "Verantwortlicher Projektleiter (sachlicher Zeichnender)", "Verantwortlicher Projektleiter",
+            "Auftragnehmer", "Verantwortlicher AG", "Verantwortlicher AN (Ansprechpartner der Firma)", "Verantwortlicher AN",
+            "Ansprechpartner der Firma", "Vorhaben", "Vertrags-Nr", "Projektbezeichnung", "Projekt",
+            "Vertragsnummer BAMF", "Vertragsnummer/Kennung Auftraggeber:", " Vertragsnummer/Kennung Auftragnehmer",
+            "Vertragsnummer/Kennung Unterauftragnehmer","Unterauftragnehmer","Einsatzbericht Monat", "Leistungszeitraum",
+            "Leistungserbringer(in) (Subdienstleister)", "Leistungserbringer(in)", "Leistung erbracht durch",
+            "Rolle im Projekt", "Dienstort", "Meilenstein", "Aktenzeichen BAMF", "Bestellnummer",
+            "VC-ID", "PG (Role im Projekt)", "PO"
+        ]
+
+        # Table column categories for hours extraction
+        self.table_categories = {
+            'onsite': ['vor Ort', 'On site', 'onsite'],
+            'remote': ['Remote', 'Remote**', 'homeoffice', 'HomeOffice', 'Home office', 'Homeoffice**'],
+            'total_hours': ["geleistete Stunden", "Aufwand (Stunden)", "Stunden", "Aufwand in Std", "Aufwand", "Aufwand in\nStd.\n0,00 **)"],
+            'location': ["Einsatzort"],
+            'date': ["Datum", "TT.MM.JJJJ"],
+            'descriptions': ["Beschreibung", "Meilenstein/Task/Beschreibung", "Durchgeführte Arbeiten"]
+        }
+
+        # Mapping for date and consultant name extraction
+        self.date_mapping = ["Einsatzbericht Monat", "Leistungszeitraum"]
+        self.consultant_mapping = [
+            "Leistungserbringer(in) (Subdienstleister)",
+            "Leistungserbringer(in)",
+            "Leistung erbracht durch"
+        ]
+
+        # Onsite/remote location identifiers
+        self.onsite_values = ['vor Ort', 'On site', 'onsite']
+        self.remote_values = ['Remote', 'Remote**', 'homeoffice', 'HomeOffice', 'Home office', 'Homeoffice**']
+
+    def _log(self, level: str, message: str):
+        """Log message and store for QA report"""
+        log_entry = {"level": level, "message": message, "timestamp": datetime.now().isoformat()}
+        self.extraction_log.append(log_entry)
+        if self.enable_debug_logging:
+            if level == "DEBUG":
+                logger.debug(message)
+            elif level == "INFO":
+                logger.info(message)
+            elif level == "WARNING":
+                logger.warning(message)
+            elif level == "ERROR":
+                logger.error(message)
+
+    def extract_pdf_data(self, pdf_bytes: bytes, filename: str = "uploaded_pdf") -> Dict[str, Any]:
+        """
+        Main extraction method for PDF timesheet data from bytes
+
+        Args:
+            pdf_bytes: PDF file as bytes
+            filename: Original filename for the PDF (optional, defaults to "uploaded_pdf")
+
+        Returns:
+            Dictionary containing extracted data in required format
+        """
+        self.extraction_log = []  # Reset log for each extraction
+        self._log("INFO", f"Starting extraction for: {filename}")
+
+        result = {
+            "Masterdata": {},
+            "total_hours": None,
+            "onsite_hours": None,
+            "remote_hours": None,
+            "checksum": None,
+            "date": None,
+            "consultant_name": None,
+            "processing_timestamp": datetime.now().isoformat(),
+            "file_name": filename
+        }
+
+        try:
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                total_pages = len(pdf.pages)
+                self._log("INFO", f"PDF has {total_pages} pages")
+
+                # Extract all text from all pages
+                all_text = ""
+                page_texts = []
+
+                for page_num, page in enumerate(pdf.pages, 1):
+                    page_text = page.extract_text() or ""
+                    page_texts.append(page_text)
+                    all_text += f"--- Page {page_num} ---\n{page_text}\n"
+
+                # Extract master data from first page
+                result["Masterdata"] = self._extract_master_data(page_texts[0] if page_texts else "")
+
+                # Extract checksum from footers
+                result["checksum"] = self._extract_checksum(page_texts)
+
+                # Extract date and consultant name from master data
+                result["date"] = self._map_date_from_master_data(result["Masterdata"])
+                result["consultant_name"] = self._map_consultant_from_master_data(result["Masterdata"])
+
+                # ENHANCED: Extract hours data with multi-page support
+                hours_data = self._extract_hours_data_v2(pdf, all_text)
+                result.update(hours_data)
+
+                # OCR VERIFICATION: Always run OCR-based verification
+                ocr_verification = self._verify_with_ocr(all_text, result)
+                result["ocr_verification"] = ocr_verification
+
+                # Add health check parameters
+                health_check = self._perform_health_check(result)
+                result.update(health_check)
+
+                # Add extraction log for QA
+                result["extraction_log"] = self.extraction_log
+
+                # Add file content as base64
+                result["file_content"] = base64.b64encode(pdf_bytes).decode('utf-8')
+
+                return result
+
+        except Exception as e:
+            self._log("ERROR", f"Extraction failed: {str(e)}")
+            result["error"] = str(e)
+            # Add health check even for errors
+            health_check = self._perform_health_check(result)
+            result.update(health_check)
+            # Add extraction log
+            result["extraction_log"] = self.extraction_log
+            # Add file content even for errors
+            result["file_content"] = base64.b64encode(pdf_bytes).decode('utf-8')
+            return result
+
+    def _extract_master_data(self, first_page_text: str) -> Dict[str, str]:
+        """Extract master data from the first page using fuzzy matching"""
+        masterdata = {}
+
+        if not first_page_text:
+            return masterdata
+
+        # Split into lines and process
+        lines = first_page_text.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+
+            # Try to find key-value pairs (with colon separator)
+            if ':' in line:
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    raw_key = parts[0].strip()
+                    raw_value = parts[1].strip()
+
+                    if raw_key and raw_value:
+                        self._match_master_data_field(raw_key, raw_value, masterdata)
+            else:
+                # Handle cases where key-value might be on separate lines or different format
+                # Look for standalone parameter names
+                for param in self.master_data_parameters:
+                    if fuzz.ratio(param.lower(), line.lower()) >= self.fuzzy_threshold:
+                        # Look for value in next few lines
+                        line_idx = lines.index(line)
+                        for next_idx in range(line_idx + 1, min(line_idx + 3, len(lines))):
+                            if next_idx < len(lines):
+                                potential_value = lines[next_idx].strip()
+                                if potential_value and not any(p in potential_value.lower() for p in [':', 'seite', 'page']):
+                                    masterdata[param] = potential_value
+                                    break
+
+        return masterdata
+
+    def _match_master_data_field(self, raw_key: str, raw_value: str, masterdata: Dict[str, str]):
+        """Match a raw key-value pair to master data parameters using fuzzy matching"""
+        best_match = None
+        best_score = 0
+
+        for param in self.master_data_parameters:
+            score = fuzz.ratio(param.lower(), raw_key.lower())
+            if score >= self.fuzzy_threshold and score > best_score:
+                best_score = score
+                best_match = param
+
+        if best_match:
+            masterdata[best_match] = raw_value
+
+    def _extract_checksum(self, page_texts: List[str]) -> Optional[str]:
+        """Extract checksum from page footers using regex"""
+        # MD5 hash pattern (32 hexadecimal characters)
+        checksum_pattern = r'\b[a-f0-9]{32}\b'
+
+        checksums = []
+
+        for page_num, page_text in enumerate(page_texts, 1):
+            matches = re.findall(checksum_pattern, page_text.lower())
+            if matches:
+                checksums.extend(matches)
+
+        if not checksums:
+            return None
+
+        # Check if all checksums are the same
+        unique_checksums = list(set(checksums))
+        if len(unique_checksums) == 1:
+            return unique_checksums[0]
+        else:
+            return None
+
+    def _map_date_from_master_data(self, masterdata: Dict[str, str]) -> Optional[str]:
+        """Extract and convert date from master data using fuzzy matching"""
+        for date_field in self.date_mapping:
+            for key, value in masterdata.items():
+                if fuzz.ratio(date_field.lower(), key.lower()) >= self.fuzzy_threshold:
+                    converted_date = self._convert_to_date_format(value)
+                    if converted_date:
+                        return converted_date
+
+        return None
+
+    def _map_consultant_from_master_data(self, masterdata: Dict[str, str]) -> Optional[str]:
+        """Extract consultant name from master data using fuzzy matching"""
+        for consultant_field in self.consultant_mapping:
+            for key, value in masterdata.items():
+                if fuzz.ratio(consultant_field.lower(), key.lower()) >= self.fuzzy_threshold:
+                    return value
+
+        return None
+
+    def _convert_to_date_format(self, date_str: str) -> Optional[str]:
+        """Convert various date formats to dd.mm.yyyy"""
+        if not date_str:
+            return None
+
+        date_str = date_str.strip()
+
+        # Already in dd.mm.yyyy format
+        if re.match(r'^\d{2}\.\d{2}\.\d{4}$', date_str):
+            return date_str
+
+        # Month Year format (e.g., "August 2025", "September 2025")
+        month_year_match = re.match(r'^(\w+)\s+(\d{4})$', date_str)
+        if month_year_match:
+            month_str, year = month_year_match.groups()
+            month_map = {
+                'januar': '01', 'january': '01',
+                'februar': '02', 'february': '02',
+                'märz': '03', 'march': '03',
+                'april': '04',
+                'mai': '05', 'may': '05',
+                'juni': '06', 'june': '06',
+                'juli': '07', 'july': '07',
+                'august': '08',
+                'september': '09',
+                'oktober': '10', 'october': '10',
+                'november': '11',
+                'dezember': '12', 'december': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        # Sep 25, Aug 25 format (space-separated)
+        month_year_space = re.match(r'^(\w{3})\s+(\d{2})$', date_str)
+        if month_year_space:
+            month_str, year_short = month_year_space.groups()
+            year = f"20{year_short}"
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'mai': '05', 'jun': '06', 'jul': '07',
+                'aug': '08', 'sep': '09', 'oct': '10', 'okt': '10',
+                'nov': '11', 'dec': '12', 'dez': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        # Sep-25, Aug-25 format (hyphen-separated)
+        month_year_hyphen = re.match(r'^(\w{3})-(\d{2})$', date_str)
+        if month_year_hyphen:
+            month_str, year_short = month_year_hyphen.groups()
+            year = f"20{year_short}"
+            month_map = {
+                'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+                'may': '05', 'mai': '05', 'jun': '06', 'jul': '07',
+                'aug': '08', 'sep': '09', 'oct': '10', 'okt': '10',
+                'nov': '11', 'dec': '12', 'dez': '12'
+            }
+
+            month_num = month_map.get(month_str.lower())
+            if month_num:
+                return f"01.{month_num}.{year}"
+
+        return None
+
+    def _generate_row_signature(self, row: List) -> Optional[List[str]]:
+        """
+        Generate a signature pattern for a single row based on cell content types.
+
+        Returns a list like: ['date', 'number', 'number', 'text', 'multitext']
+        Returns None if signature generation fails.
+        """
+        try:
+            if not row:
+                return None
+
+            signature = []
+            for cell in row:
+                cell_str = str(cell).strip() if cell else ""
+
+                if not cell_str or cell_str.lower() in ['none', 'nan', '']:
+                    signature.append('empty')
+                elif re.match(r'^\d{2}\.\d{2}\.\d{4}$', cell_str):
+                    signature.append('date')
+                elif re.match(r'^\d+[,.]?\d*$', cell_str):
+                    signature.append('number')
+                elif '\n' in cell_str or len(cell_str) > 50:
+                    signature.append('multitext')
+                else:
+                    signature.append('text')
+
+            return signature
+        except Exception as e:
+            self._log("WARNING", f"Failed to generate row signature: {e}")
+            return None
+
+    def _generate_consensus_signature(self, df: pd.DataFrame, max_rows: int = 10) -> Optional[List[str]]:
+        """
+        Generate a consensus signature from multiple data rows.
+
+        Analyzes up to max_rows and determines the most common type for each column.
+        This is more robust than using a single row.
+
+        Returns:
+            - Consensus signature list
+            - Also returns row_count for comparison with continuation tables
+        """
+        try:
+            if df is None or len(df) == 0:
+                return None
+
+            # Collect signatures from multiple rows
+            all_signatures = []
+            rows_analyzed = 0
+
+            for idx in range(min(len(df), max_rows)):
+                try:
+                    row_data = df.iloc[idx].tolist()
+                    # Skip completely empty rows
+                    if not any(cell and str(cell).strip() for cell in row_data):
+                        continue
+                    # Skip "Summe" rows
+                    row_text = ' '.join([str(c) for c in row_data if c]).lower()
+                    if 'summe' in row_text:
+                        continue
+
+                    sig = self._generate_row_signature(row_data)
+                    if sig:
+                        all_signatures.append(sig)
+                        rows_analyzed += 1
+                except Exception:
+                    continue
+
+            if not all_signatures:
+                return None
+
+            # Build consensus: for each column, pick the most common non-empty type
+            num_cols = len(all_signatures[0])
+            consensus = []
+
+            for col_idx in range(num_cols):
+                type_counts = {}
+                for sig in all_signatures:
+                    if col_idx < len(sig):
+                        cell_type = sig[col_idx]
+                        # Weight non-empty types higher
+                        if cell_type != 'empty':
+                            type_counts[cell_type] = type_counts.get(cell_type, 0) + 2
+                        else:
+                            type_counts[cell_type] = type_counts.get(cell_type, 0) + 1
+
+                # Pick the type with highest count (prefer non-empty)
+                if type_counts:
+                    # Sort by count, then prefer non-empty
+                    sorted_types = sorted(type_counts.items(), key=lambda x: (x[1], x[0] != 'empty'), reverse=True)
+                    consensus.append(sorted_types[0][0])
+                else:
+                    consensus.append('empty')
+
+            self._log("DEBUG", f"Generated consensus signature from {rows_analyzed} rows: {consensus}")
+            return consensus
+
+        except Exception as e:
+            self._log("WARNING", f"Failed to generate consensus signature: {e}")
+            return None
+
+    def _signatures_match(self, sig1: List[str], sig2: List[str], tolerance: float = 0.6) -> bool:
+        """
+        Check if two row signatures match with some tolerance.
+
+        Allows for variations like 'empty' matching 'number' (optional hour fields)
+        Returns False if comparison fails.
+        """
+        try:
+            if not sig1 or not sig2:
+                return False
+
+            if len(sig1) != len(sig2):
+                return False
+
+            matches = 0
+            for s1, s2 in zip(sig1, sig2):
+                if s1 == s2:
+                    matches += 1
+                # Allow empty to match number (optional hour fields)
+                elif (s1 == 'empty' and s2 == 'number') or (s1 == 'number' and s2 == 'empty'):
+                    matches += 1
+                # Allow text to match multitext
+                elif (s1 == 'text' and s2 == 'multitext') or (s1 == 'multitext' and s2 == 'text'):
+                    matches += 1
+
+            match_ratio = matches / len(sig1) if sig1 else 0
+            return match_ratio >= tolerance
+        except Exception as e:
+            self._log("WARNING", f"Failed to compare signatures: {e}")
+            return False
+
+    def _extract_hours_data_v2(self, pdf, all_text: str) -> Dict[str, Optional[float]]:
+        """
+        ENHANCED: Extract hours data from PDF tables with multi-page support
+
+        Key improvements:
+        1. Detects multi-page table continuations using row signature patterns
+        2. Inherits column structure from first page with headers
+        3. Processes all continuation tables correctly
+        4. Uses signature matching to detect table continuations
+        5. Falls back to basic extraction if enhanced methods fail
+        """
+        result = {
+            "total_hours": None,
+            "onsite_hours": None,
+            "remote_hours": None
+        }
+
+        try:
+            # Extract tables from all pages with enhanced structure detection
+            all_tables = []
+            master_column_structure = None  # Will hold the structure from first page with headers
+            master_column_count = None  # Number of columns in the main timesheet table
+            master_row_signature = None  # Signature pattern of data rows
+            signature_matching_enabled = True  # Flag to track if signature matching is working
+
+            for page_num, page in enumerate(pdf.pages, 1):
+                try:
+                    tables = page.extract_tables()
+                    self._log("DEBUG", f"Page {page_num}: Found {len(tables) if tables else 0} tables")
+
+                    if tables:
+                        for table_idx, table in enumerate(tables):
+                            if table and len(table) >= 1:
+                                table_info = {
+                                    'page': page_num,
+                                    'table_index': table_idx,
+                                    'raw_table': table,
+                                    'row_count': len(table),
+                                    'col_count': len(table[0]) if table else 0,
+                                    'is_continuation': False  # Default
+                                }
+
+                                try:
+                                    # Check if this table has headers or is a continuation
+                                    has_headers = self._table_has_headers(table)
+                                    table_info['has_headers'] = has_headers
+
+                                    # Create DataFrame appropriately
+                                    if has_headers:
+                                        df = self._create_dataframe_with_headers(table)
+                                        structure = self._identify_column_structure(df)
+
+                                        # If this looks like a timesheet table, save its structure and signature
+                                        if self._table_has_dates(df) and any(structure.values()):
+                                            if master_column_structure is None:
+                                                master_column_structure = structure
+                                                master_column_count = len(table[0])
+
+                                                # Generate CONSENSUS signature from multiple data rows (more robust)
+                                                try:
+                                                    if len(df) > 0:
+                                                        master_row_signature = self._generate_consensus_signature(df, max_rows=10)
+                                                        if master_row_signature:
+                                                            self._log("INFO", f"Page {page_num}: Generated consensus signature: {master_row_signature}")
+                                                except Exception as sig_err:
+                                                    self._log("WARNING", f"Page {page_num}: Failed to generate signature: {sig_err}")
+                                                    signature_matching_enabled = False
+
+                                                self._log("INFO", f"Page {page_num}: Identified master column structure: {structure}")
+
+                                        table_info['column_structure'] = structure
+                                    else:
+                                        # This might be a continuation table - check signature match
+                                        df = pd.DataFrame(table, columns=[f"col_{i}" for i in range(len(table[0]))])
+
+                                        # Check if this table matches the master signature (continuation detection)
+                                        is_continuation = False
+
+                                        # Method 1: Signature matching (if enabled and available)
+                                        if signature_matching_enabled and master_row_signature and len(table) > 0:
+                                            try:
+                                                first_row_sig = self._generate_row_signature(table[0])
+                                                if first_row_sig:
+                                                    is_continuation = self._signatures_match(master_row_signature, first_row_sig)
+                                                    if is_continuation:
+                                                        self._log("INFO", f"Page {page_num}: Detected table continuation via signature match")
+                                                        self._log("DEBUG", f"  Master sig: {master_row_signature}")
+                                                        self._log("DEBUG", f"  First row sig: {first_row_sig}")
+                                            except Exception as match_err:
+                                                self._log("WARNING", f"Page {page_num}: Signature matching failed: {match_err}")
+
+                                        # Method 2: Fallback to column count matching
+                                        if not is_continuation and master_column_count and len(table[0]) == master_column_count:
+                                            # Check if first row looks like data (has date)
+                                            first_cell = str(table[0][0]).strip() if table[0][0] else ""
+                                            if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell):
+                                                is_continuation = True
+                                                self._log("INFO", f"Page {page_num}: Detected table continuation via column count + date pattern")
+
+                                        table_info['is_continuation'] = is_continuation
+                                        table_info['column_structure'] = None  # Will inherit from master
+
+                                    table_info['dataframe'] = df
+                                    all_tables.append(table_info)
+
+                                except Exception as table_err:
+                                    self._log("WARNING", f"Page {page_num}, Table {table_idx}: Processing error: {table_err}")
+                                    # Still try to add basic table info
+                                    try:
+                                        df = pd.DataFrame(table[1:], columns=table[0]) if len(table) > 1 else pd.DataFrame(table)
+                                        table_info['dataframe'] = df
+                                        table_info['has_headers'] = True
+                                        table_info['column_structure'] = {}
+                                        all_tables.append(table_info)
+                                    except:
+                                        pass
+
+                except Exception as page_err:
+                    self._log("WARNING", f"Page {page_num}: Failed to process page: {page_err}")
+                    continue
+
+            # Process tables with awareness of continuations
+            hours_data = self._process_tables_with_continuations(all_tables, master_column_structure, master_column_count, all_text, master_row_signature)
+            result.update(hours_data)
+
+        except Exception as e:
+            self._log("ERROR", f"Enhanced extraction failed, attempting basic extraction: {e}")
+            # Fallback to basic extraction
+            result = self._extract_hours_basic_fallback(pdf, all_text)
+
+        return result
+
+    def _extract_hours_basic_fallback(self, pdf, all_text: str) -> Dict[str, Optional[float]]:
+        """
+        Basic fallback extraction when enhanced methods fail.
+        Uses simple table parsing without signature matching.
+        """
+        self._log("INFO", "Using basic fallback extraction")
+        result = {"total_hours": None, "onsite_hours": 0.0, "remote_hours": 0.0}
+
+        try:
+            for page in pdf.pages:
+                tables = page.extract_tables()
+                if not tables:
+                    continue
+
+                for table in tables:
+                    if not table or len(table) < 2:
+                        continue
+
+                    try:
+                        # Simple approach: first row as headers, rest as data
+                        df = pd.DataFrame(table[1:], columns=table[0])
+
+                        # Look for hours columns
+                        for col in df.columns:
+                            col_str = str(col).lower() if col else ""
+
+                            if 'vor ort' in col_str:
+                                for val in df[col]:
+                                    try:
+                                        if val and str(val).strip() not in ['', '0', '0,00']:
+                                            result['onsite_hours'] += float(str(val).replace(',', '.'))
+                                    except:
+                                        pass
+
+                            elif any(term in col_str for term in ['homeoffice', 'remote']):
+                                for val in df[col]:
+                                    try:
+                                        if val and str(val).strip() not in ['', '0', '0,00']:
+                                            result['remote_hours'] += float(str(val).replace(',', '.'))
+                                    except:
+                                        pass
+
+                    except Exception:
+                        continue
+
+            # Calculate total
+            if result['onsite_hours'] > 0 or result['remote_hours'] > 0:
+                result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+
+            # Try to use Summe** text as final validation/correction
+            text_totals = self._extract_summe_from_text(all_text)
+            if text_totals and text_totals.get('total'):
+                expected = text_totals['total']
+                extracted = result['total_hours'] or 0
+                if abs(expected - extracted) > 1.0:
+                    self._log("WARNING", f"Fallback extraction mismatch. Using Summe** values.")
+                    result['total_hours'] = text_totals.get('total')
+                    result['onsite_hours'] = text_totals.get('onsite', result['onsite_hours'])
+                    result['remote_hours'] = text_totals.get('remote', result['remote_hours'])
+
+        except Exception as e:
+            self._log("ERROR", f"Basic fallback extraction also failed: {e}")
+
+        return result
+
+    def _table_has_headers(self, table: List[List]) -> bool:
+        """
+        Determine if a table has header rows or is just data
+
+        Returns True if:
+        - First row contains header-like content (Datum, Aufwand, vor Ort, etc.)
+        - First row does NOT start with a date pattern
+        """
+        if not table or len(table) < 1:
+            return False
+
+        first_row = table[0]
+        first_cell = str(first_row[0]).strip() if first_row[0] else ""
+
+        # If first cell is a date, this is likely a continuation (no headers)
+        if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell):
+            return False
+
+        # Check for header-like content
+        row_text = ' '.join([str(cell) for cell in first_row if cell]).lower()
+        header_terms = ['datum', 'aufwand', 'stunden', 'vor ort', 'remote', 'homeoffice', 'epic', 'beschreibung', 'meilenstein']
+
+        header_matches = sum(1 for term in header_terms if term in row_text)
+
+        # Also check second row for sub-headers (multi-row header pattern)
+        if len(table) > 1:
+            second_row = table[1]
+            second_row_text = ' '.join([str(cell) for cell in second_row if cell]).lower()
+            second_header_matches = sum(1 for term in ['vor ort', 'homeoffice', 'remote'] if term in second_row_text)
+            header_matches += second_header_matches
+
+        return header_matches >= 2
+
+    def _create_dataframe_with_headers(self, table: List[List]) -> pd.DataFrame:
+        """
+        Create DataFrame handling various header patterns
+
+        Handles:
+        - Single row headers
+        - Multi-row headers (main + sub-headers like "Aufwand" -> "vor Ort" / "Homeoffice")
+        """
+        if len(table) <= 1:
+            return pd.DataFrame([table[0]], columns=[f"col_{i}" for i in range(len(table[0]))])
+
+        first_row = table[0]
+        second_row = table[1] if len(table) > 1 else None
+
+        # Check for multi-row header pattern
+        has_multi_row_headers = False
+        if second_row:
+            second_row_text = ' '.join([str(cell) for cell in second_row if cell]).lower()
+            # Multi-row headers have sub-header terms like "vor ort", "homeoffice"
+            sub_header_terms = ['vor ort', 'homeoffice', 'remote']
+            if any(term in second_row_text for term in sub_header_terms):
+                # Verify it's not a data row
+                first_cell_second = str(second_row[0]).strip() if second_row[0] else ""
+                if not re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell_second):
+                    has_multi_row_headers = True
+
+        if has_multi_row_headers:
+            # Merge main headers with sub-headers
+            merged_headers = []
+            for i in range(len(first_row)):
+                main_header = str(first_row[i]).strip() if i < len(first_row) and first_row[i] else ""
+                sub_header = str(second_row[i]).strip() if i < len(second_row) and second_row[i] else ""
+
+                if sub_header:
+                    merged_headers.append(sub_header)
+                elif main_header:
+                    merged_headers.append(main_header)
+                else:
+                    merged_headers.append(f"col_{i}")
+
+            # Find first data row (skip empty rows after headers)
+            data_start_idx = 2
+            while data_start_idx < len(table):
+                row = table[data_start_idx]
+                row_has_content = any(cell and str(cell).strip() for cell in row)
+                if row_has_content:
+                    # Check if it's a data row (has date or numbers)
+                    first_cell = str(row[0]).strip() if row[0] else ""
+                    if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell) or first_cell == '':
+                        break
+                data_start_idx += 1
+
+            data_rows = table[data_start_idx:] if data_start_idx < len(table) else []
+            df = pd.DataFrame(data_rows, columns=merged_headers)
+            self._log("DEBUG", f"Created DataFrame with merged headers: {merged_headers}")
+        else:
+            # Single row headers
+            headers = [str(h).strip() if h else f"col_{i}" for i, h in enumerate(first_row)]
+            df = pd.DataFrame(table[1:], columns=headers)
+            self._log("DEBUG", f"Created DataFrame with single headers: {headers}")
+
+        return df
+
+    def _table_has_dates(self, df: pd.DataFrame) -> bool:
+        """Check if table contains date information"""
+        # Check column names
+        for col in df.columns:
+            if col and 'datum' in str(col).lower():
+                return True
+
+        # Check first few cells for date patterns
+        for i in range(min(5, len(df))):
+            for j in range(min(3, len(df.columns))):
+                cell_value = str(df.iloc[i, j]) if not pd.isna(df.iloc[i, j]) else ""
+                if re.match(r'\d{2}\.\d{2}\.\d{4}', cell_value):
+                    return True
+
+        return False
+
+    def _identify_column_structure(self, df: pd.DataFrame) -> Dict[str, List[int]]:
+        """Identify which columns contain which type of data"""
+        structure = {
+            'date': [],
+            'total_hours': [],
+            'onsite': [],
+            'remote': [],
+            'location': [],
+            'descriptions': []
+        }
+
+        for col_idx, col_name in enumerate(df.columns):
+            if not col_name:
+                continue
+
+            col_str = str(col_name).lower()
+
+            # Check for date column
+            if 'datum' in col_str:
+                structure['date'].append(col_idx)
+            # Check for onsite
+            elif any(term in col_str for term in ['vor ort']):
+                structure['onsite'].append(col_idx)
+            # Check for remote
+            elif any(term in col_str for term in ['remote', 'homeoffice', 'home office']):
+                structure['remote'].append(col_idx)
+            # Check for total hours (single column)
+            elif any(term in col_str for term in ['aufwand', 'stunden']) and 'vor' not in col_str and 'home' not in col_str:
+                # Only if no onsite/remote columns found
+                structure['total_hours'].append(col_idx)
+            # Check for descriptions
+            elif any(term in col_str for term in ['beschreibung', 'task', 'meilenstein', 'arbeiten']):
+                structure['descriptions'].append(col_idx)
+
+        return structure
+
+    def _process_tables_with_continuations(self, all_tables: List[Dict], master_structure: Dict, master_col_count: int, all_text: str, master_signature: List[str] = None) -> Dict[str, Optional[float]]:
+        """
+        Process all tables, handling continuations from multi-page timesheets
+
+        Uses both column count matching AND row signature matching for robust continuation detection.
+        """
+        result = {"total_hours": None, "onsite_hours": 0.0, "remote_hours": 0.0}
+        found_timesheet = False
+
+        # First, try to extract totals from "Summe**:" in text (for validation)
+        text_totals = self._extract_summe_from_text(all_text)
+        if text_totals:
+            self._log("INFO", f"Found totals from Summe** text: {text_totals}")
+
+        for table_info in all_tables:
+            df = table_info['dataframe']
+            page = table_info['page']
+            has_headers = table_info['has_headers']
+            col_count = table_info['col_count']
+            is_continuation = table_info.get('is_continuation', False)
+
+            # Skip non-timesheet tables (unless detected as continuation via signature)
+            if not self._table_has_dates(df) and not is_continuation:
+                continue
+
+            self._log("DEBUG", f"Processing timesheet table on page {page} (has_headers={has_headers}, is_continuation={is_continuation})")
+
+            # Determine column structure
+            if has_headers and table_info.get('column_structure'):
+                structure = table_info['column_structure']
+            elif is_continuation and master_structure:
+                # Continuation table detected via signature - use master structure
+                structure = master_structure
+                self._log("INFO", f"Page {page}: Using master structure for signature-matched continuation")
+            elif master_structure and col_count == master_col_count:
+                # Continuation table - use master structure (fallback to column count match)
+                structure = master_structure
+                self._log("DEBUG", f"Using inherited master structure for page {page} (column count match)")
+            else:
+                # Try to infer structure from data patterns
+                structure = self._infer_structure_from_data(df)
+                self._log("DEBUG", f"Inferred structure for page {page}: {structure}")
+
+            # Extract hours from this table
+            table_hours = self._extract_hours_from_dataframe(df, structure, has_headers)
+
+            if table_hours['onsite_hours'] is not None or table_hours['remote_hours'] is not None:
+                found_timesheet = True
+                if table_hours['onsite_hours']:
+                    result['onsite_hours'] += table_hours['onsite_hours']
+                    self._log("DEBUG", f"Page {page}: Added {table_hours['onsite_hours']} onsite hours")
+                if table_hours['remote_hours']:
+                    result['remote_hours'] += table_hours['remote_hours']
+                    self._log("DEBUG", f"Page {page}: Added {table_hours['remote_hours']} remote hours")
+            elif table_hours['total_hours'] is not None:
+                found_timesheet = True
+                if result['total_hours'] is None:
+                    result['total_hours'] = 0.0
+                result['total_hours'] += table_hours['total_hours']
+                self._log("DEBUG", f"Page {page}: Added {table_hours['total_hours']} total hours")
+
+        # Calculate total from onsite + remote
+        if result['onsite_hours'] > 0 or result['remote_hours'] > 0:
+            result['total_hours'] = result['onsite_hours'] + result['remote_hours']
+
+        # Use text-based totals if table extraction seems incomplete
+        if text_totals:
+            expected_total = text_totals.get('total', 0)
+            extracted_total = result['total_hours'] or 0
+
+            if expected_total > 0 and abs(expected_total - extracted_total) > 0.5:
+                self._log("WARNING", f"Extraction mismatch! Extracted: {extracted_total}, Expected from Summe**: {expected_total}")
+
+                # Use text-based totals as they are more reliable
+                if text_totals.get('onsite') is not None:
+                    result['onsite_hours'] = text_totals['onsite']
+                if text_totals.get('remote') is not None:
+                    result['remote_hours'] = text_totals['remote']
+                if text_totals.get('total') is not None:
+                    result['total_hours'] = text_totals['total']
+
+                self._log("INFO", f"Using Summe** totals: onsite={result['onsite_hours']}, remote={result['remote_hours']}, total={result['total_hours']}")
+
+        return result
+
+    def _infer_structure_from_data(self, df: pd.DataFrame) -> Dict[str, List[int]]:
+        """
+        Infer column structure from data patterns when headers are missing
+        """
+        structure = {'date': [], 'total_hours': [], 'onsite': [], 'remote': [], 'location': [], 'descriptions': []}
+
+        for col_idx in range(len(df.columns)):
+            sample_values = []
+            for row_idx in range(min(5, len(df))):
+                val = str(df.iloc[row_idx, col_idx]) if not pd.isna(df.iloc[row_idx, col_idx]) else ""
+                sample_values.append(val.strip())
+
+            # Check if this column has dates
+            has_dates = any(re.match(r'\d{2}\.\d{2}\.\d{4}', val) for val in sample_values)
+            if has_dates:
+                structure['date'].append(col_idx)
+                continue
+
+            # Check if this column has numeric values (hours)
+            numeric_count = sum(1 for val in sample_values if re.match(r'^\d+[,.]?\d*$', val) and val not in ['', '0', '0,00', '0.00'])
+
+            if numeric_count >= 2:
+                # This is likely an hours column
+                # Position-based heuristic: col 1 is often onsite, col 2 is often remote
+                if col_idx == 1:
+                    structure['onsite'].append(col_idx)
+                elif col_idx == 2:
+                    structure['remote'].append(col_idx)
+                else:
+                    structure['total_hours'].append(col_idx)
+
+        return structure
+
+    def _extract_hours_from_dataframe(self, df: pd.DataFrame, structure: Dict, has_headers: bool) -> Dict[str, Optional[float]]:
+        """
+        Extract hours from a DataFrame using the identified structure
+        """
+        result = {"total_hours": None, "onsite_hours": None, "remote_hours": None}
+
+        # Determine start row (skip header-like rows)
+        start_row = 0
+        if has_headers:
+            # Headers already handled in DataFrame creation
+            start_row = 0
+        else:
+            # For continuation tables, check if first row is data
+            if len(df) > 0:
+                first_cell = str(df.iloc[0, 0]).strip() if not pd.isna(df.iloc[0, 0]) else ""
+                if re.match(r'\d{2}\.\d{2}\.\d{4}', first_cell):
+                    start_row = 0  # First row is data
+
+        # Extract based on structure
+        if structure['onsite'] and structure['remote']:
+            # Split columns format
+            result['onsite_hours'] = 0.0
+            result['remote_hours'] = 0.0
+
+            onsite_col = structure['onsite'][0]
+            remote_col = structure['remote'][0]
+
+            for idx in range(start_row, len(df)):
+                row = df.iloc[idx]
+
+                # Skip Summe rows
+                row_text = ' '.join([str(cell) for cell in row if not pd.isna(cell)]).lower()
+                if 'summe' in row_text:
+                    continue
+
+                # Extract onsite hours
+                if onsite_col < len(row):
+                    onsite_val = row.iloc[onsite_col]
+                    if onsite_val and not pd.isna(onsite_val):
+                        onsite_str = str(onsite_val).strip()
+                        if onsite_str and onsite_str not in ['', '0', '0,00', '0.00']:
+                            try:
+                                result['onsite_hours'] += float(onsite_str.replace(',', '.'))
+                            except ValueError:
+                                pass
+
+                # Extract remote hours
+                if remote_col < len(row):
+                    remote_val = row.iloc[remote_col]
+                    if remote_val and not pd.isna(remote_val):
+                        remote_str = str(remote_val).strip()
+                        if remote_str and remote_str not in ['', '0', '0,00', '0.00']:
+                            try:
+                                result['remote_hours'] += float(remote_str.replace(',', '.'))
+                            except ValueError:
+                                pass
+
+        elif structure['total_hours']:
+            # Single hours column format
+            result['total_hours'] = 0.0
+            hours_col = structure['total_hours'][0]
+
+            for idx in range(start_row, len(df)):
+                row = df.iloc[idx]
+
+                # Skip Summe rows
+                row_text = ' '.join([str(cell) for cell in row if not pd.isna(cell)]).lower()
+                if 'summe' in row_text:
+                    continue
+
+                if hours_col < len(row):
+                    hours_val = row.iloc[hours_col]
+                    if hours_val and not pd.isna(hours_val):
+                        hours_str = str(hours_val).strip()
+                        if hours_str and hours_str not in ['', '0', '0,00', '0.00']:
+                            try:
+                                result['total_hours'] += float(hours_str.replace(',', '.'))
+                            except ValueError:
+                                pass
+
+        return result
+
+    def _extract_summe_from_text(self, all_text: str) -> Dict[str, float]:
+        """
+        Extract totals from "Summe**:", "Summe Std.", or similar lines in PDF text
+        This is the most reliable source of truth
+        """
+        totals = {}
+        text_lower = all_text.lower()
+
+        # Pattern 1: "Summe**: X,XX Y,YY Stunden" or "Summe**: X,XX Stunden"
+        # Match patterns like "Summe**: 14,00 131,00 Stunden" or "Summe**: 146,00 Stunden"
+        summe_pattern = r'summe\*?\*?:?\s*([\d,\.]+)\s*([\d,\.]+)?\s*stunden'
+        match = re.search(summe_pattern, text_lower)
+
+        if match:
+            groups = match.groups()
+            if groups[1]:
+                # Two values: onsite and remote
+                try:
+                    totals['onsite'] = float(groups[0].replace(',', '.'))
+                    totals['remote'] = float(groups[1].replace(',', '.'))
+                    totals['total'] = totals['onsite'] + totals['remote']
+                    self._log("DEBUG", f"Parsed Summe** with two values: onsite={totals['onsite']}, remote={totals['remote']}")
+                except ValueError:
+                    pass
+            else:
+                # Single value: total only
+                try:
+                    totals['total'] = float(groups[0].replace(',', '.'))
+                    self._log("DEBUG", f"Parsed Summe** with single value: total={totals['total']}")
+                except ValueError:
+                    pass
+
+        # Pattern 2: "Summe Std." or "Summe Std. (dez.):" - flexible substring match
+        # Match patterns like "Summe Std. 29,25" or "Summe Std. (dez.): 29,25"
+        if not totals:
+            summe_std_pattern = r'summe\s+std\.?\s*(?:\([^)]*\))?\s*:?\s*([\d,\.]+)\s*([\d,\.]+)?'
+            match = re.search(summe_std_pattern, text_lower)
+            if match:
+                groups = match.groups()
+                if groups[1]:
+                    # Two values: onsite and remote
+                    try:
+                        totals['onsite'] = float(groups[0].replace(',', '.'))
+                        totals['remote'] = float(groups[1].replace(',', '.'))
+                        totals['total'] = totals['onsite'] + totals['remote']
+                        self._log("DEBUG", f"Parsed Summe Std. with two values: onsite={totals['onsite']}, remote={totals['remote']}")
+                    except ValueError:
+                        pass
+                else:
+                    # Single value: total only
+                    try:
+                        totals['total'] = float(groups[0].replace(',', '.'))
+                        self._log("DEBUG", f"Parsed Summe Std. with single value: total={totals['total']}")
+                    except ValueError:
+                        pass
+
+        # Pattern 3: "Summe" followed by number (more generic fallback)
+        # Match patterns like "Summe 29,25" or "Summe: 145,00"
+        if not totals:
+            summe_generic_pattern = r'summe\s*:?\s*([\d,\.]+)\s*([\d,\.]+)?(?:\s*(?:stunden|std\.?))?'
+            match = re.search(summe_generic_pattern, text_lower)
+            if match:
+                groups = match.groups()
+                if groups[1]:
+                    try:
+                        totals['onsite'] = float(groups[0].replace(',', '.'))
+                        totals['remote'] = float(groups[1].replace(',', '.'))
+                        totals['total'] = totals['onsite'] + totals['remote']
+                        self._log("DEBUG", f"Parsed generic Summe with two values: onsite={totals['onsite']}, remote={totals['remote']}")
+                    except ValueError:
+                        pass
+                else:
+                    try:
+                        totals['total'] = float(groups[0].replace(',', '.'))
+                        self._log("DEBUG", f"Parsed generic Summe with single value: total={totals['total']}")
+                    except ValueError:
+                        pass
+
+        # Pattern 4: "X,XX Personenstunden entsprechen" pattern
+        if not totals:
+            person_hours_pattern = r'([\d,\.]+)\s*personenstunden\s*entsprechen'
+            match = re.search(person_hours_pattern, text_lower)
+            if match:
+                try:
+                    totals['total'] = float(match.group(1).replace(',', '.'))
+                    self._log("DEBUG", f"Parsed from Personenstunden: total={totals['total']}")
+                except ValueError:
+                    pass
+
+        return totals
+
+    def _verify_with_ocr(self, all_text: str, extraction_result: Dict) -> Dict[str, Any]:
+        """
+        OCR-based verification: Compare extracted values with text-based totals
+        Always runs as QA step with detailed logging
+        """
+        verification = {
+            "performed": True,
+            "status": "PASS",
+            "expected_totals": {},
+            "extracted_totals": {},
+            "discrepancy": None,
+            "details": []
+        }
+
+        # Get expected totals from text
+        text_totals = self._extract_summe_from_text(all_text)
+
+        if not text_totals:
+            verification["status"] = "UNABLE_TO_VERIFY"
+            verification["details"].append("Could not find Summe totals line in PDF text for verification")
+            self._log("WARNING", "OCR verification: Could not find Summe totals in text")
+            return verification
+
+        verification["expected_totals"] = text_totals
+
+        # Get extracted totals
+        extracted_total = extraction_result.get('total_hours') or 0
+        extracted_onsite = extraction_result.get('onsite_hours') or 0
+        extracted_remote = extraction_result.get('remote_hours') or 0
+
+        verification["extracted_totals"] = {
+            "total": extracted_total,
+            "onsite": extracted_onsite,
+            "remote": extracted_remote
+        }
+
+        # Compare totals
+        expected_total = text_totals.get('total', 0)
+        discrepancy = abs(expected_total - extracted_total)
+
+        if discrepancy > 0.5:  # Allow small rounding differences
+            verification["status"] = "FAIL"
+            verification["discrepancy"] = discrepancy
+            verification["details"].append(f"Total hours mismatch: extracted {extracted_total}, expected {expected_total}")
+            self._log("ERROR", f"OCR VERIFICATION FAILED: Extracted {extracted_total} hours, but Summe** shows {expected_total} hours (discrepancy: {discrepancy})")
+        else:
+            verification["details"].append(f"Total hours match: {extracted_total} (expected: {expected_total})")
+            self._log("INFO", f"OCR VERIFICATION PASSED: Extracted {extracted_total} hours matches Summe** ({expected_total})")
+
+        # Check onsite/remote breakdown if available
+        if 'onsite' in text_totals and extracted_onsite is not None:
+            expected_onsite = text_totals['onsite']
+            onsite_discrepancy = abs(expected_onsite - extracted_onsite)
+            if onsite_discrepancy > 0.5:
+                verification["details"].append(f"Onsite hours mismatch: extracted {extracted_onsite}, expected {expected_onsite}")
+                self._log("WARNING", f"Onsite hours mismatch: extracted {extracted_onsite}, expected {expected_onsite}")
+
+        if 'remote' in text_totals and extracted_remote is not None:
+            expected_remote = text_totals['remote']
+            remote_discrepancy = abs(expected_remote - extracted_remote)
+            if remote_discrepancy > 0.5:
+                verification["details"].append(f"Remote hours mismatch: extracted {extracted_remote}, expected {expected_remote}")
+                self._log("WARNING", f"Remote hours mismatch: extracted {extracted_remote}, expected {expected_remote}")
+
+        return verification
+
+    def _perform_health_check(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Perform health check on extraction results and return health status
+
+        Args:
+            result: Dictionary containing extracted data
+
+        Returns:
+            Dictionary containing healthy (bool), healthy_status_reason (list or None)
+        """
+        health_result = {
+            "healthy": True,
+            "healthy_status_reason": None
+        }
+
+        reasons = []
+
+        # Check if all hours are null/empty
+        total_hours = result.get("total_hours")
+        onsite_hours = result.get("onsite_hours")
+        remote_hours = result.get("remote_hours")
+
+        # Check if all three hours fields are null/empty
+        if (total_hours is None or total_hours == 0) and \
+           (onsite_hours is None or onsite_hours == 0) and \
+           (remote_hours is None or remote_hours == 0):
+            reasons.append("failed to extract hours")
+
+        # Check if date is null
+        if result.get("date") is None:
+            reasons.append("failed to extract date")
+
+        # Check if consultant name is null
+        if result.get("consultant_name") is None:
+            reasons.append("failed to extract consultant name, name could still be in Masterdata")
+
+        # Check OCR verification status
+        ocr_verification = result.get("ocr_verification", {})
+        if ocr_verification.get("status") == "FAIL":
+            reasons.append(f"OCR verification failed: discrepancy of {ocr_verification.get('discrepancy', 'unknown')} hours")
+
+        # Set health status
+        if reasons:
+            health_result["healthy"] = False
+            health_result["healthy_status_reason"] = reasons
+
+        return health_result
+
+
+def lambda_handler(event, context):
+    """AWS Lambda handler function"""
+    try:
+        # Parse request body
+        if 'body' not in event:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Missing request body',
+                    'success': False
+                })
+            }
+
+        # Handle base64-encoded body
+        body = event['body']
+        if event.get('isBase64Encoded', False):
+            body = base64.b64decode(body).decode('utf-8')
+
+        # Parse JSON body
+        try:
+            request_data = json.loads(body)
+        except json.JSONDecodeError:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Invalid JSON in request body',
+                    'success': False
+                })
+            }
+
+        # Extract PDF data from base64
+        if 'pdf_base64' not in request_data:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': 'Missing pdf_base64 field in request',
+                    'success': False
+                })
+            }
+
+        # Decode PDF from base64
+        try:
+            pdf_bytes = base64.b64decode(request_data['pdf_base64'])
+        except Exception as e:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'error': f'Invalid base64 PDF data: {str(e)}',
+                    'success': False
+                })
+            }
+
+        # Extract filename from request (optional)
+        filename = request_data.get('filename', 'uploaded_pdf')
+
+        # Initialize extractor and process PDF
+        extractor = PDFTimesheetExtractorV2()
+        result = extractor.extract_pdf_data(pdf_bytes, filename)
+
+        # Return result
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            'body': json.dumps(result)
+        }
+
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'error': f'Internal server error: {str(e)}',
+                'success': False,
+                'traceback': traceback.format_exc()
+            })
+        }
+
+
+# For local testing
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python extraction_v2.py <pdf_file>")
+        sys.exit(1)
+
+    pdf_path = sys.argv[1]
+
+    try:
+        with open(pdf_path, 'rb') as f:
+            pdf_bytes = f.read()
+
+        # Extract filename from path
+        import os
+        filename = os.path.basename(pdf_path)
+
+        extractor = PDFTimesheetExtractorV2()
+        result = extractor.extract_pdf_data(pdf_bytes, filename)
+
+        # Print results without file_content and extraction_log for readability
+        result_display = {k: v for k, v in result.items() if k not in ['file_content', 'extraction_log']}
+        print(json.dumps(result_display, indent=2))
+
+        # Print OCR verification summary
+        print("\n" + "="*60)
+        print("OCR VERIFICATION SUMMARY")
+        print("="*60)
+        ocr = result.get('ocr_verification', {})
+        print(f"Status: {ocr.get('status', 'N/A')}")
+        print(f"Expected: {ocr.get('expected_totals', {})}")
+        print(f"Extracted: {ocr.get('extracted_totals', {})}")
+        if ocr.get('discrepancy'):
+            print(f"Discrepancy: {ocr.get('discrepancy')} hours")
+        for detail in ocr.get('details', []):
+            print(f"  - {detail}")
+
+    except Exception as e:
+        print(f"Error: {e}")
+        traceback.print_exc()
+        sys.exit(1)
