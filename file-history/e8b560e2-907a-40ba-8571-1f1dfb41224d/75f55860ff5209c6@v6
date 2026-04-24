@@ -1,0 +1,2438 @@
+"""
+CFF Workforce Planning Solver - FastAPI Service
+Provides HTTP API and WebSocket endpoints for triggering and monitoring solver jobs.
+
+Endpoints (with environment prefix):
+- POST /{env}/planner/api/v1/solver/trigger - Start a new solver job
+- GET /{env}/planner/api/v1/solver/status/{job_id} - Check job status
+- WebSocket /{env}/planner/api/v1/solver/progress/{job_id} - Real-time progress updates
+- GET /{env}/planner/docs - Swagger UI documentation
+
+Where {env} is 'dev' or 'qa' based on SOLVER_ENV environment variable.
+"""
+import os
+import asyncio
+import uuid
+import logging
+from datetime import datetime
+from typing import Optional, Dict, List, Any
+from enum import Enum
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks, APIRouter, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, validator
+import httpx
+import uvicorn
+
+# Get environment and construct root path
+SOLVER_ENV = os.environ.get("SOLVER_ENV", "dev").lower()
+ROOT_PATH = f"/{SOLVER_ENV}/planner"
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# MODELS
+# =============================================================================
+
+class JobStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETE = "complete"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class SolverStep(str, Enum):
+    INITIALIZING = "initializing"
+    FETCHING_DATA = "fetching_data"
+    FETCHING_CONSTRAINTS = "fetching_constraints"
+    FETCHING_OBJECTIVES = "fetching_objectives"
+    PREPROCESSING = "preprocessing"
+    BUILDING_MODEL = "building_model"
+    ADDING_CONSTRAINTS = "adding_constraints"
+    ADDING_OBJECTIVES = "adding_objectives"
+    SOLVING = "solving"
+    ANALYZING = "analyzing"
+    SAVING_RESULTS = "saving_results"
+    COMPLETE = "complete"
+
+
+STEP_PROGRESS = {
+    SolverStep.INITIALIZING: 0.0,
+    SolverStep.FETCHING_DATA: 0.1,
+    SolverStep.FETCHING_CONSTRAINTS: 0.2,
+    SolverStep.FETCHING_OBJECTIVES: 0.25,
+    SolverStep.PREPROCESSING: 0.3,
+    SolverStep.BUILDING_MODEL: 0.4,
+    SolverStep.ADDING_CONSTRAINTS: 0.5,
+    SolverStep.ADDING_OBJECTIVES: 0.55,
+    SolverStep.SOLVING: 0.6,
+    SolverStep.ANALYZING: 0.8,
+    SolverStep.SAVING_RESULTS: 0.9,
+    SolverStep.COMPLETE: 1.0,
+}
+
+STEP_MESSAGES = {
+    SolverStep.INITIALIZING: "Initializing solver...",
+    SolverStep.FETCHING_DATA: "Fetching demands and resources...",
+    SolverStep.FETCHING_CONSTRAINTS: "Loading constraint values...",
+    SolverStep.FETCHING_OBJECTIVES: "Loading objective weights...",
+    SolverStep.PREPROCESSING: "Preprocessing data...",
+    SolverStep.BUILDING_MODEL: "Building CP-SAT model...",
+    SolverStep.ADDING_CONSTRAINTS: "Adding constraints...",
+    SolverStep.ADDING_OBJECTIVES: "Adding objectives...",
+    SolverStep.SOLVING: "Solving optimization model...",
+    SolverStep.ANALYZING: "Running post-solve analysis...",
+    SolverStep.SAVING_RESULTS: "Saving results to database...",
+    SolverStep.COMPLETE: "Planning complete!",
+}
+
+
+class LockedDateRange(BaseModel):
+    """Date range for locking assignments (preserving existing assignments)."""
+    start: str = Field(..., description="Start date (YYYY-MM-DD)")
+    end: str = Field(..., description="End date (YYYY-MM-DD)")
+    reason: Optional[str] = Field(None, description="Reason for locking")
+
+# Backward compatibility alias
+BlockedDateRange = LockedDateRange
+
+
+class PlanRange(BaseModel):
+    """Date range for planning - filter demands to a specific period."""
+    start_date: Optional[str] = Field(None, description="Start date (YYYY-MM-DD or ISO 8601). If None, no start filter.")
+    end_date: Optional[str] = Field(None, description="End date (YYYY-MM-DD or ISO 8601). If None, no end filter.")
+
+    def is_empty(self) -> bool:
+        """Check if plan_range has no dates specified."""
+        return self.start_date is None and self.end_date is None
+
+
+class SolverOptions(BaseModel):
+    """Options for solver execution"""
+    time_limit_seconds: int = Field(
+        default=7200,
+        ge=60,
+        description="Maximum solver time in seconds (default 7200 = 2 hours). "
+                    "Solver runs until complete; progress warnings shown if exceeding estimate. "
+                    "User can cancel anytime."
+    )
+
+
+class TriggerRequest(BaseModel):
+    """
+    Request body for triggering a solver job.
+
+    ## Example Request
+    ```json
+    {
+      "user_id": "user_123",
+      "test_mode": true,
+      "test_requests": 100,
+      "test_resources": 100,
+      "plan_range": {"start_date": "2026-01-01", "end_date": "2026-01-31"},
+      "target_team_ids": [1, 2],
+      "target_group_ids": [10],
+      "lock_allocations": true,
+      "locked_date_ranges": [{"start": "2026-01-10", "end": "2026-01-15", "reason": "Sprint freeze"}],
+      "replannable_demand_type": ["Service de nuit", "Service du matin"],
+      "options": {"time_limit_seconds": 300}
+    }
+    ```
+
+    ## Behavior Matrix
+    ```
+    lock_allocations=false                              → no blockers, solver is free to assign everywhere
+    lock_allocations=true  + replannable=[]             → ALL assignments in plan_range block
+    lock_allocations=true  + replannable=["X","Y"]      → all assignments block EXCEPT types X and Y
+    ```
+    plan_range (start_date/end_date) is ALWAYS the primary filter.
+    FE's replannable_demand_type is the single source of truth — no hardcoded type categories.
+
+    ## Target Filtering
+    - `target_team_ids` and `target_group_ids` filter **resources only** (demands are NOT filtered)
+    - Empty lists = no filtering (all resources included)
+
+    ## Replannable Calendar Types
+    The `replannable_demand_type` parameter controls which existing calendar assignments
+    can be overwritten. Types in this list are EXCLUDED from blocking, making those
+    resources AVAILABLE for new assignments. Types NOT in this list will BLOCK resources.
+    Only active when `lock_allocations=true`.
+
+    ## Active Constraints
+    The solver applies the following validated constraints:
+    - **CP_02**: Resource-category qualification matching (HARD)
+    - **HC_IR_ER**: Apprentices blocked from IR projects (HARD)
+    - **HC_05**: Multi-category demands require all categories (HARD)
+    - **HC_01**: Block assignments during non-replannable calendar entries (HARD)
+    - **LC_01**: Max 48h/week (legal), 45h (company) (SOFT)
+    - **LC_02**: Max 9h in any 14h window (SOFT)
+    - **LC_03**: Max 12h per calendar day (SOFT)
+    - **LC_04**: Min 12h rest between shifts (HARD)
+    """
+    # Identity
+    user_id: str = Field(default="user_000", description="User ID for audit trail and result ownership")
+
+    # Mode
+    test_mode: bool = Field(default=True, description="Enable test mode - slices dataset to test_requests/test_resources after plan_range filter")
+    test_requests: int = Field(default=50, ge=1, le=1000, description="Number of demands when test_mode=true (smart strided sampling)")
+    test_resources: int = Field(default=50, ge=1, le=500, description="Number of resources when test_mode=true (smart strided sampling)")
+    use_mock_data: bool = Field(default=False, description="Use locally generated mock data (no backend calls) - for offline testing only")
+
+    # Scope: what to plan
+    plan_range: Optional[PlanRange] = Field(None, description="Date range filter - demands are filtered by shift_start_time before test_mode slicing")
+    target_team_ids: List[int] = Field(default_factory=list, description="Filter resources by team IDs (resources only, demands not filtered)")
+    target_group_ids: List[int] = Field(default_factory=list, description="Filter resources by group IDs (resources only, demands not filtered)")
+
+    # Locking: what to preserve
+    lock_allocations: bool = Field(default=True, description="Master switch: lock existing service assignments in plan_range")
+    locked_date_ranges: List[LockedDateRange] = Field(default_factory=list, description="When lock_allocations=true, only lock assignments overlapping these ranges. Empty = lock all in plan_range.")
+    replannable_demand_type: List[str] = Field(
+        default_factory=list,
+        description="Calendar types that CAN be re-planned (excluded from blocking). Only active when lock_allocations=true."
+    )
+
+    # DISABLED V1 (kept for schema compatibility, skipped in logic)
+    blocked_teams: List[int] = Field(default_factory=list, description="[DISABLED V1] Use target_team_ids instead. Ignored in logic.")
+    blocked_locations: List[int] = Field(default_factory=list, description="[DISABLED V1] Ignored in logic.")
+    blocked_date_ranges: List[LockedDateRange] = Field(default_factory=list, description="[DEPRECATED] Use locked_date_ranges instead. Ignored in logic.")
+
+    options: SolverOptions = Field(default_factory=SolverOptions, description="Solver execution options (time limits, etc.)")
+
+    @validator('blocked_teams', 'blocked_locations', 'target_team_ids', 'target_group_ids', pre=True, each_item=True)
+    def coerce_to_int(cls, v):
+        """Coerce string integers to int (e.g., '1' -> 1)"""
+        if v is None:
+            return v
+        return int(v)
+
+
+class TimeEstimateInfo(BaseModel):
+    """Time estimate for user display"""
+    estimated_seconds: int
+    estimated_display: str  # "~2-3 minutes"
+    confidence: str  # "high", "medium", "low"
+
+
+class TriggerResponse(BaseModel):
+    """Response after triggering a solver job"""
+    status: str = "accepted"
+    job_id: str
+    websocket_url: str
+    status_url: str
+    message: str = "Solver job has been queued"
+    time_estimate: Optional[TimeEstimateInfo] = None  # For Workflow A
+    queue_position: Optional[int] = None  # 0 = running/next, 1+ = waiting
+
+
+class ProgressMessage(BaseModel):
+    """WebSocket progress message with time context"""
+    type: str  # "progress", "status", "error", "complete", "warning"
+    step: str
+    progress: float
+    message: str
+    timestamp: str
+    details: Optional[Dict[str, Any]] = None
+    # Time context for UX
+    elapsed_seconds: Optional[float] = None
+    estimated_seconds: Optional[int] = None
+    time_status: Optional[str] = None  # "normal", "exceeding_estimate", "significantly_delayed"
+    warning: Optional[str] = None  # User-friendly warning message
+
+
+class JobStatusResponse(BaseModel):
+    """Response for job status check with time context"""
+    job_id: str
+    status: JobStatus
+    current_step: Optional[str] = None
+    progress: float = 0.0
+    elapsed_seconds: Optional[float] = None
+    estimated_seconds: Optional[int] = None
+    time_status: Optional[str] = None  # "normal", "exceeding_estimate", "significantly_delayed"
+    warning: Optional[str] = None  # Warning message when exceeding estimate
+    plan_id: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    queue_position: Optional[int] = None  # 0 = running/next, 1+ = waiting (only for PENDING jobs)
+
+
+# =============================================================================
+# JOB MANAGER
+# =============================================================================
+
+class SolverJob:
+    """Represents a solver job with time tracking for UX"""
+    def __init__(self, job_id: str, request: TriggerRequest):
+        self.job_id = job_id
+        self.request = request
+        self.status = JobStatus.PENDING
+        self.current_step = SolverStep.INITIALIZING
+        self.progress = 0.0
+        self.message = "Job queued"
+        self.start_time: Optional[datetime] = None
+        self.end_time: Optional[datetime] = None
+        self.plan_id: Optional[str] = None
+        self.result: Optional[Dict[str, Any]] = None
+        self.error: Optional[str] = None
+        self.progress_history: List[ProgressMessage] = []
+        # Time tracking for UX
+        self.estimated_seconds: Optional[int] = None
+        self.time_estimate_display: Optional[str] = None
+        self.time_estimate_confidence: Optional[str] = None
+        # Actual data counts (set after data fetching)
+        self.num_demands: Optional[int] = None
+        self.num_resources: Optional[int] = None
+        # Partition tracking for webhook progress
+        self.partition_completed: int = 0
+        self.partition_total: int = 0
+        self.partition_last_label: Optional[str] = None
+        # WebSocket URL (set by trigger endpoint)
+        self.websocket_url: Optional[str] = None
+        # Cancellation flag (set by cancel endpoint)
+        self.cancelled = False
+
+    def set_time_estimate(self, estimated_seconds: int, display: str, confidence: str):
+        """Set time estimate for this job"""
+        self.estimated_seconds = estimated_seconds
+        self.time_estimate_display = display
+        self.time_estimate_confidence = confidence
+
+    def get_time_status(self) -> tuple:
+        """
+        Get time status and warning message for UX.
+        Returns (time_status, warning_message)
+        """
+        if not self.start_time or not self.estimated_seconds:
+            return ("normal", None)
+
+        elapsed = self.get_elapsed_seconds() or 0
+
+        # Calculate how much we've exceeded the estimate
+        if elapsed <= self.estimated_seconds:
+            return ("normal", None)
+        elif elapsed <= self.estimated_seconds * 1.5:
+            return ("exceeding_estimate",
+                    f"Taking longer than expected ({int(elapsed)}s / ~{self.estimated_seconds}s estimated). "
+                    "The solver is still working. You can wait or cancel if needed.")
+        elif elapsed <= self.estimated_seconds * 2.5:
+            return ("significantly_delayed",
+                    f"Significantly delayed ({int(elapsed)}s / ~{self.estimated_seconds}s estimated). "
+                    "Consider cancelling and reducing dataset size by blocking more teams, locations, or dates.")
+        else:
+            return ("significantly_delayed",
+                    f"Very delayed ({int(elapsed)}s / ~{self.estimated_seconds}s estimated). "
+                    "Strongly recommend cancelling and using a smaller dataset or date range.")
+
+    def update_progress(self, step: SolverStep, details: Optional[Dict] = None):
+        """Update job progress with time context"""
+        self.current_step = step
+        self.progress = STEP_PROGRESS.get(step, self.progress)
+        self.message = STEP_MESSAGES.get(step, f"Step: {step}")
+
+        # Get time context for UX
+        elapsed = self.get_elapsed_seconds()
+        time_status, warning = self.get_time_status()
+
+        progress_msg = ProgressMessage(
+            type="warning" if warning and step != SolverStep.COMPLETE else ("progress" if step != SolverStep.COMPLETE else "complete"),
+            step=step.value,
+            progress=self.progress,
+            message=self.message,
+            timestamp=datetime.now().isoformat(),
+            details=details,
+            elapsed_seconds=elapsed,
+            estimated_seconds=self.estimated_seconds,
+            time_status=time_status,
+            warning=warning
+        )
+        self.progress_history.append(progress_msg)
+
+        if warning:
+            logger.warning(f"Job {self.job_id}: {warning}")
+        logger.info(f"Job {self.job_id}: {step.value} ({self.progress*100:.0f}%) - elapsed: {elapsed:.1f}s")
+
+    def get_elapsed_seconds(self) -> Optional[float]:
+        """Get elapsed time in seconds"""
+        if self.start_time:
+            end = self.end_time or datetime.now()
+            return (end - self.start_time).total_seconds()
+        return None
+
+
+class JobManager:
+    """Manages solver jobs"""
+    def __init__(self):
+        self.jobs: Dict[str, SolverJob] = {}
+        self.active_websockets: Dict[str, List[WebSocket]] = {}
+        from config import MAX_CONCURRENT_JOBS
+        self._solver_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+        logger.info(f"JobManager initialized: max_concurrent_jobs={MAX_CONCURRENT_JOBS}")
+
+    def create_job(self, request: TriggerRequest) -> SolverJob:
+        """Create a new solver job"""
+        job_id = f"JOB-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+        job = SolverJob(job_id, request)
+        self.jobs[job_id] = job
+        logger.info(f"Created job {job_id}")
+        return job
+
+    def get_job(self, job_id: str) -> Optional[SolverJob]:
+        """Get a job by ID"""
+        return self.jobs.get(job_id)
+
+    async def broadcast_progress(self, job_id: str, message: ProgressMessage):
+        """Broadcast progress to all connected WebSocket clients"""
+        if job_id in self.active_websockets:
+            disconnected = []
+            for ws in self.active_websockets[job_id]:
+                try:
+                    await ws.send_json(message.model_dump())
+                except Exception as e:
+                    logger.warning(f"Failed to send to WebSocket: {e}")
+                    disconnected.append(ws)
+
+            # Remove disconnected clients
+            for ws in disconnected:
+                self.active_websockets[job_id].remove(ws)
+
+    def add_websocket(self, job_id: str, websocket: WebSocket):
+        """Add a WebSocket connection for a job"""
+        if job_id not in self.active_websockets:
+            self.active_websockets[job_id] = []
+        self.active_websockets[job_id].append(websocket)
+
+    def remove_websocket(self, job_id: str, websocket: WebSocket):
+        """Remove a WebSocket connection"""
+        if job_id in self.active_websockets and websocket in self.active_websockets[job_id]:
+            self.active_websockets[job_id].remove(websocket)
+
+    def get_pending_count(self) -> int:
+        """Count jobs waiting to run (PENDING status)."""
+        return sum(1 for j in self.jobs.values() if j.status == JobStatus.PENDING)
+
+    def get_running_count(self) -> int:
+        """Count jobs currently running."""
+        return sum(1 for j in self.jobs.values() if j.status == JobStatus.RUNNING)
+
+    async def cancel_job(self, job_id: str) -> bool:
+        """Cancel a job. Returns True if cancellation was accepted."""
+        job = self.jobs.get(job_id)
+        if not job:
+            return False
+        if job.status in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+            return False
+
+        job.cancelled = True
+        previous_status = job.status
+        job.status = JobStatus.CANCELLED
+        job.error = "Cancelled by user"
+        job.end_time = datetime.now()
+
+        # Broadcast cancellation via WebSocket
+        cancel_msg = ProgressMessage(
+            type="cancelled",
+            step="cancelled",
+            progress=job.progress,
+            message="Job cancelled by user",
+            timestamp=datetime.now().isoformat(),
+            details={
+                "cancelled_at_step": job.current_step.value if job.current_step else None,
+                "elapsed_seconds": job.get_elapsed_seconds(),
+            }
+        )
+        job.progress_history.append(cancel_msg)
+        await self.broadcast_progress(job_id, cancel_msg)
+
+        # Send webhook to backend DB
+        await send_webhook(job, "CANCELLED", job.progress, current_step="cancelled")
+
+        # Clean up checkpoint files
+        try:
+            from config import PARTITION_ENABLE_CHECKPOINTS, PARTITION_CHECKPOINT_DIR
+            if PARTITION_ENABLE_CHECKPOINTS:
+                from solver.checkpoint_manager import CheckpointManager
+                cm = CheckpointManager(PARTITION_CHECKPOINT_DIR)
+                cm.clean_old_checkpoints(job_id, keep_last=0)
+                logger.info(f"Cleaned up checkpoints for cancelled job {job_id}")
+        except Exception as e:
+            logger.warning(f"Checkpoint cleanup failed for {job_id}: {e}")
+
+        logger.info(f"Job {job_id} cancelled (was {previous_status.value})")
+        return True
+
+    def get_queue_position(self, job_id: str) -> int:
+        """Get queue position for a job. 0 = running/next, 1+ = waiting."""
+        job = self.jobs.get(job_id)
+        if not job or job.status != JobStatus.PENDING:
+            return 0
+        # Count PENDING jobs created before this one + running jobs
+        position = sum(1 for j in self.jobs.values() if j.status == JobStatus.RUNNING)
+        for jid, j in self.jobs.items():
+            if jid == job_id:
+                break
+            if j.status == JobStatus.PENDING:
+                position += 1
+        return position
+
+
+# Ensure solver_v2 root is on sys.path so config imports work at module load time.
+# (Must run before JobManager() which imports from config.)
+import sys as _sys
+_solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _solver_dir not in _sys.path:
+    _sys.path.insert(0, _solver_dir)
+
+# Global job manager
+job_manager = JobManager()
+
+
+# =============================================================================
+# WEBHOOK HELPER
+# =============================================================================
+
+async def send_webhook(
+    job: SolverJob,
+    status: str,
+    progress: float,
+    current_step: str = None,
+    plan_id: str = None,
+    error_message: str = None,
+    partition_info: dict = None,
+):
+    """
+    Send a best-effort webhook notification to the backend.
+    Catches all exceptions to avoid disrupting solver flow.
+    """
+    from config import SOLVER_WEBHOOK_ENABLED, SOLVER_WEBHOOK_URL
+
+    if not SOLVER_WEBHOOK_ENABLED:
+        return
+
+    payload = {
+        "job_id": job.job_id,
+        "user_id": job.request.user_id,
+        "status": status,
+        "progress": round(progress, 1),
+        "current_step": current_step,
+        "plan_id": plan_id or job.plan_id,
+        "error_message": error_message,
+        "metadata": {
+            "test_mode": job.request.test_mode,
+            "num_demands": job.num_demands,
+            "num_resources": job.num_resources,
+            "estimated_seconds": job.estimated_seconds,
+            "partition_info": partition_info,
+            "websocket_url": job.websocket_url,
+            "plan_range": {
+                "start_date": job.request.plan_range.start_date,
+                "end_date": job.request.plan_range.end_date,
+            } if job.request.plan_range and not job.request.plan_range.is_empty() else None,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(SOLVER_WEBHOOK_URL, json=payload)
+            logger.info(f"Webhook sent: status={status} progress={progress:.1f} -> HTTP {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Webhook failed (best-effort): {e}")
+
+
+# =============================================================================
+# SOLVER EXECUTION
+# =============================================================================
+
+async def run_solver_job(job: SolverJob):
+    """Semaphore wrapper: queues job until a solver slot is available."""
+    try:
+        logger.info(f"Job {job.job_id}: waiting for solver slot (queue position: {job_manager.get_queue_position(job.job_id)})...")
+        async with job_manager._solver_semaphore:
+            logger.info(f"Job {job.job_id}: acquired solver slot, starting execution")
+            await _execute_solver_job(job)
+    except Exception as e:
+        if job.status not in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+            logger.error(f"Job {job.job_id}: semaphore wrapper caught error: {e}")
+            job.status = JobStatus.FAILED
+            job.error = str(e)
+            job.end_time = datetime.now()
+            await send_webhook(job, "FAILED", 0.0, error_message=str(e))
+
+
+def _fetch_and_preprocess_sync(job: SolverJob):
+    """
+    Synchronous helper: fetch all data, filter, fetch constraints/objectives, preprocess.
+    Runs in thread pool via run_in_executor to keep the event loop free.
+    Returns (client, requests_data, resources_data, absences_data,
+             preprocessed_data, constraint_values, objective_weights).
+    """
+    import sys
+    import os
+
+    solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if solver_dir not in sys.path:
+        sys.path.insert(0, solver_dir)
+
+    from api.client import get_client
+    from api.data_pipeline import (
+        filter_resources_by_teams, filter_resources_by_groups,
+        build_locked_assignments
+    )
+    from preprocessing.constraints import fetch_constraint_values
+    from preprocessing.objectives import fetch_objective_weights
+    from preprocessing.data_processor import preprocess_data
+    from config import CURRENT_ENV
+
+    # Create client
+    client = get_client(env=CURRENT_ENV, user_id=job.request.user_id)
+
+    # Deprecation warnings for V1 disabled fields
+    if job.request.blocked_teams or job.request.blocked_locations:
+        logger.warning("blocked_teams/blocked_locations DISABLED V1 - use target_team_ids/target_group_ids instead. Values ignored.")
+    if job.request.blocked_date_ranges:
+        logger.warning("blocked_date_ranges DEPRECATED - use locked_date_ranges instead. Values ignored.")
+
+    rt_replannable = False
+    ct_replannable = False
+
+    if job.request.use_mock_data:
+        from agentic_integration.tests.mock_data import (
+            generate_mock_resources, generate_mock_demands, generate_mock_absences
+        )
+        resources_data = generate_mock_resources(job.request.test_resources)
+        requests_data = generate_mock_demands(job.request.test_requests)
+        resource_ids = [r['resource_id'] for r in resources_data['data']]
+        absences_data = generate_mock_absences(resource_ids, absence_rate=0.2)
+    else:
+        # --- 4A. Parse plan_range ---
+        start_date = None
+        end_date = None
+        if job.request.plan_range and not job.request.plan_range.is_empty():
+            start_date = job.request.plan_range.start_date
+            end_date = job.request.plan_range.end_date
+            if start_date and 'T' in start_date:
+                start_date = start_date.split('T')[0]
+            if end_date and 'T' in end_date:
+                end_date = end_date.split('T')[0]
+            logger.info(f"Plan range: {start_date} to {end_date}")
+        else:
+            logger.info("No plan_range specified - fetching all demands")
+
+        # --- 4A. Fetch demands ---
+        requests_data = client.get_demands(start_date=start_date, end_date=end_date)
+
+        # --- 4B. Fetch resources (filtered by target teams/groups) ---
+        target_teams = set(job.request.target_team_ids)
+        target_groups = set(job.request.target_group_ids)
+
+        resources_data = client.get_resources(
+            team_id=list(target_teams)[0] if len(target_teams) == 1 else None,
+            group_id=list(target_groups)[0] if len(target_groups) == 1 else None
+        )
+        if len(target_teams) > 1:
+            resources_data['data'] = filter_resources_by_teams(resources_data['data'], target_teams)
+            resources_data['total'] = len(resources_data['data'])
+            logger.info(f"Client-side team filter: {len(resources_data['data'])} resources for teams {target_teams}")
+        elif len(target_teams) == 1:
+            logger.info(f"Server-side team filter: {len(resources_data['data'])} resources for team {target_teams}")
+        if len(target_groups) > 1:
+            resources_data['data'] = filter_resources_by_groups(resources_data['data'], target_groups)
+            resources_data['total'] = len(resources_data['data'])
+            logger.info(f"Client-side group filter: {len(resources_data['data'])} resources for groups {target_groups}")
+        elif len(target_groups) == 1:
+            logger.info(f"Server-side group filter: {len(resources_data['data'])} resources for group {target_groups}")
+
+        # Log resource breakdown
+        if resources_data['data']:
+            res_by_cat = {}
+            res_by_group = {}
+            for r in resources_data['data']:
+                for cat in (r.get('resource_categories') or []):
+                    res_by_cat[cat] = res_by_cat.get(cat, 0) + 1
+                gname = r.get('group_name', 'UNKNOWN')
+                res_by_group[gname] = res_by_group.get(gname, 0) + 1
+            logger.info(f"Resource categories: {dict(sorted(res_by_cat.items(), key=lambda x: -x[1]))}")
+            logger.info(f"Resources by group: {dict(sorted(res_by_group.items(), key=lambda x: -x[1]))}")
+
+        # --- 4B-bis. Category pre-filter ---
+        resource_categories = {
+            cat
+            for r in resources_data['data']
+            for cat in (r.get('resource_categories') or [])
+        }
+        if resource_categories:
+            demands_before = len(requests_data['data'])
+            requests_data['data'] = [
+                d for d in requests_data['data']
+                if d.get('resource_category', '') in resource_categories
+            ]
+            requests_data['total'] = len(requests_data['data'])
+            filtered_out = demands_before - len(requests_data['data'])
+            logger.info(f"Category pre-filter: {demands_before} → {len(requests_data['data'])} demands ({filtered_out} uncoverable removed, {len(resource_categories)} resource categories)")
+
+        # Log demand category distribution after filtering
+        if requests_data['data']:
+            demand_cats = {}
+            for d in requests_data['data']:
+                cat = d.get('resource_category', 'UNKNOWN')
+                demand_cats[cat] = demand_cats.get(cat, 0) + 1
+            logger.info(f"Demand categories after filters: {dict(sorted(demand_cats.items(), key=lambda x: -x[1]))}")
+
+        # --- 4B-ter. Operation point filter ---
+        if target_teams:
+            try:
+                op_points = client.get_operation_points(team_ids=list(target_teams))
+                team_station_codes = {op['station_code'] for op in op_points if op.get('station_code')}
+                if team_station_codes:
+                    demands_before_op = len(requests_data['data'])
+                    location_dist = {}
+                    for d in requests_data['data']:
+                        slc = d.get('start_location_code', 'UNKNOWN')
+                        location_dist[slc] = location_dist.get(slc, 0) + 1
+
+                    requests_data['data'] = [
+                        d for d in requests_data['data']
+                        if d.get('start_location_code', '') in team_station_codes
+                    ]
+                    requests_data['total'] = len(requests_data['data'])
+                    filtered_out_op = demands_before_op - len(requests_data['data'])
+
+                    filtered_location_dist = {}
+                    for d in requests_data['data']:
+                        slc = d.get('start_location_code', 'UNKNOWN')
+                        filtered_location_dist[slc] = filtered_location_dist.get(slc, 0) + 1
+
+                    logger.info(
+                        f"Operation point filter: {demands_before_op} → {len(requests_data['data'])} demands "
+                        f"({filtered_out_op} outside team territory, "
+                        f"{len(team_station_codes)} station codes for teams {target_teams})"
+                    )
+                    logger.info(f"Team station codes: {sorted(team_station_codes)}")
+                    logger.info(f"Demand locations in scope: {dict(sorted(filtered_location_dist.items(), key=lambda x: -x[1]))}")
+
+                    if len(requests_data['data']) == 0:
+                        logger.warning(
+                            f"No demands match team operation points! "
+                            f"All {demands_before_op} demands were outside team territory. "
+                            f"Top demand locations: {dict(sorted(location_dist.items(), key=lambda x: -x[1])[:10])}"
+                        )
+                else:
+                    logger.warning(
+                        f"No station codes found in operation points for teams {target_teams}. "
+                        f"Proceeding with ALL {len(requests_data['data'])} demands (no territorial filter applied)."
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to fetch operation points for teams {target_teams}: {e}. "
+                    f"Proceeding with ALL {len(requests_data['data'])} demands (no territorial filter applied)."
+                )
+
+        # --- 4C. Test mode slicing ---
+        sliced_resource_ids = None
+        if job.request.test_mode:
+            demands = requests_data['data']
+            target_demands = job.request.test_requests
+            if len(demands) > target_demands:
+                stride = len(demands) // target_demands
+                requests_data['data'] = demands[::stride][:target_demands]
+            requests_data['total'] = len(requests_data['data'])
+
+            resources = resources_data['data']
+            target_resources = job.request.test_resources
+            if len(resources) > target_resources:
+                stride = len(resources) // target_resources
+                resources_data['data'] = resources[::stride][:target_resources]
+            resources_data['total'] = len(resources_data['data'])
+
+            sliced_resource_ids = {r['resource_id'] for r in resources_data['data']}
+            logger.info(f"Test mode: smart sliced to {len(requests_data['data'])} demands, {len(resources_data['data'])} resources (strided sampling)")
+
+        # --- 4D. Fetch resource blocks ---
+        replannable_types = job.request.replannable_demand_type
+        lock_allocations = job.request.lock_allocations
+
+        filter_resource_ids = list(sliced_resource_ids) if sliced_resource_ids else None
+        if filter_resource_ids:
+            logger.info(f"Fetching resource blocks for {len(filter_resource_ids)} sliced resources only (server-side filter)")
+
+        from api.data_pipeline import sanitize_replannable_types, filter_to_always_blocking
+
+        if not lock_allocations:
+            # Even with lock_allocations=false, true absences must still block
+            blocks_data = client.get_resource_blocks(
+                category="all",
+                start_date=start_date,
+                end_date=end_date,
+                resource_ids=filter_resource_ids
+            )
+            all_blocks = filter_to_always_blocking(blocks_data.get('data', []))
+            logger.info(f"lock_allocations=false: kept {len(all_blocks)} always-blocking absence blocks "
+                        f"(from {blocks_data.get('total', 0)} total)")
+        else:
+            safe_replannable = sanitize_replannable_types(replannable_types, logger)
+            blocks_data = client.get_resource_blocks(
+                category="all",
+                start_date=start_date,
+                end_date=end_date,
+                exclude_calendar_types=safe_replannable if safe_replannable else None,
+                resource_ids=filter_resource_ids
+            )
+            all_blocks = blocks_data.get('data', [])
+            logger.info(f"lock_allocations=true: {len(all_blocks)} blocks "
+                        f"(replannable excluded: {safe_replannable or 'none'})")
+
+        absences_data = {'data': all_blocks, 'total': len(all_blocks)}
+        logger.info(f"Total resource blocks for solver: {len(all_blocks)}")
+
+        # LC-06: determine if RT/CT should be treated as replannable rest-day allocations.
+        # Only meaningful when lock_allocations=true (otherwise absences are never replanned).
+        from config import RT_CALENDAR_TYPE, CT_CALENDAR_TYPE
+        raw_replannable = [t.strip() for t in (replannable_types or [])]
+        rt_replannable = lock_allocations and (RT_CALENDAR_TYPE in raw_replannable)
+        ct_replannable = lock_allocations and (CT_CALENDAR_TYPE in raw_replannable)
+        logger.info(f"LC-06 rest replanning: rt_replannable={rt_replannable}, ct_replannable={ct_replannable}")
+
+        # Set actual data counts on job
+        job.num_demands = len(requests_data.get('data', []))
+        job.num_resources = len(resources_data.get('data', []))
+        logger.info(f"Actual counts: {job.num_demands} demands, {job.num_resources} resources")
+
+    # Fetch constraints & objectives
+    constraint_values = fetch_constraint_values(planning_mode="Balanced", user_id=job.request.user_id)
+    objective_weights = fetch_objective_weights(user_id=job.request.user_id)
+
+    # Preprocess
+    preprocessed_data = preprocess_data(requests_data, resources_data, absences_data)
+    preprocessed_data.targeted_request_ids = None
+    preprocessed_data.rt_replannable = rt_replannable
+    preprocessed_data.ct_replannable = ct_replannable
+
+    return (client, requests_data, resources_data, absences_data,
+            preprocessed_data, constraint_values, objective_weights)
+
+
+def _save_results_sync(client, job, model, analysis_report, requests_data, resources_data,
+                       rt_replannable: bool = False, ct_replannable: bool = False):
+    """
+    Synchronous helper: save solver results to backend.
+    Runs in thread pool via run_in_executor to keep the event loop free.
+    Returns plan_id.
+
+    fetch_rt/fetch_ct in planner_output are the inverse of rt_replannable/ct_replannable:
+    - rt_replannable=True  → solver produced RT allocations → fetch_rt=False (read from planner_assignments)
+    - rt_replannable=False → solver did not replan RT      → fetch_rt=True  (FE reads from external DB)
+    """
+    import sys
+    import os
+
+    solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if solver_dir not in sys.path:
+        sys.path.insert(0, solver_dir)
+
+    from ortools.sat.python import cp_model as cp
+
+    plan_id = f"PLAN-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    job.plan_id = plan_id
+
+    solver_status = 'OPTIMAL' if model.status == cp.OPTIMAL else 'FEASIBLE' if model.status == cp.FEASIBLE else 'INFEASIBLE' if model.status == cp.INFEASIBLE else 'UNKNOWN'
+    solve_time = model.solver.WallTime() if hasattr(model, 'solver') else 0.0
+    assignments_list = model.solution_assignments if hasattr(model, 'solution_assignments') else []
+    num_violations = analysis_report.get('summary', {}).get('violations', {}).get('total_count', 0) if analysis_report else 0
+
+    # Capture the final CP-SAT objective cost so planner_output.objective_value
+    # isn't null in the DB. Only valid when the solver reached a feasible/optimal
+    # solution — skip on INFEASIBLE/UNKNOWN to avoid calling ObjectiveValue()
+    # on an empty model.
+    objective_value = None
+    if model.status in (cp.OPTIMAL, cp.FEASIBLE) and hasattr(model, 'solver'):
+        try:
+            objective_value = float(model.solver.ObjectiveValue())
+        except Exception as _exc:
+            logger.warning(f"Could not read ObjectiveValue(): {_exc}")
+            objective_value = None
+
+    # Enrich assignments with team_name and group_name
+    if assignments_list:
+        try:
+            teams = client.get_teams()
+            groups = client.get_groups()
+            team_lookup = {t['team_id']: t['team_name'] for t in teams}
+            group_lookup = {g['group_id']: g['group_name'] for g in groups}
+            for a in assignments_list:
+                a['team_name'] = team_lookup.get(a.get('team_id'))
+                a['group_name'] = group_lookup.get(a.get('group_id'))
+            logger.info(f"Enriched {len(assignments_list)} assignments with team/group names")
+        except Exception as e:
+            logger.warning(f"Could not enrich assignments with team/group names: {e}")
+
+    # Log assignment breakdown
+    if assignments_list:
+        asgn_by_team = {}
+        asgn_by_group = {}
+        asgn_by_cat = {}
+        night_count = 0
+        for a in assignments_list:
+            tname = a.get('team_name') or f"team_{a.get('team_id', '?')}"
+            asgn_by_team[tname] = asgn_by_team.get(tname, 0) + 1
+            gname = a.get('group_name') or f"group_{a.get('group_id', '?')}"
+            asgn_by_group[gname] = asgn_by_group.get(gname, 0) + 1
+            cat = a.get('resource_category', 'UNKNOWN')
+            asgn_by_cat[cat] = asgn_by_cat.get(cat, 0) + 1
+            if a.get('is_night_shift'):
+                night_count += 1
+
+        distinct_resources = len({a.get('resource_id') for a in assignments_list})
+        distinct_demands = len({a.get('demand_id') for a in assignments_list})
+
+        logger.info(f"Assignments breakdown: {len(assignments_list)} total, "
+                    f"{distinct_resources} distinct resources, {distinct_demands} distinct demands, "
+                    f"{night_count} night shifts")
+        logger.info(f"Assignments by team: {dict(sorted(asgn_by_team.items(), key=lambda x: -x[1]))}")
+        logger.info(f"Assignments by group: {dict(sorted(asgn_by_group.items(), key=lambda x: -x[1]))}")
+        logger.info(f"Assignments by category: {dict(sorted(asgn_by_cat.items(), key=lambda x: -x[1]))}")
+    else:
+        logger.info("No assignments produced by solver")
+
+    # Calculate counts from actual data
+    actual_num_requests = len(requests_data.get('data', []))
+    actual_num_resources = len(resources_data.get('data', []))
+
+    client.post_planner_output(
+        plan_id=plan_id,
+        status=solver_status,
+        assignments=assignments_list,
+        num_requests=actual_num_requests,
+        num_resources=actual_num_resources,
+        num_violations=num_violations,
+        solve_time_seconds=solve_time,
+        metadata={
+            'job_id': job.job_id,
+            'test_mode': job.request.test_mode,
+            'analysis_summary': analysis_report.get('summary', {}) if analysis_report else {}
+        },
+        job_id=job.job_id,
+        fetch_rt=not rt_replannable,
+        fetch_ct=not ct_replannable,
+        objective_value=objective_value,
+    )
+    logger.info(f"Plan {plan_id} saved to backend planner_output table")
+
+    # Save normalized assignments
+    # Rows of type 'CT' / 'RT' (emitted by LC-06) have no underlying demand —
+    # request_id and bsa_id must be NULL. Rows of type 'DEMAND' keep their
+    # demand_id as request_id. assignment_type is forwarded so the backend
+    # bulk insert can populate the new column.
+    try:
+        normalized = []
+        type_counts: dict = {}
+        for a in assignments_list:
+            assignment_type = a.get('assignment_type') or 'DEMAND'
+            type_counts[assignment_type] = type_counts.get(assignment_type, 0) + 1
+            demand_id = a.get('demand_id')
+            normalized.append({
+                'request_id': str(demand_id) if demand_id is not None else None,
+                'bsa_id': a.get('bsa_id'),
+                'resource_id': str(a.get('resource_id')),
+                'resource_name': a.get('resource_name'),
+                'resource_category': a.get('resource_category'),
+                'team_id': a.get('team_id'),
+                'team_name': a.get('team_name'),
+                'group_id': a.get('group_id'),
+                'group_name': a.get('group_name'),
+                'calendar_start': a.get('start'),
+                'calendar_end': a.get('end'),
+                'duration_hours': a.get('duration_hours'),
+                'is_night_shift': a.get('is_night_shift', False),
+                'assignment_type': assignment_type,
+            })
+        if normalized:
+            client.post_planner_assignments_bulk(plan_id, job.job_id, normalized)
+            logger.info(
+                f"Saved {len(normalized)} normalized assignments for plan {plan_id} "
+                f"(by type: {type_counts})"
+            )
+    except Exception as e:
+        logger.error(f"Failed to save normalized assignments: {e}")
+
+    # Save uncovered demands
+    try:
+        if analysis_report:
+            cov = analysis_report.get('objective_performance', {}).get('maximize_coverage', {})
+            metrics = cov.get('metrics', {})
+            uncov_ids = set(str(uid) for uid in metrics.get('uncovered_request_ids', []))
+            qual_ids = set(str(qid) for qid in metrics.get('qualification_gap_ids', []))
+
+            if uncov_ids:
+                req_lookup = {str(d['id']): d for d in requests_data.get('data', [])}
+                uncov_list = []
+                for rid in uncov_ids:
+                    req = req_lookup.get(rid, {})
+                    gap = 'QUALIFICATION_GAP' if rid in qual_ids else 'CAPACITY_GAP'
+                    uncov_list.append({
+                        'request_id': str(rid),
+                        'bsa_id': req.get('bsa_id'),
+                        'resource_category': req.get('resource_category'),
+                        'start_location': req.get('start_location'),
+                        'start_location_code': req.get('start_location_code'),
+                        'end_location': req.get('end_location'),
+                        'end_location_code': req.get('end_location_code'),
+                        'calendar_start': req.get('shift_start_time'),
+                        'calendar_end': req.get('shift_finish_time'),
+                        'required_qualifications': req.get('required_qualifications', []),
+                        'responsible_person': req.get('responsible_person'),
+                        'people_needed': req.get('people_needed', 1),
+                        'gap_type': gap,
+                    })
+                client.post_planner_uncovered_demands_bulk(plan_id, job.job_id, uncov_list)
+                logger.info(f"Saved {len(uncov_list)} uncovered demands for plan {plan_id}")
+    except Exception as e:
+        logger.error(f"Failed to save uncovered demands: {e}")
+
+    return plan_id
+
+
+async def _execute_solver_job(job: SolverJob):
+    """
+    Execute the solver job asynchronously.
+    This runs as a background task, independent of WebSocket connections.
+    """
+    import sys
+    import os
+
+    # Add solver_v2 to path
+    solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if solver_dir not in sys.path:
+        sys.path.insert(0, solver_dir)
+
+    job.status = JobStatus.RUNNING
+    job.start_time = datetime.now()
+
+    try:
+        # Webhook: QUEUED -> RUNNING
+        await send_webhook(job, "QUEUED", 0.0, current_step="queued")
+
+        # Step 1: Initialize
+        job.update_progress(SolverStep.INITIALIZING)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+        await asyncio.sleep(0.1)  # Allow WebSocket to catch up
+
+        await send_webhook(job, "RUNNING", 5.0, current_step="initializing")
+
+        # Import solver components (only what's needed post-fetch)
+        from solver.model import create_and_solve_model
+        from config import (
+            Environment, ENABLE_PARTITIONING,
+            PARTITION_ALIGN_TO_MONTHS, PARTITION_ALIGN_TO_WEEKS,
+            PARTITION_MAX_DAYS, PARTITION_AUTO_THRESHOLD_DEMANDS,
+            PARTITION_AUTO_THRESHOLD_DAYS, PARTITION_TIME_LIMIT,
+            PARTITION_ENABLE_CHECKPOINTS, PARTITION_CHECKPOINT_DIR,
+            PARTITION_MAX_DEMANDS
+        )
+
+        # Cancellation helper — cancel_job() already set status/webhook,
+        # these checks just exit the execution flow cleanly.
+        def _check_cancelled(step_name):
+            if job.cancelled:
+                logger.info(f"Job {job.job_id} cancelled during {step_name}")
+                return True
+            return False
+
+        # Step 2: Fetch data & preprocess (in thread pool to keep event loop free)
+        job.update_progress(SolverStep.FETCHING_DATA)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        if _check_cancelled("fetching_data"): return
+
+        loop = asyncio.get_event_loop()
+        (client, requests_data, resources_data, absences_data,
+         preprocessed_data, constraint_values, objective_weights
+        ) = await loop.run_in_executor(None, _fetch_and_preprocess_sync, job)
+
+        if _check_cancelled("after_fetching_data"): return
+
+        await send_webhook(job, "RUNNING", 15.0, current_step="preprocessing")
+
+        job.update_progress(SolverStep.PREPROCESSING, {
+            'requests_count': job.num_demands,
+            'resources_count': job.num_resources
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        if _check_cancelled("before_solving"): return
+
+        # Step 6-8: Build and solve model
+        job.update_progress(SolverStep.BUILDING_MODEL, {
+            'num_requests': len(preprocessed_data.request_ids),
+            'num_resources': len(preprocessed_data.resource_ids)
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Workflow A: Let solver run until complete (high limit, user can cancel)
+        # The time_limit is a safety net, not a hard cutoff - user is warned via progress
+        time_limit = job.request.options.time_limit_seconds  # Default 7200s (2 hours)
+
+        # Check if partitioning should be used
+        use_partitioning = False
+        if ENABLE_PARTITIONING:
+            num_demands = len(preprocessed_data.request_ids)
+            date_range_days = (preprocessed_data.planning_end - preprocessed_data.planning_start).days
+            if num_demands > PARTITION_AUTO_THRESHOLD_DEMANDS or date_range_days > PARTITION_AUTO_THRESHOLD_DAYS:
+                use_partitioning = True
+                logger.info(f"Partitioning ENABLED: {num_demands} demands, {date_range_days} days")
+
+        def solve_sync():
+            if use_partitioning:
+                # Use partitioned solving
+                from solver.partitioner import SolverPartitioner, PartitionConfig
+                from solver.checkpoint_manager import CheckpointManager, solve_with_checkpointing
+                from solver.proration_engine import ProrationEngine
+
+                config = PartitionConfig(
+                    align_to_calendar_months=PARTITION_ALIGN_TO_MONTHS,
+                    align_to_calendar_weeks=PARTITION_ALIGN_TO_WEEKS,
+                    max_days_per_partition=PARTITION_MAX_DAYS,
+                    time_limit_per_partition=PARTITION_TIME_LIMIT,
+                    max_demands_per_partition=PARTITION_MAX_DEMANDS  # Use explicit max, not auto threshold
+                )
+
+                partitioner = SolverPartitioner(config)
+                partitions = partitioner.create_partitions(
+                    requests_data.get('data', []),
+                    resources_data.get('data', []),
+                    absences_data.get('data', [])
+                )
+
+                logger.info(f"Created {len(partitions)} partitions for solving")
+
+                # Setup checkpointing if enabled
+                checkpoint_manager = None
+                if PARTITION_ENABLE_CHECKPOINTS:
+                    checkpoint_manager = CheckpointManager(checkpoint_dir=PARTITION_CHECKPOINT_DIR)
+
+                # Setup proration engine for OC-01
+                planning_year = preprocessed_data.planning_start.year
+                proration_engine = ProrationEngine(planning_year=planning_year)
+
+                # Partition progress callback for webhook tracking
+                def partition_progress_cb(partition_index, total, status):
+                    if status != "solving":  # Only on completion
+                        job.partition_completed = partition_index + 1
+                        job.partition_total = total
+                        label = partitions[partition_index].start_date.strftime('%B %Y')
+                        job.partition_last_label = label
+
+                # Solve with checkpointing
+                result = solve_with_checkpointing(
+                    partitioner, partitions,
+                    constraint_values, objective_weights,
+                    job_id=job.job_id,
+                    checkpoint_manager=checkpoint_manager,
+                    proration_engine=proration_engine,
+                    resume=True,
+                    progress_callback=partition_progress_cb,
+                    cancellation_check=lambda: job.cancelled,
+                    rt_replannable=getattr(preprocessed_data, 'rt_replannable', False),
+                    ct_replannable=getattr(preprocessed_data, 'ct_replannable', False),
+                )
+
+                # Clean up checkpoints after successful completion
+                if checkpoint_manager and result['summary']['overall_status'] in ['OPTIMAL', 'FEASIBLE']:
+                    checkpoint_manager.clean_old_checkpoints(job.job_id, keep_last=0)
+                    logger.info(f"Cleaned up checkpoints for job {job.job_id}")
+
+                # Wrap result in a model-like object for compatibility
+                class PartitionedResult:
+                    def __init__(self, result_dict):
+                        self.solution_assignments = result_dict['assignments']
+                        self.status = self._map_status(result_dict['summary']['overall_status'])
+                        solve_time = result_dict['summary']['total_solve_time_seconds']
+                        self.solver = type('Solver', (), {'WallTime': lambda self: solve_time})()
+                        self._result = result_dict
+
+                    def _map_status(self, status_str):
+                        from ortools.sat.python import cp_model as cp
+                        return {
+                            'OPTIMAL': cp.OPTIMAL,
+                            'FEASIBLE': cp.FEASIBLE,
+                            'INFEASIBLE': cp.INFEASIBLE,
+                            'ERROR': cp.MODEL_INVALID,
+                            'PARTIAL': cp.FEASIBLE,
+                        }.get(status_str, cp.UNKNOWN)
+
+                return PartitionedResult(result)
+            else:
+                # Standard non-partitioned solving
+                return create_and_solve_model(preprocessed_data, constraint_values, objective_weights, time_limit=time_limit)
+
+        solving_mode = 'PARTITIONED' if use_partitioning else 'STANDARD'
+        job.update_progress(SolverStep.SOLVING, {
+            'estimated_seconds': job.estimated_seconds,
+            'workflow': 'A',
+            'mode': solving_mode,
+            'note': f'Solver running ({solving_mode}). You will be warned if exceeding estimated time.'
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Run solver with periodic time monitoring
+        async def monitor_solve_time():
+            """Send periodic updates during solving with time warnings and partition webhooks."""
+            update_interval = 10  # Check every 10 seconds
+            last_webhook_partition = 0
+            while True:
+                await asyncio.sleep(update_interval)
+
+                # Check for partition completion and send webhook
+                if job.partition_total > 0 and job.partition_completed > last_webhook_partition:
+                    last_webhook_partition = job.partition_completed
+                    progress = (job.partition_completed / job.partition_total) * 90.0 + 5.0
+                    await send_webhook(
+                        job, "RUNNING", progress,
+                        current_step="solving",
+                        partition_info={
+                            "current_partition": job.partition_completed,
+                            "total_partitions": job.partition_total,
+                            "partition_label": job.partition_last_label,
+                        },
+                    )
+
+                time_status, warning = job.get_time_status()
+                if time_status != "normal":
+                    elapsed = int((datetime.now() - job.start_time).total_seconds())
+                    job.update_progress(SolverStep.SOLVING, {
+                        'elapsed_seconds': elapsed,
+                        'estimated_seconds': job.estimated_seconds,
+                        'time_status': time_status,
+                        'warning': warning
+                    })
+                    await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Start monitoring task
+        monitor_task = asyncio.create_task(monitor_solve_time())
+        try:
+            model = await loop.run_in_executor(None, solve_sync)
+        finally:
+            monitor_task.cancel()
+            try:
+                await monitor_task
+            except asyncio.CancelledError:
+                pass
+
+        if _check_cancelled("after_solving"): return
+
+        # Webhook: solving done
+        await send_webhook(job, "RUNNING", 95.0, current_step="analyzing")
+
+        # Step 9: Analyze results
+        job.update_progress(SolverStep.ANALYZING)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        from ortools.sat.python import cp_model as cp
+        from analysis.solution_analyzer import SolutionAnalyzer
+
+        analysis_report = None
+        if model.status in [cp.OPTIMAL, cp.FEASIBLE]:
+            analyzer = SolutionAnalyzer(
+                solution=model,
+                data=preprocessed_data,
+                constraints=constraint_values
+            )
+            analysis_report = analyzer.analyze()
+
+        if analysis_report:
+            summary = analysis_report.get('summary', {})
+            cov = summary.get('coverage', {})
+            logger.info(
+                f"Analysis summary: coverage={cov.get('rate', 0)}% "
+                f"({cov.get('requests_covered', 0)}/{cov.get('requests_total', 0)} demands), "
+                f"violations={summary.get('violations', {}).get('total_count', 0)}, "
+                f"status={summary.get('overall_status', '?')}"
+            )
+
+            # Log uncovered demand details
+            cov_perf = analysis_report.get('objective_performance', {}).get('maximize_coverage', {})
+            if cov_perf:
+                metrics = cov_perf.get('metrics', {})
+                uncov_count = metrics.get('uncovered_requests', 0)
+                if uncov_count > 0:
+                    qual_gaps = len(metrics.get('qualification_gap_ids', []))
+                    cap_gaps = len(metrics.get('capacity_gap_ids', []))
+                    logger.info(f"Uncovered demands: {uncov_count} total ({qual_gaps} qualification gaps, {cap_gaps} capacity gaps)")
+
+        if _check_cancelled("before_saving"): return
+
+        # Step 10: Save results (in thread pool to keep event loop free)
+        job.update_progress(SolverStep.SAVING_RESULTS)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        try:
+            rt_replannable_flag = getattr(preprocessed_data, 'rt_replannable', False)
+            ct_replannable_flag = getattr(preprocessed_data, 'ct_replannable', False)
+            plan_id = await loop.run_in_executor(
+                None, _save_results_sync, client, job, model, analysis_report, requests_data, resources_data,
+                rt_replannable_flag, ct_replannable_flag
+            )
+        except Exception as e:
+            plan_id = job.plan_id or "UNKNOWN"
+            logger.error(f"CRITICAL: Failed to save plan {plan_id} to backend: {e}")
+            import traceback
+            traceback.print_exc()
+            job.error = f"Plan completed but save failed: {e}"
+
+        # Complete
+        job.update_progress(SolverStep.COMPLETE, {
+            'plan_id': plan_id,
+            'assignments_count': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        status_map = {
+            cp.OPTIMAL: "OPTIMAL",
+            cp.FEASIBLE: "FEASIBLE",
+            cp.INFEASIBLE: "INFEASIBLE",
+            cp.MODEL_INVALID: "MODEL_INVALID",
+            cp.UNKNOWN: "UNKNOWN"
+        }
+
+        job.result = {
+            'solver_status': status_map.get(model.status, 'UNKNOWN'),
+            'assignments_count': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0,
+            'solve_time_seconds': model.solver.WallTime() if hasattr(model, 'solver') else None,
+            'analysis_summary': analysis_report.get('summary', {}) if analysis_report else {}
+        }
+
+        job.status = JobStatus.COMPLETE
+        job.end_time = datetime.now()
+
+        # Webhook: COMPLETED
+        await send_webhook(job, "COMPLETED", 100.0, current_step="complete", plan_id=plan_id)
+
+        logger.info(f"Job {job.job_id} completed successfully")
+
+    except Exception as e:
+        logger.error(f"Job {job.job_id} failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+        job.status = JobStatus.FAILED
+        job.error = str(e)
+        job.end_time = datetime.now()
+
+        # Webhook: FAILED
+        await send_webhook(job, "FAILED", job.progress * 100, current_step="error", error_message=str(e))
+
+        # Broadcast error
+        error_msg = ProgressMessage(
+            type="error",
+            step="error",
+            progress=job.progress,
+            message=f"Job failed: {str(e)}",
+            timestamp=datetime.now().isoformat(),
+            details={'error': str(e)}
+        )
+        job.progress_history.append(error_msg)
+        await job_manager.broadcast_progress(job.job_id, error_msg)
+
+
+# =============================================================================
+# FASTAPI APPLICATION
+# =============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler"""
+    logger.info("Starting CFF Solver API Service...")
+    yield
+    logger.info("Shutting down CFF Solver API Service...")
+
+
+app = FastAPI(
+    title="CFF Workforce Planning Solver API",
+    description=f"""
+## Overview
+This API provides endpoints for triggering and monitoring the CFF Workforce Planning Solver.
+
+**Environment:** `{SOLVER_ENV.upper()}`
+**Base Path:** `{ROOT_PATH}`
+**Last Updated:** 2026-02-06
+
+---
+
+## Quick Start
+
+**Trigger a solver job:**
+```json
+POST {ROOT_PATH}/api/v1/solver/trigger
+{{
+  "user_id": "user_123",
+  "test_mode": true,
+  "test_requests": 50,
+  "test_resources": 50,
+  "plan_range": {{"start_date": "2026-01-01", "end_date": "2026-01-31"}},
+  "target_team_ids": [1, 2],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{{"start": "2026-01-10", "end": "2026-01-15"}}],
+  "replannable_demand_type": ["Service de nuit"],
+  "options": {{"time_limit_seconds": 300}}
+}}
+```
+
+---
+
+## Key Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/solver/trigger` | POST | Start a new solver job |
+| `/solver/status/{{job_id}}` | GET | Check job status |
+| `/solver/progress/{{job_id}}` | WebSocket | Real-time progress updates |
+| `/solver/pre-plan` | POST | Create pre-plan (Workflow B) |
+| `/solver/execute` | POST | Execute from pre-plan |
+| `/plans` | GET | List all plans |
+| `/plans/{{plan_id}}/assignments` | GET | Get plan assignments |
+
+---
+
+## Active Constraints (Validated 2026-02-02)
+
+### Hard Constraints (Always Enforced)
+| ID | Name | Description |
+|----|------|-------------|
+| CP_02 | Qualification Matching | Resource must have required category |
+| HC_IR_ER | IR/ER Matching | Apprentices cannot work on IR projects |
+| HC_05 | Function Doubling | Multi-category demands require all categories |
+
+### Legal Constraints (Swiss Labor Law)
+| ID | Name | Limit |
+|----|------|-------|
+| LC_01 | Max Weekly Hours | 48h legal / 45h company |
+| LC_02 | Max 14h Span | 9h in any 14-hour window |
+| LC_03 | Max Daily Hours | 12h per calendar day |
+| LC_04 | Min Rest | 12h between shifts |
+
+---
+
+## Request Parameters
+
+### plan_range (Optional)
+Filter demands by date range:
+- `start_date`: Start date (YYYY-MM-DD)
+- `end_date`: End date (YYYY-MM-DD)
+
+### Target Filtering (Resources Only)
+- `target_team_ids`: Array of team IDs to include (filters resources, not demands)
+- `target_group_ids`: Array of group IDs to include (filters resources, not demands)
+
+### Assignment Locking
+- `lock_allocations`: Master switch for preserving existing service assignments (default: true)
+- `locked_date_ranges`: Only lock assignments overlapping these date ranges (empty = lock all in plan_range)
+- `replannable_demand_type`: Calendar types excluded from blocking (always active)
+
+### Behavior Matrix
+| Scenario | Result |
+|----------|--------|
+| `lock_allocations=true` + no `locked_date_ranges` | All service assignments in plan_range locked (minus replannable) |
+| `lock_allocations=true` + `locked_date_ranges` | Only service assignments in those ranges locked (minus replannable) |
+| `lock_allocations=false` | No service assignments locked (replannable still excluded from blocking) |
+
+### Test Mode
+- `test_mode: true` - Use limited dataset for testing
+- `test_requests` / `test_resources` - Slice dataset size
+
+### Deprecated (V1)
+- `blocked_teams`, `blocked_locations`: DISABLED - use `target_team_ids`
+- `blocked_date_ranges`: DEPRECATED - use `locked_date_ranges`
+
+---
+
+## Browser Disconnect Handling
+The solver continues running even if the client disconnects.
+Results are stored in the database and can be retrieved later via `/plans/{{plan_id}}`.
+    """,
+    version="1.1.0",
+    lifespan=lifespan,
+    docs_url=f"{ROOT_PATH}/docs",
+    redoc_url=f"{ROOT_PATH}/redoc",
+    openapi_url=f"{ROOT_PATH}/openapi.json"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Create API router with environment-based prefix
+# Routes will be: /dev/planner/api/v1/... or /qa/planner/api/v1/...
+api_router = APIRouter(prefix=f"{ROOT_PATH}/api/v1")
+
+
+# =============================================================================
+# ROOT HEALTH ENDPOINTS (No prefix - for Docker health checks)
+# =============================================================================
+
+@app.get("/", tags=["Health"])
+async def root():
+    """Root health check endpoint"""
+    return {
+        "service": "CFF Workforce Planning Solver",
+        "status": "healthy",
+        "version": "1.0.0",
+        "environment": SOLVER_ENV,
+        "api_base": f"{ROOT_PATH}/api/v1",
+        "docs": f"{ROOT_PATH}/docs",
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Detailed health check (for Docker)"""
+    from config import MAX_CONCURRENT_JOBS
+    return {
+        "status": "healthy",
+        "environment": SOLVER_ENV,
+        "active_jobs": job_manager.get_running_count(),
+        "queued_jobs": job_manager.get_pending_count(),
+        "max_concurrent_jobs": MAX_CONCURRENT_JOBS,
+        "total_jobs": len(job_manager.jobs),
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+# =============================================================================
+# API ENDPOINTS (with prefix: /{env}/planner/api/v1/...)
+# =============================================================================
+
+def get_websocket_url(http_request: Request, job_id: str) -> str:
+    """
+    Construct WebSocket URL dynamically from the HTTP request.
+    Works for both localhost and remote servers behind reverse proxies.
+    """
+    host = http_request.headers.get("host", "localhost:8004")
+
+    # Check for X-Forwarded-Proto from reverse proxy (nginx, traefik, etc.)
+    forwarded_proto = http_request.headers.get("x-forwarded-proto")
+
+    # Environment variable override (optional)
+    force_https = os.environ.get("FORCE_HTTPS_WEBSOCKET", "").lower() in ("true", "1", "yes")
+
+    # Determine scheme
+    if force_https:
+        scheme = "https"
+    elif forwarded_proto:
+        scheme = forwarded_proto
+    else:
+        scheme = http_request.url.scheme
+
+    ws_scheme = "wss" if scheme == "https" else "ws"
+    ws_url = f"{ws_scheme}://{host}{ROOT_PATH}/api/v1/solver/progress/{job_id}"
+
+    logger.info(f"WebSocket URL: {ws_url}")
+    return ws_url
+
+
+def get_time_estimate_for_trigger(num_demands: int, num_resources: int) -> TimeEstimateInfo:
+    """
+    Get time estimate for Workflow A using the benchmarked estimator.
+    """
+    from api.pre_planning.time_estimator import estimate_from_counts
+
+    estimate = estimate_from_counts(num_demands, num_resources)
+
+    return TimeEstimateInfo(
+        estimated_seconds=estimate['estimated_seconds'],
+        estimated_display=estimate['estimated_display'],
+        confidence=estimate['confidence']
+    )
+
+
+@api_router.post("/solver/trigger", response_model=TriggerResponse, tags=["Solver"])
+async def trigger_solver(
+    trigger_request: TriggerRequest,
+    background_tasks: BackgroundTasks,
+    http_request: Request
+):
+    """
+    Trigger a new solver job (Workflow A).
+
+    The solver runs asynchronously in the background. Use the returned `job_id`
+    to monitor progress via WebSocket or polling.
+
+    **Time Tracking:** The response includes an estimated time. Progress updates
+    will include warnings if the solver takes longer than expected.
+
+    **Important:** The solver continues running even if you disconnect.
+    You can cancel anytime if it takes too long.
+    """
+    # Validate plan_range if provided with dates
+    if trigger_request.plan_range and not trigger_request.plan_range.is_empty():
+        try:
+            start_str = trigger_request.plan_range.start_date
+            end_str = trigger_request.plan_range.end_date
+
+            # Both must be provided if one is provided
+            if start_str and not end_str:
+                raise HTTPException(status_code=400, detail="plan_range.end_date required when start_date is provided")
+            if end_str and not start_str:
+                raise HTTPException(status_code=400, detail="plan_range.start_date required when end_date is provided")
+
+            # Strip time component if full ISO 8601 provided
+            if start_str and 'T' in start_str:
+                start_str = start_str.split('T')[0]
+            if end_str and 'T' in end_str:
+                end_str = end_str.split('T')[0]
+
+            start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+
+            if start_date > end_date:
+                logger.error(f"plan_range start ({start_date}) > end ({end_date})")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"plan_range start_date ({start_str}) must be <= end_date ({end_str})"
+                )
+        except ValueError as e:
+            logger.error(f"Invalid plan_range date format: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid date format in plan_range: {e}. Use YYYY-MM-DD format."
+            )
+
+    # Check queue capacity
+    from config import MAX_QUEUE_SIZE
+    pending = job_manager.get_pending_count()
+    running = job_manager.get_running_count()
+    if pending + running >= MAX_QUEUE_SIZE:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Solver queue full ({pending} pending, {running} running). Try again later."
+        )
+
+    # Create job
+    job = job_manager.create_job(trigger_request)
+
+    # Calculate time estimate for UX
+    time_estimate = get_time_estimate_for_trigger(
+        trigger_request.test_requests if trigger_request.test_mode else 1000,  # Default estimate
+        trigger_request.test_resources if trigger_request.test_mode else 100
+    )
+
+    # Set estimate on job for progress tracking
+    job.set_time_estimate(
+        time_estimate.estimated_seconds,
+        time_estimate.estimated_display,
+        time_estimate.confidence
+    )
+
+    # Webhook: QUEUED (from trigger endpoint, before background task starts)
+    await send_webhook(job, "QUEUED", 0.0, current_step="queued")
+
+    # Store websocket_url on the job so webhooks can include it
+    job.websocket_url = get_websocket_url(http_request, job.job_id)
+
+    # Start solver in background
+    background_tasks.add_task(run_solver_job, job)
+
+    # Return immediately with time estimate for UX
+    queue_position = job_manager.get_queue_position(job.job_id)
+    return TriggerResponse(
+        status="accepted",
+        job_id=job.job_id,
+        websocket_url=job.websocket_url,
+        status_url=f"{ROOT_PATH}/api/v1/solver/status/{job.job_id}",
+        message=f"Solver job queued (position {queue_position}). Estimated time: {time_estimate.estimated_display}",
+        time_estimate=time_estimate,
+        queue_position=queue_position
+    )
+
+
+@api_router.get("/solver/status/{job_id}", response_model=JobStatusResponse, tags=["Solver"])
+async def get_job_status(job_id: str):
+    """
+    Get the status of a solver job.
+
+    Use this endpoint to poll for job status if you cannot use WebSocket.
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Get time context for UX
+    time_status, warning = job.get_time_status()
+
+    # Include queue position for pending jobs
+    queue_position = job_manager.get_queue_position(job.job_id) if job.status == JobStatus.PENDING else None
+
+    return JobStatusResponse(
+        job_id=job.job_id,
+        status=job.status,
+        current_step=job.current_step.value if job.current_step else None,
+        progress=job.progress,
+        elapsed_seconds=job.get_elapsed_seconds(),
+        estimated_seconds=job.estimated_seconds,
+        time_status=time_status,
+        warning=warning,
+        plan_id=job.plan_id,
+        result=job.result,
+        error=job.error,
+        queue_position=queue_position
+    )
+
+
+@api_router.post("/solver/cancel/{job_id}", tags=["Solver"])
+async def cancel_solver_job(job_id: str):
+    """
+    Cancel a running or queued solver job.
+
+    - **PENDING** jobs are cancelled immediately
+    - **RUNNING** jobs are cancelled at the next safe checkpoint:
+      - Between pipeline stages (fetch → preprocess → solve → analyze → save)
+      - Between partitions (for partitioned solving)
+    - Jobs already COMPLETE/FAILED/CANCELLED return 409
+
+    The cancellation triggers:
+    1. WebSocket broadcast with type="cancelled" (FE gets immediate notification)
+    2. Webhook to backend with status="CANCELLED" (DB updated)
+    3. Checkpoint file cleanup (no leftover temp files)
+    4. Graceful WebSocket close
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    if job.status in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job {job_id} already {job.status.value}, cannot cancel"
+        )
+
+    success = await job_manager.cancel_job(job_id)
+    if not success:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job {job_id}")
+
+    return {
+        "status": "cancelled",
+        "job_id": job_id,
+        "message": f"Job cancelled. Was at step: {job.current_step.value if job.current_step else 'unknown'}",
+        "cancelled_at_step": job.current_step.value if job.current_step else None,
+        "elapsed_seconds": job.get_elapsed_seconds()
+    }
+
+
+@api_router.get("/solver/jobs", tags=["Solver"])
+async def list_jobs(limit: int = 50, offset: int = 0):
+    """
+    List all solver jobs.
+
+    Returns jobs sorted by creation time (newest first).
+    """
+    jobs = list(job_manager.jobs.values())
+    jobs.sort(key=lambda j: j.start_time or datetime.min, reverse=True)
+
+    return {
+        "total": len(jobs),
+        "limit": limit,
+        "offset": offset,
+        "jobs": [
+            {
+                "job_id": j.job_id,
+                "status": j.status.value,
+                "progress": j.progress,
+                "user_id": j.request.user_id,
+                "created_at": j.start_time.isoformat() if j.start_time else None
+            }
+            for j in jobs[offset:offset + limit]
+        ]
+    }
+
+
+# =============================================================================
+# PRE-PLANNING ENDPOINTS
+# =============================================================================
+
+import sys
+import os
+solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if solver_dir not in sys.path:
+    sys.path.insert(0, solver_dir)
+
+from api.pre_planning.models import PrePlanRequest as PrePlanRequestModel
+from api.pre_planning.models import PrePlanResponse, ExecuteRequest
+from api.pre_planning.service import pre_planning_service
+
+
+@api_router.post("/solver/pre-plan", response_model=PrePlanResponse, tags=["Pre-Planning"])
+async def create_pre_plan(request: PrePlanRequestModel):
+    """
+    Create a pre-planning dataset.
+
+    This is Stage 1 of the two-stage planning workflow:
+    1. Validates blocked data (teams, locations, date ranges)
+    2. Builds clean dataset by excluding blocked items
+    3. Estimates planning time
+    4. Returns summary for user confirmation
+
+    After reviewing the summary, use POST /api/v1/solver/execute to start planning.
+    """
+    import sys
+    import os
+
+    # Add solver_v2 to path
+    solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if solver_dir not in sys.path:
+        sys.path.insert(0, solver_dir)
+
+    from api.client import get_client
+    from config import CURRENT_ENV
+
+    # Fetch data from backend (uses SOLVER_ENV to pick dev or qa)
+    client = get_client(env=CURRENT_ENV, user_id=request.user_id)
+
+    try:
+        # Fetch all data for the period
+        demands_response = client.get_demands(limit=50000)  # Get all
+        demands_data = demands_response.get('data', [])
+
+        resources_response = client.get_resources(limit=5000)
+        resources_data = resources_response.get('data', [])
+
+        # Fetch resource blocks — always-blocking absences are protected
+        from api.data_pipeline import sanitize_replannable_types, filter_to_always_blocking
+
+        lock_allocations = request.lock_allocations if hasattr(request, 'lock_allocations') else True
+        replannable_types = request.replannable_demand_type if hasattr(request, 'replannable_demand_type') else []
+
+        if not lock_allocations:
+            absences_response = client.get_resource_blocks(
+                category="all",
+                start_date=request.start_date,
+                end_date=request.end_date,
+            )
+            absences_data = filter_to_always_blocking(absences_response.get('data', []))
+        else:
+            safe_replannable = sanitize_replannable_types(replannable_types, logger)
+            absences_response = client.get_resource_blocks(
+                category="all",
+                start_date=request.start_date,
+                end_date=request.end_date,
+                exclude_calendar_types=safe_replannable if safe_replannable else None
+            )
+            absences_data = absences_response.get('data', [])
+
+        # Create pre-plan
+        response = pre_planning_service.create_pre_plan(
+            request=request,
+            demands_data=demands_data,
+            resources_data=resources_data,
+            absences_data=absences_data
+        )
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Pre-plan creation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/solver/pre-plan/{pre_plan_id}", tags=["Pre-Planning"])
+async def get_pre_plan(pre_plan_id: str):
+    """
+    Get pre-plan status and summary.
+
+    Returns the dataset summary, validation results, and time estimate.
+    """
+    status = pre_planning_service.get_pre_plan(pre_plan_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Pre-plan {pre_plan_id} not found")
+
+    return status
+
+
+@api_router.delete("/solver/pre-plan/{pre_plan_id}", tags=["Pre-Planning"])
+async def cancel_pre_plan(pre_plan_id: str, user_id: str = "user_000"):
+    """
+    Cancel a pre-plan.
+
+    This removes the pre-plan dataset. Only the owner can cancel.
+    """
+    success = pre_planning_service.cancel_pre_plan(pre_plan_id, user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Pre-plan {pre_plan_id} not found or not owned by user")
+
+    return {"status": "cancelled", "pre_plan_id": pre_plan_id}
+
+
+@api_router.post("/solver/execute", tags=["Pre-Planning"])
+async def execute_from_pre_plan(
+    request: ExecuteRequest,
+    background_tasks: BackgroundTasks,
+    http_request: Request
+):
+    """
+    Execute planning from a pre-plan.
+
+    This is Stage 2 of the two-stage planning workflow.
+    Uses the dataset created in Stage 1 (pre-plan) to run the solver.
+
+    The solver runs as a background task. Monitor progress via:
+    - WebSocket: /api/v1/solver/progress/{job_id}
+    - Polling: GET /api/v1/solver/status/{job_id}
+    """
+    # Check queue capacity
+    from config import MAX_QUEUE_SIZE
+    pending = job_manager.get_pending_count()
+    running = job_manager.get_running_count()
+    if pending + running >= MAX_QUEUE_SIZE:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Solver queue full ({pending} pending, {running} running). Try again later."
+        )
+
+    # Get pre-plan data
+    pre_plan_data = pre_planning_service.get_pre_plan_for_execution(request.pre_plan_id)
+    if not pre_plan_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pre-plan {request.pre_plan_id} not found or not ready for execution"
+        )
+
+    # Create a solver job using the pre-plan data
+    trigger_request = TriggerRequest(
+        user_id=pre_plan_data['user_id'],
+        test_mode=pre_plan_data['request'].get('test', False),
+        test_requests=len(pre_plan_data['dataset']['demands']),
+        test_resources=len(pre_plan_data['dataset']['resources']),
+        use_mock_data=False  # Use actual pre-plan data
+    )
+
+    # Store pre-plan data for solver to use
+    # (In production, this would be more robust)
+    trigger_request._pre_plan_data = pre_plan_data
+
+    job = job_manager.create_job(trigger_request)
+    job.pre_plan_id = request.pre_plan_id
+
+    # Get time estimate from pre-plan for UX tracking
+    pre_plan_response = pre_plan_data.get('response', {})
+    time_estimate_data = pre_plan_response.get('time_estimate', {})
+    estimated_seconds = time_estimate_data.get('estimated_seconds', 60)
+    estimated_display = time_estimate_data.get('estimated_display', '~1 minute')
+    confidence = time_estimate_data.get('confidence', 'medium')
+
+    # Set estimate on job for progress warnings
+    job.set_time_estimate(estimated_seconds, estimated_display, confidence)
+
+    time_estimate = TimeEstimateInfo(
+        estimated_seconds=estimated_seconds,
+        estimated_display=estimated_display,
+        confidence=confidence
+    )
+
+    # Store websocket_url on the job so webhooks can include it
+    job.websocket_url = get_websocket_url(http_request, job.job_id)
+
+    # Webhook: QUEUED (from execute endpoint, before background task starts)
+    await send_webhook(job, "QUEUED", 0.0, current_step="queued")
+
+    # Start solver in background
+    background_tasks.add_task(run_solver_job_from_preplan, job, pre_plan_data)
+
+    queue_position = job_manager.get_queue_position(job.job_id)
+    return TriggerResponse(
+        job_id=job.job_id,
+        websocket_url=job.websocket_url,
+        status_url=f"{ROOT_PATH}/api/v1/solver/status/{job.job_id}",
+        message=f"Solver job queued (position {queue_position}). Estimated time: {estimated_display}",
+        time_estimate=time_estimate,
+        queue_position=queue_position
+    )
+
+
+async def run_solver_job_from_preplan(job: SolverJob, pre_plan_data: dict):
+    """Semaphore wrapper: queues pre-plan job until a solver slot is available."""
+    try:
+        logger.info(f"Job {job.job_id}: waiting for solver slot (pre-plan, queue position: {job_manager.get_queue_position(job.job_id)})...")
+        async with job_manager._solver_semaphore:
+            logger.info(f"Job {job.job_id}: acquired solver slot, starting pre-plan execution")
+            await _execute_solver_job_from_preplan(job, pre_plan_data)
+    except Exception as e:
+        if job.status not in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+            logger.error(f"Job {job.job_id}: semaphore wrapper caught error: {e}")
+            job.status = JobStatus.FAILED
+            job.error = str(e)
+            job.end_time = datetime.now()
+            await send_webhook(job, "FAILED", 0.0, error_message=str(e))
+
+
+async def _execute_solver_job_from_preplan(job: SolverJob, pre_plan_data: dict):
+    """
+    Execute solver using pre-plan data.
+    Similar to _execute_solver_job but uses cached dataset.
+    """
+    import sys
+    import os
+
+    solver_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if solver_dir not in sys.path:
+        sys.path.insert(0, solver_dir)
+
+    job.status = JobStatus.RUNNING
+    job.start_time = datetime.now()
+
+    try:
+        # Webhook: QUEUED -> RUNNING
+        await send_webhook(job, "QUEUED", 0.0, current_step="queued")
+
+        job.update_progress(SolverStep.INITIALIZING)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        await send_webhook(job, "RUNNING", 5.0, current_step="initializing")
+
+        from solver.model import create_and_solve_model
+        from ortools.sat.python import cp_model as cp
+
+        # Use pre-plan dataset (no fetching needed)
+        job.update_progress(SolverStep.FETCHING_DATA, {
+            'source': 'pre-plan',
+            'pre_plan_id': pre_plan_data['pre_plan_id']
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Data already available from pre-plan
+        requests_data = {'data': pre_plan_data['dataset']['demands']}
+        resources_data = {'data': pre_plan_data['dataset']['resources']}
+        absences_data = {'data': pre_plan_data['dataset']['absences']}
+
+        # Fetch constraints, objectives, preprocess (in thread pool to keep event loop free)
+        job.update_progress(SolverStep.PREPROCESSING, {
+            'demands_count': len(requests_data['data']),
+            'resources_count': len(resources_data['data'])
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        loop = asyncio.get_event_loop()
+
+        def _preplan_preprocess_sync():
+            from preprocessing.constraints import fetch_constraint_values
+            from preprocessing.objectives import fetch_objective_weights
+            from preprocessing.data_processor import preprocess_data
+            cv = fetch_constraint_values(planning_mode="Balanced", user_id=job.request.user_id)
+            ow = fetch_objective_weights(user_id=job.request.user_id)
+            pd = preprocess_data(requests_data, resources_data, absences_data)
+            pd.targeted_request_ids = None
+            return (pd, cv, ow)
+
+        (preprocessed_data, constraint_values, objective_weights) = await loop.run_in_executor(
+            None, _preplan_preprocess_sync
+        )
+
+        # Build and solve
+        job.update_progress(SolverStep.BUILDING_MODEL, {
+            'num_requests': len(preprocessed_data.request_ids),
+            'num_resources': len(preprocessed_data.resource_ids)
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Workflow B: Run until complete (no hard limit - user decides when to cancel)
+        # Use 2 hours as safety net, but progress warnings will alert user
+        time_limit = 7200  # 2 hours max safety net
+
+        def solve_sync():
+            return create_and_solve_model(preprocessed_data, constraint_values, objective_weights, time_limit=time_limit)
+
+        job.update_progress(SolverStep.SOLVING, {
+            'estimated_seconds': job.estimated_seconds,
+            'workflow': 'B',
+            'note': 'Solver running. You will be warned if exceeding estimated time.'
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Run solver with periodic time monitoring (loop already defined above)
+        async def monitor_solve_time():
+            """Send periodic updates during solving with time warnings."""
+            update_interval = 10  # Check every 10 seconds
+            while True:
+                await asyncio.sleep(update_interval)
+                time_status, warning = job.get_time_status()
+                if time_status != "normal":
+                    elapsed = int((datetime.now() - job.start_time).total_seconds())
+                    job.update_progress(SolverStep.SOLVING, {
+                        'elapsed_seconds': elapsed,
+                        'estimated_seconds': job.estimated_seconds,
+                        'time_status': time_status,
+                        'warning': warning
+                    })
+                    await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        # Start monitoring task
+        monitor_task = asyncio.create_task(monitor_solve_time())
+        try:
+            model = await loop.run_in_executor(None, solve_sync)
+        finally:
+            monitor_task.cancel()
+            try:
+                await monitor_task
+            except asyncio.CancelledError:
+                pass
+
+        # Webhook: solving done
+        await send_webhook(job, "RUNNING", 95.0, current_step="analyzing")
+
+        # Analyze
+        job.update_progress(SolverStep.ANALYZING)
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        from analysis.solution_analyzer import analyze_solution
+        analysis_report = analyze_solution(model, preprocessed_data, constraint_values)
+
+        # Complete
+        job.update_progress(SolverStep.COMPLETE, {
+            'pre_plan_id': pre_plan_data['pre_plan_id'],
+            'assignments_count': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0
+        })
+        await job_manager.broadcast_progress(job.job_id, job.progress_history[-1])
+
+        status_map = {
+            cp.OPTIMAL: "OPTIMAL",
+            cp.FEASIBLE: "FEASIBLE",
+            cp.INFEASIBLE: "INFEASIBLE",
+            cp.MODEL_INVALID: "MODEL_INVALID",
+            cp.UNKNOWN: "UNKNOWN"
+        }
+
+        job.result = {
+            'solver_status': status_map.get(model.status, 'UNKNOWN'),
+            'assignments_count': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0,
+            'blocked_count': len(pre_plan_data['dataset']['blocked_demands']),
+            'pre_plan_id': pre_plan_data['pre_plan_id']
+        }
+
+        job.status = JobStatus.COMPLETE
+        job.end_time = datetime.now()
+
+        # Webhook: COMPLETED
+        await send_webhook(job, "COMPLETED", 100.0, current_step="complete")
+
+        # Mark pre-plan as executed
+        pre_planning_service.mark_execution_complete(
+            pre_plan_data['pre_plan_id'],
+            job.job_id
+        )
+
+        logger.info(f"Job {job.job_id} completed from pre-plan {pre_plan_data['pre_plan_id']}")
+
+    except Exception as e:
+        logger.error(f"Job {job.job_id} failed: {e}")
+        import traceback
+        traceback.print_exc()
+
+        job.status = JobStatus.FAILED
+        job.error = str(e)
+        job.end_time = datetime.now()
+
+        # Webhook: FAILED
+        await send_webhook(job, "FAILED", job.progress * 100, current_step="error", error_message=str(e))
+
+        error_msg = ProgressMessage(
+            type="error",
+            step="error",
+            progress=job.progress,
+            message=f"Job failed: {str(e)}",
+            timestamp=datetime.now().isoformat(),
+            details={'error': str(e)}
+        )
+        job.progress_history.append(error_msg)
+        await job_manager.broadcast_progress(job.job_id, error_msg)
+
+
+# =============================================================================
+# WEBSOCKET ENDPOINT
+# =============================================================================
+
+@api_router.websocket("/solver/progress/{job_id}")
+async def websocket_progress(websocket: WebSocket, job_id: str):
+    """
+    WebSocket endpoint for real-time progress updates.
+
+    Connect to this endpoint after triggering a job to receive live updates.
+
+    **Message Types:**
+    - `progress`: Regular progress update
+    - `complete`: Job finished successfully
+    - `error`: Job failed
+    - `ping`: Keepalive heartbeat (every 30s)
+
+    **Important:** If you disconnect, the solver continues running.
+    You can reconnect at any time to resume receiving updates.
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        await websocket.close(code=4004, reason=f"Job {job_id} not found")
+        return
+
+    await websocket.accept()
+    job_manager.add_websocket(job_id, websocket)
+
+    logger.info(f"WebSocket connected for job {job_id}")
+
+    async def keepalive_ping():
+        """Send periodic pings to keep the connection alive through proxies/firewalls."""
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await websocket.send_json({
+                    "type": "ping",
+                    "timestamp": datetime.now().isoformat()
+                })
+            except Exception:
+                break
+
+    ping_task = asyncio.create_task(keepalive_ping())
+
+    try:
+        # Send current state first (for reconnections)
+        if job.progress_history:
+            for msg in job.progress_history:
+                await websocket.send_json(msg.model_dump())
+
+        # Keep connection alive and send updates
+        while True:
+            # Check if job is complete
+            if job.status in [JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED]:
+                await asyncio.sleep(0.5)
+                # Graceful close with proper code so client knows it's intentional
+                close_reason = f"Job {job.status.value}"
+                await websocket.close(code=1000, reason=close_reason)
+                logger.info(f"WebSocket closed gracefully for job {job_id}: {close_reason}")
+                return
+
+            # Wait for updates (the background task will broadcast)
+            await asyncio.sleep(0.5)
+
+    except WebSocketDisconnect:
+        # Client disconnected - this is OK, solver continues
+        logger.info(f"WebSocket disconnected for job {job_id} - solver continues")
+
+    except Exception as e:
+        logger.error(f"WebSocket error for job {job_id}: {e}")
+
+    finally:
+        ping_task.cancel()
+        try:
+            await ping_task
+        except asyncio.CancelledError:
+            pass
+        job_manager.remove_websocket(job_id, websocket)
+
+
+# =============================================================================
+# PLAN STORAGE ENDPOINTS
+# =============================================================================
+
+from api.plan_storage import plan_storage_service, PaginatedResult
+
+
+@api_router.get("/plans", tags=["Plans"])
+async def list_plans(
+    user_id: Optional[str] = None,
+    env: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20
+):
+    """
+    List all plans with optional filtering and pagination.
+
+    **Query Parameters:**
+    - user_id: Filter by user ID
+    - env: Filter by environment (dev, qa)
+    - page: Page number (default: 1)
+    - limit: Items per page (default: 20, max: 100)
+
+    **Returns:**
+    - List of plan summaries with pagination info
+    """
+    limit = min(limit, 100)  # Cap at 100
+    result = plan_storage_service.list_plans(
+        user_id=user_id,
+        env=env,
+        page=page,
+        limit=limit
+    )
+    return result.to_dict()
+
+
+@api_router.get("/plans/{plan_id}", tags=["Plans"])
+async def get_plan(plan_id: str):
+    """
+    Get plan details by ID.
+
+    Returns plan summary without full assignment lists.
+    Use /api/v1/plans/{plan_id}/assignments for paginated assignments.
+    """
+    summary = plan_storage_service.get_plan_summary(plan_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
+    return summary
+
+
+@api_router.get("/plans/{plan_id}/assignments", tags=["Plans"])
+async def get_plan_assignments(
+    plan_id: str,
+    status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50
+):
+    """
+    Get paginated assignments for a plan.
+
+    **Query Parameters:**
+    - status: Filter by status (PLANNED, BLOCKED, UNCOVERED, or omit for all)
+    - page: Page number (default: 1)
+    - limit: Items per page (default: 50, max: 200)
+
+    **Returns:**
+    - Paginated list of assignments sorted by start_datetime
+    """
+    limit = min(limit, 200)  # Cap at 200
+
+    # Validate status filter
+    if status and status not in ['PLANNED', 'BLOCKED', 'UNCOVERED']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status filter. Use PLANNED, BLOCKED, or UNCOVERED"
+        )
+
+    result = plan_storage_service.get_assignments(
+        plan_id=plan_id,
+        status_filter=status,
+        page=page,
+        limit=limit
+    )
+
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
+
+    return result.to_dict()
+
+
+@api_router.delete("/plans/{plan_id}", tags=["Plans"])
+async def delete_plan(plan_id: str):
+    """
+    Delete a plan by ID.
+
+    This permanently removes the plan and all its assignments.
+    """
+    success = plan_storage_service.delete_plan(plan_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
+
+    return {"status": "deleted", "plan_id": plan_id}
+
+
+# =============================================================================
+# PLAN HISTORY ENDPOINTS
+# =============================================================================
+
+from api.plan_history import plan_history_service
+
+
+@api_router.get("/plans/{plan_id}/history", tags=["Plans"])
+async def get_plan_history(plan_id: str):
+    """
+    Get event history for a plan.
+
+    Returns all events related to this plan in chronological order.
+
+    **Event Types:**
+    - PRE_PLAN_CREATED: Pre-planning dataset created
+    - PLANNING_STARTED: Solver execution started
+    - PLANNING_PROGRESS: Progress milestone
+    - PLANNING_COMPLETE: Solver finished successfully
+    - PLANNING_FAILED: Solver failed with error
+    - PLAN_DELETED: Plan deleted
+    """
+    events = plan_history_service.get_history_for_plan(plan_id)
+    return {"plan_id": plan_id, "events": events, "count": len(events)}
+
+
+@api_router.get("/pre-plans/{pre_plan_id}/history", tags=["Pre-Planning"])
+async def get_pre_plan_history(pre_plan_id: str):
+    """
+    Get event history for a pre-plan.
+
+    Returns all events related to this pre-plan, including
+    any plans that were created from it.
+    """
+    events = plan_history_service.get_history_for_pre_plan(pre_plan_id)
+    return {"pre_plan_id": pre_plan_id, "events": events, "count": len(events)}
+
+
+@api_router.get("/history", tags=["History"])
+async def get_recent_history(user_id: Optional[str] = None, limit: int = 50):
+    """
+    Get recent planning events.
+
+    **Query Parameters:**
+    - user_id: Filter by user (optional)
+    - limit: Maximum events to return (default: 50, max: 200)
+
+    Returns events sorted by timestamp (newest first).
+    """
+    limit = min(limit, 200)
+
+    if user_id:
+        events = plan_history_service.get_history_for_user(user_id, limit)
+    else:
+        events = plan_history_service.get_recent_events(limit)
+
+    return {"events": events, "count": len(events)}
+
+
+# =============================================================================
+# INCLUDE API ROUTER
+# =============================================================================
+
+# Include the API router with environment-based prefix
+# This makes all API routes available at /{env}/planner/api/v1/...
+app.include_router(api_router)
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+def run_server(host: str = "0.0.0.0", port: int = 8004):
+    """Run the FastAPI server"""
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="CFF Solver API Service")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8004, help="Port to bind to")
+
+    args = parser.parse_args()
+
+    print(f"\n{'='*60}")
+    print(" CFF WORKFORCE PLANNING SOLVER - API SERVICE")
+    print(f"{'='*60}")
+    print(f"Environment: {SOLVER_ENV.upper()}")
+    print(f"Host: {args.host}")
+    print(f"Port: {args.port}")
+    print(f"Root Path: {ROOT_PATH}")
+    print(f"Swagger UI: http://{args.host}:{args.port}{ROOT_PATH}/docs")
+    print(f"API Base: http://{args.host}:{args.port}{ROOT_PATH}/api/v1")
+    print(f"{'='*60}\n")
+
+    run_server(args.host, args.port)

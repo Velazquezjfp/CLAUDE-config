@@ -1,0 +1,14 @@
+ Perfect. Now I need to run a job with all contraints activated, I need you to monitor and then compare the output plan with teh current constraints and objectives (also objectives weights
+  used/priorities). You have to check and save in temp or memory which data was fetched. Then you must analyse and complete a report of how good teh output is, you should pay attention to
+  the planner output. The CT and Rt should be replannable so we can test this.                                                                                                                 
+                                                                                                                                                                                             
+  In this report that you will save under planner_dev Im expecting to see:                                                                                                                 
+  Accuracy over all (considering all constraints)                             
+  Objectives efficiency (are objectives driving planner decisions propperly?)
+  Analysers (are the analysers filling up the summary with actionable clear insights? are they making sense?) 
+                                                                                                                                                                                               
+  Im looking for a hollistic report with high effort from your part. You should worry about laying out a good strategy that allows you to engage and dig deep. Think about each stage          
+  carefully with possible assumptions and deviations. 
+
+Here are the apis for your reference, important to make your plan and start testing E2E before deployment.  
+solver_v2/solver_apis.md

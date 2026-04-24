@@ -1,0 +1,182 @@
+# Plan: CT/RT Rest Day & Compensation Day Handling
+
+## Context
+
+The solver currently treats CT (Compensation Days) and RT (Rest Days) as simple absence blocks with midnight-to-midnight boundaries. Three problems:
+
+1. **Incorrect time boundaries**: CT/RT can run 12:00-12:00 or 13:00-13:00 (from shift end), not just midnight-to-midnight. The planner forces everything to midnight, blocking shifts that should be legally allowed.
+2. **No CT/RT output**: The solver only outputs demand assignments. It should also output CT/RT assignments so the planner shows a complete schedule.
+3. **No 4 RT + 2 CT enforcement**: LC-08 counts "6 empty calendar days" but doesn't distinguish CT from RT or enforce the BAR CCT requirement of 4 RT + 2 CT per month.
+
+**Swiss AZG/BAR CCT context**: Under AZG (railway labor law), rest periods are measured from shift end to next shift start — NOT aligned to calendar day boundaries. A "rest day" requires 24+ consecutive hours of rest. The BAR CCT requires min 4 RT + 2 CT = 6 free days per month.
+
+## Approach: Post-Processing CT/RT Generator
+
+**Key design decision**: The solver already ensures >=6 rest days/month (LC-08) and >=12h rest between shifts (LC-04). Rather than adding complex new decision variables to the CP-SAT model (which would create a chicken-and-egg problem — CT start time depends on shift end time, which is itself a solver decision), we use a **post-processing step** that:
+
+1. Analyzes the solver's demand assignments chronologically per resource
+2. Identifies rest gaps of 24h+ (measured from shift_end to next shift_start — not midnight-bound)
+3. Labels them as CT or RT (4 RT first, then 2 CT per month)
+4. Outputs them as assignments alongside demand assignments
+
+This is aligned with AZG's definition (rest measured from shift end) and keeps the solver model simple.
+
+---
+
+## Implementation Steps
+
+### Step 1: New Post-Processor Module
+**New file**: `solver_v2/postprocessing/ct_rt_generator.py`
+
+Create `generate_ct_rt_assignments()` function:
+- **Input**: solver's demand assignments, resource_ids, planning period, locked CT/RT blocks (from absences not replanned)
+- **Algorithm per resource**:
+  1. Sort assigned demands chronologically
+  2. Walk consecutive pairs, compute gap = `next_shift_start - current_shift_end`
+  3. Gaps >= 24h are candidate rest days
+  4. Also check gap from planning_start to first shift, and last shift to planning_end
+  5. Group candidates by calendar month (using rest period start date)
+  6. Subtract locked CT/RT counts (if lock_allocations=true and CT/RT not replannable)
+  7. Label: first 4 per month = RT, next 2 = CT, rest = unlabeled
+- **Output**: list of CT/RT assignment dicts with:
+  - `assignment_type`: "CT" or "RT"
+  - `resource_id`, `resource_name`
+  - `start`: shift_end of previous demand (actual time, e.g. 13:00)
+  - `end`: shift_start of next demand (actual time)
+  - `duration_hours`: gap in hours
+  - `demand_id`: synthetic ID like `CT-{resource_id}-{YYYYMMDD}` or `RT-{resource_id}-{YYYYMMDD}`
+  - `bsa_id`: null
+  - `is_night_shift`: false
+
+Also create `__init__.py` in `solver_v2/postprocessing/`.
+
+### Step 2: Schema Change — Add assignment_type
+**File**: `mock_data_v2/database_application_v2/database/schema_planner_assignments.sql`
+
+- Add column: `assignment_type VARCHAR(20) DEFAULT 'DEMAND'` (values: DEMAND, CT, RT)
+- Make `request_id` nullable (CT/RT have synthetic IDs but no real demand)
+- Add index on `assignment_type`
+
+### Step 3: Backend API — Accept assignment_type
+**File**: `mock_data_v2/database_application_v2/api/routers/planner_assignments.py`
+
+- Update bulk insert SQL to include `assignment_type` column
+- Update GET endpoints to return `assignment_type` field
+
+### Step 4: Solver API Client — Pass assignment_type
+**File**: `solver_v2/api/client.py`
+
+- Update `post_planner_assignments_bulk()` to include `assignment_type` in each row's payload (default: "DEMAND")
+
+### Step 5: Service Integration — Wire Post-Processor
+**File**: `solver_v2/api/service.py` (lines 793-936, `_save_results_sync`)
+
+After solver produces `assignments_list` (line 813) and before saving:
+
+1. Import `generate_ct_rt_assignments`
+2. Determine locked CT/RT blocks: if `lock_allocations=true` AND CT/RT NOT in `replannable_demand_type`, extract existing CT/RT blocks from the absences data passed to the solver
+3. Call `generate_ct_rt_assignments(assignments_list, resource_ids, planning_start, planning_end, locked_ct_rt)`
+4. Extend `assignments_list` with CT/RT assignments for planner_output JSONB
+5. Extend `normalized` list (line 881) with CT/RT entries, adding `assignment_type` field
+6. Add `assignment_type: 'DEMAND'` to existing demand entries in the normalized list
+7. Log CT/RT generation metrics (count per type, per resource)
+
+Also update `_execute_solver_job` (around line 1168-1202) to pass necessary context to `_save_results_sync`:
+- `planning_start`, `planning_end` (from preprocessed_data)
+- `replannable_demand_type` (from job request)
+- `absences_data` (the raw blocks fetched earlier)
+
+### Step 6: LC-08 Constraint — Add CT/RT Awareness (Optional Enhancement)
+**File**: `solver_v2/constraints/lc_08_monthly_rest_v2.py`
+
+The existing LC-08 logic is a reasonable approximation (calendar days with zero assignments >= 6). No model changes needed for the core fix. However, add a comment/docstring update noting that the 4 RT + 2 CT split is enforced in post-processing, not the CP-SAT model.
+
+**Future enhancement** (not in this PR): Refine LC-08 to use time-based rest gap counting instead of calendar-day counting, for better accuracy with non-midnight shift boundaries.
+
+### Step 7: Partition State Carryover
+**File**: `solver_v2/solver/partition_state.py`
+
+Add CT/RT tracking to `ResourceState` dataclass:
+```
+ct_count_current_month: int = 0
+rt_count_current_month: int = 0
+current_month_key: Optional[str] = None  # "YYYY-MM"
+```
+
+Update `extract_state_from_solution()` to process CT/RT assignments and carry counts across partitions that span month boundaries.
+
+Update `to_dict()` and `from_dict()` for serialization.
+
+### Step 8: Analysis — CT/RT Distribution Report
+**File**: `solver_v2/analysis/constraint_analyzers/lc_08_monthly_rest_analyzer.py`
+
+Add `_analyze_ct_rt_distribution()` method:
+- Read CT/RT assignments from solution
+- Report RT count per resource per month (target: 4)
+- Report CT count per resource per month (target: 2)
+- Flag resources with insufficient RT or CT
+- Include in the analysis report under `constraint_violations.LC_08`
+
+### Step 9: Update Config
+**File**: `solver_v2/config.py`
+
+Add configuration constants:
+```python
+MIN_RT_PER_MONTH = 4
+MIN_CT_PER_MONTH = 2
+MIN_REST_GAP_HOURS = 24  # Minimum gap to qualify as a rest day
+```
+
+---
+
+## Files Summary
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `solver_v2/postprocessing/__init__.py` | NEW | Package init |
+| `solver_v2/postprocessing/ct_rt_generator.py` | NEW | Core CT/RT post-processing logic |
+| `mock_data_v2/database_application_v2/database/schema_planner_assignments.sql` | MODIFY | Add assignment_type column |
+| `mock_data_v2/database_application_v2/api/routers/planner_assignments.py` | MODIFY | Accept/return assignment_type |
+| `solver_v2/api/client.py` | MODIFY | Pass assignment_type in bulk insert |
+| `solver_v2/api/service.py` | MODIFY | Wire post-processor into save pipeline |
+| `solver_v2/solver/partition_state.py` | MODIFY | Add CT/RT state carryover |
+| `solver_v2/analysis/constraint_analyzers/lc_08_monthly_rest_analyzer.py` | MODIFY | Add CT/RT distribution analysis |
+| `solver_v2/config.py` | MODIFY | Add CT/RT config constants |
+| `solver_v2/constraints/lc_08_monthly_rest_v2.py` | MODIFY | Docstring update only |
+
+---
+
+## Existing Code to Reuse
+
+- `data_processor.py:_parse_absence_datetime()` — already preserves full timestamps
+- `data_processor.py:resource_absences` dict — already has `block_type` field with CT/RT labels
+- `partition_state.py:ResourceState` dataclass — extend with CT/RT fields
+- `partition_state.py:extract_state_from_solution()` — extend for CT/RT
+- `service.py:_save_results_sync()` lines 879-900 — extend normalized list
+- `client.py:post_planner_assignments_bulk()` — extend payload
+- `config.py` constants pattern — follow existing style
+- `resource_blocks.py:BLOCKING_CALENDAR_TYPES` list — reference for CT/RT type strings
+
+---
+
+## Verification
+
+### Unit Tests (ct_rt_generator.py)
+1. **Basic**: 1 resource, 5 demand shifts in a week → verify 2 rest gaps found and labeled
+2. **24h threshold**: Gap of 23h → NOT a rest day. Gap of 25h → IS a rest day
+3. **Non-midnight boundaries**: Shift ends at 13:00, next starts 14:00 two days later → rest period starts 13:00 (not midnight)
+4. **Month boundary**: Rest gaps spanning month boundary counted toward the month of rest start
+5. **4+2 split**: Month with 8 rest gaps → first 4 labeled RT, next 2 labeled CT, remaining unlabeled
+6. **Locked CT/RT**: Pass 2 locked RT → post-processor only generates 2 more RT + 2 CT (not 4+2 fresh)
+7. **Replannable flow**: No locked blocks → full 4 RT + 2 CT generated from scratch
+
+### Integration Tests
+1. Trigger solver with test data → verify planner_assignments has rows with assignment_type='CT' and 'RT'
+2. Trigger solver with `replannable_demand_type=["CT Jour de compensation"]` → verify old CTs removed, new CTs generated
+3. Partitioned solve across 2 months → verify CT/RT counts carry over correctly
+4. Verify FE-facing endpoints return assignment_type field
+
+### Manual Validation
+1. Compare output CT/RT start times against actual shift end times — confirm NOT midnight-bound
+2. Verify example: resource with shift ending at 13:00 → CT starts at 13:00, not 00:00
+3. Verify example: resource with CT 12:00-12:00 → night shift at 22:00 same day is NOT blocked (enough gap after CT end)

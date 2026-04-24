@@ -1,0 +1,366 @@
+# Holistic Reports — Series Index & Methodology
+
+**Purpose.** A numbered series of end-to-end solver validation reports. Each
+report runs the **same frozen payload** against the current solver image and
+measures every accuracy / objective / analyzer surface. New reports are
+written only after a batch of fixes has landed, so each report-pair
+(`#N` → `#N+1`) is a concrete before/after diff.
+
+---
+
+## Index
+
+| # | Date | Report | Solver image / plan_id | Verdict (exec summary) |
+|---|---|---|---|---|
+| 01 | 2026-04-21 | [`holistic_report_01-2026-04-21.md`](./holistic_report_01-2026-04-21.md) | `sha256:6aa136993…` / `PLAN-20260421153557` | BASELINE — 8/8 hard constraints pass; 11 gaps open. |
+| 02 | 2026-04-22 | [`holistic_report_02-2026-04-22.md`](./holistic_report_02-2026-04-22.md) | `sha256:50e48024…` / `PLAN-20260422114913` | POST-FIX — 8/9 R1 gaps closed; coverage math fixed (27% POOR instead of 167% EXCELLENT); CT -37%, RT -35%; 1 sub-bug (`objective_value` partition-mode) found + patched, awaits R3. |
+| 03 | 2026-04-22 | [`holistic_report_03-2026-04-22.md`](./holistic_report_03-2026-04-22.md) | rebuilt 3× this day / `PLAN-20260422131222` | POST-FIX-BATCH-2 — Fix #4b verified (objective_value=45750); workload variance 462→123h (-73%); idle-time rate 93.88→57.14 (correctly shows 21/49 idle); Fix #12 REVERTED to safe (LC-05 coupling conflict); scope-branch `03a_payload.json` created after external DB team renumber. |
+| 04 | 2026-04-22 | [`holistic_report_04-2026-04-22.md`](./holistic_report_04-2026-04-22.md) | `PLAN-20260422134850` | POST-FIX-#13 — Soft penalty on LC-06 over-allocation. CT global -22% (354→276), CT on zero-target partition 3 -51% (154→75). RT +29% (solver rebalanced toward the "free" first 4 per month). FEASIBLE, no regressions. objective_value 45,750→50,350 (penalty firing, visible). |
+
+## Fix #13 queue (landed in R4)
+
+- [x] **#13 Soft penalty on LC-06 rest-day excess.** Replaces the
+  attempted hard-cap approach (Fix #12 v1/v2) with a configurable soft
+  penalty. Implementation in three files:
+  1. `solver_v2/config.py`: new `REST_DAY_EXCESS_PENALTY_WEIGHT = 50`
+     flag (0 disables).
+  2. `solver_v2/constraints/lc_06_rest_days_allocation.py`: per
+     (resource, segment) IntVar `excess_rt_{r}_{seg}` and
+     `excess_ct_{r}_{seg}` with linear bound `excess >= sum − required`.
+     Terms stashed on `model._lc_06_excess_terms` via the same
+     side-channel pattern as `lc_06_anchor_map`. New log line:
+     `[LC_06] Excess penalty: N vars created (weight=W)`.
+  3. `solver_v2/solver/model.py`: after LC-06 call, pulls
+     `_lc_06_excess_terms` and extends `self.objective_vars` so terms
+     flow through the existing Minimize path.
+
+  **Verified R4 deltas**: CT 354→276 (-22%), CT on zero-target
+  partition 3: 154→75 (-51%), FEASIBLE, no regressions on any other
+  fix. Signature unchanged. See `./holistic_report_04-2026-04-22.md`.
+
+## Post-Report-#2 fix batch (2026-04-22) — all awaiting R3 verification
+
+- [x] **#4b (objective_value partition-mode)** — plumbed per-partition
+  ObjectiveValue through `PartitionResult → merge_results.summary.total_objective_value →
+  PartitionedResult.solver.ObjectiveValue`. Files:
+  `solver_v2/solver/partitioner.py`, `solver_v2/api/service.py`.
+  Expected R3 value: sum of per-partition objectives, ~362,700 for the
+  frozen payload scope.
+- [x] **#10 idle_time_analyzer DEMAND-only filter.** Lines 29 and 84 now
+  pre-filter `assignments` to `assignment_type == 'DEMAND'`. R1 reported
+  only 3 idle resources when 11 had no demand work. Expected R3:
+  `idle_resource_count` reflects true idle (8 more visible).
+- [x] **#11a workload_analyzer — critical.** Sum of `duration_hours`
+  counted RT/CT rows (24h each) → phantom 288h of "work" per resource →
+  `balance_workload` variance and achievement rate wildly wrong. Fixed
+  by filtering to DEMAND before the sum. Expected R3: variance drops
+  from 462h toward a plausible value (likely < 100h).
+- [x] **#11b overtime_cost_analyzer.** Same inflation — overtime hours
+  counted rest days. Fix: DEMAND-only filter in both the main path and
+  the gap-details fallback. Expected R3: achievement_rate rises from
+  0.00 toward a meaningful number.
+- [x] **#11c total_cost_analyzer.** `total_assignments = len(assignments)`
+  was the denominator, inflated by RT/CT. Filter to DEMAND. Expected R3:
+  internal_ratio/external_ratio become meaningful.
+- [x] **#11d travel_cost_analyzer.** Same bug — numerator skipped RT/CT
+  via `if not request: continue`, but denominator `len(assignments)`
+  included them, artificially depressing the local_ratio. R2 showed
+  5.88 POOR; expected R3 rises meaningfully.
+- [x] **#11e audit: sibling analyzers confirmed safe.** Natural filtering
+  (lookup by `demand_id` / `bsa_id` / `resource_category`, which are None
+  for RT/CT rows, causes silent skipping): `bsa_category_consistency`,
+  `shift_continuity`, `team_continuity`, `function_continuity`,
+  `group_continuity`, `main_competencies`, `category_priority`. No code
+  change needed for these.
+- [x] **#12 zero-target partition cap.** In
+  `solver_v2/constraints/lc_06_rest_days_allocation.py`, caps now emit 0
+  when `t.rt_required == 0` (or ct/combined), not `2 * gross`. Closes the
+  gap where partition 3 in R2 emitted 154 CT with 0 targets. Expected R3:
+  CT drops from 374 further toward the 147 gross target; log shows
+  `rt=0, ct=0, combined=0` caps emitting on carryover-satisfied partitions.
+
+---
+
+## Fix queue (from Report #1 §9 — prioritized)
+
+The next reports will be written after each batch of these lands. Order is
+the order we plan to tackle them. Strike through as fixes ship.
+
+### P1 — Instrumentation (surfaces wrong/missing data to users)
+
+- [x] **#1 Coverage rate math broken.** `analysis_summary.coverage.rate` counts
+  RT/CT normalized rows as covered demands → reports "EXCELLENT 167.54%" when
+  real DEMAND coverage is 27.2%.
+  **Fix landed 2026-04-21** in
+  `solver_v2/analysis/objective_analyzers/coverage_analyzer.py`
+  `analyze_performance()`: added a `demand_assignments = [a for a in assignments
+  if a.get('assignment_type', 'DEMAND') == 'DEMAND']` filter and replaced the
+  two `len(assignments)` uses (lines 46, 90) with `len(demand_assignments)`.
+  `covered_ids` now derives from `demand_assignments` and drops `None`
+  `demand_id`s (RT/CT have None). Default `'DEMAND'` for legacy rows keeps
+  pre-Phase-H runs unaffected.
+  - **Sibling bug noted** (not yet fixed — same root cause): 
+    `solver_v2/analysis/objective_analyzers/idle_time_analyzer.py:29,84` also
+    counts RT/CT rows as "active" resources. Result: the 11 truly-demand-idle
+    resources in Report #1 were reported as only "3 idle" because 8 had
+    RT/CT rows. Address in a follow-up.
+  - Other analyzers reading raw `assignments` that *may* need similar
+    filtering (not yet inspected):
+    `bsa_category_consistency_analyzer.py`, `shift_continuity_analyzer.py`.
+- [x] **#2 Per-objective metrics not surfaced.** `_analyze_objectives()` builds
+  `achievement_rate` + `performance_category` per objective but
+  `_generate_summary()` doesn't forward them to the API response.
+  **Fix landed 2026-04-21** in
+  `solver_v2/analysis/solution_analyzer.py`: added
+  `_build_objective_performance_summary()` helper + an `objective_performance`
+  key in the `_generate_summary` return dict. Shape:
+  `{objective_name: {achievement_rate, performance_category}}` — compact,
+  no heavy `metrics` payload. Full per-objective `metrics` still lives in
+  `report['objective_performance']` for in-process callers.
+- [x] **#3 `ct_rt_compliance.alerts_total = 0` paradox.** Alerts check the
+  solver's dynamic per-partition targets but `segment_breakdown` surfaces the
+  static per-month targets. Users see "need 4 RT" with "0 alerts" despite data
+  showing 3 RT.
+  **Fix landed 2026-04-21** — the root cause was a mis-labeling, not a bad
+  threshold. Phase J alerts are a *pre-solve source-data check*; when both
+  RT+CT are replannable, LC-06 handles enforcement and Phase J intentionally
+  returns empty. Two-file fix makes the semantic explicit:
+  1. `lc_08_monthly_rest_analyzer.py`: now emits
+     `ct_rt_compliance_meta: {rt_replannable, ct_replannable}` alongside the
+     alerts so downstream can tell whether the empty list means "no
+     shortfalls" or "skipped because LC-06 is active".
+  2. `solution_analyzer.py::_build_ct_rt_compliance_summary`: adds two new
+     fields to the `ct_rt_compliance` response:
+     - `scope` = `"pre_solve_source_data"` or `"not_applicable"`
+     - `threshold_policy` = plain-English description of what the alerts
+       check and a pointer to the LC-06 analyzer (Fix #5) for post-solve
+       satisfaction.
+  Post-solve RT/CT satisfaction (the "need 4 RT, got 3" case) will be
+  surfaced by the dedicated LC-06 analyzer in Fix #5.
+- [x] **#4 `planner_output` fields saved null/false.**
+  **Fix landed 2026-04-21** — turned out to be three separate issues, only
+  two of which were actual bugs:
+  1. **`objective_value: null`** — real bug. Solver's `client.post_planner_output`
+     had no `objective_value` parameter. Fixed: added optional arg in
+     `solver_v2/api/client.py`; call site in `solver_v2/api/service.py`
+     now reads `model.solver.ObjectiveValue()` when status is
+     FEASIBLE/OPTIMAL and passes it through.
+  2. **`num_assignments: null`, `coverage_percentage: null` via
+     `/plan/{plan_id}`** — real bug. The LIST endpoint computes them via
+     `jsonb_array_length(po.assignments)`, but `/plan/{plan_id}` omitted
+     those columns. Fixed: both endpoints now expose `num_assignments`
+     (total rows), `num_demand_assignments` (DEMAND-only), and
+     `coverage_percentage` (demand-only, mirrors Fix #1).
+     File: `mock_data_v2/database_application_v2/api/routers/planner_output.py`.
+  3. **`fetch_rt: false`, `fetch_ct: false`** — NOT a bug. Per spec at
+     `service.py:824-826`: `rt_replannable=True → fetch_rt=False` means
+     "solver replanned RT, read planner_assignments". So `False` under
+     T-BOTH is correct. Report #1 misread this — Report #2 should show
+     these as still False but label as expected behavior.
+  Bonus: the LIST endpoint's old `coverage_percentage` formula had the
+  same RT/CT inflation bug as Fix #1 — also patched to use
+  `COALESCE(elem->>'assignment_type', 'DEMAND') = 'DEMAND'` filter.
+- [x] **#5 `LC_06_rest_days_allocation` has no dedicated analyzer.** Silent
+  failure mode for the CT/RT feature.
+  **Fix landed 2026-04-21** — created
+  `solver_v2/analysis/constraint_analyzers/lc_06_rest_days_analyzer.py`.
+  - Class `LC_06_RestDaysAnalyzer(ConstraintAnalyzer)` with full
+    `analyze_violations / check_would_violate / suggest_weight_adjustment`
+    interface.
+  - Counts `existing` RT/CT (from `data.resource_absences`, Phase-J style)
+    plus `new` RT/CT (from `solution.solution_assignments` filtered to
+    `assignment_type in ('RT','CT')`), compares against
+    `compute_rest_targets(start, end, ids, None)` — same helper as LC-08.
+    Passing `partition_state=None` gets legal-baseline targets (rt_required
+    == rt_gross) rather than remaining-after-carryover targets.
+  - Output includes per-(resource, segment) breakdown of `rt_existing /
+    rt_new / ct_existing / ct_new` so consumers can see both sources.
+  - Fix-suggestion text branches on rt/ct_replannable flags so the advice
+    is coherent (e.g. "add to replannable_demand_type" only when the type
+    was NOT replannable).
+  - Registered in `analysis/constraint_analyzers/__init__.py` and wired
+    into `solution_analyzer.py::constraint_analyzers` under the key
+    `'LC_06_rest_days_allocation'` (exactly matches the key used in
+    `config.py::ENABLED_CONSTRAINTS`).
+
+### P2 — Solver behavior
+
+- [x] **#6 CT over-allocation.** 592 rows vs 147 static target (4× over). LC-06
+  has no upper bound — solver parks idle resources on CT.
+  **Fix landed 2026-04-21** — added hard upper-bound constraints to LC-06
+  in `solver_v2/constraints/lc_06_rest_days_allocation.py`:
+  - New config flag `REST_DAY_ALLOCATION_CAP_MULTIPLIER = 2.0` (default on).
+    Zero/None disables caps for rollback safety.
+  - Per (resource, segment), the solver is now bound by
+    `sum(rt_vars) <= ceil(multiplier * rt_gross)`,
+    `sum(ct_vars) <= ceil(multiplier * ct_gross)`,
+    `sum(rt_vars + ct_vars) <= ceil(multiplier * combined_gross)`.
+  - Using `rt_gross` (not `rt_required`) so caps are stable across
+    partitions: prior-partition carryover doesn't compound the cap.
+  - For our May scope, this caps CT per resource at ceil(2×2)=4 for a
+    full month and ceil(2×1)=2 for partial segments — vs observed max of
+    20 in Report #1. Expected Report #2: CT count drops from 592 toward
+    ~98-147 range.
+  - Metadata records `rt_cap`, `ct_cap`, `combined_cap` alongside the
+    required targets for downstream visibility.
+  - New log signature: `[LC_06] Upper-bound caps (multiplier=2.0): rt=N, ct=N, combined=N`.
+
+### P3 — Data-quality
+
+- [x] **#7 `RT Jour de repos` missing** from `replannable-demand-types` DB
+  catalog. Only `CT Jour de compensation` present. Solver accepts payload
+  directly so runs work, but FE/validator reading the catalog is misled.
+  **Fix landed 2026-04-21** — root cause: the seed file already includes
+  RT (line 10) but seed runs only on first-init; the row had been
+  manually deleted from the persistent volume.
+  Two-part fix:
+  1. Added self-healing idempotent `INSERT ... ON CONFLICT DO NOTHING` in
+     `mock_data_v2/database_application_v2/database/schema_replannable_demand_types.sql`
+     for BOTH RT and CT. Schema runs every startup, so deletions won't
+     persist for the core RT/CT pair.
+  2. Applied the same INSERT directly to the live QA DB via
+     `docker exec cff_postgres_qa psql -U cff_app_user -d cff_planning`
+     so Report #2 picks it up without a container rebuild. Verified via
+     `GET /qa/ai/api/v1/replannable-demand-types/`: now returns total=15
+     with both `CT Jour de compensation` (id=1) and
+     `RT Jour de repos` (id=15).
+- [x] **#8 `/qa/ai/api/v1/assignments/?team_id=X&start_date=Y&end_date=Z`
+  returns HTTP 500** on all three teams.
+  **Fix landed 2026-04-21** — root cause: NOT a CONCAT JOIN issue. The
+  `assignments` router never accepted `team_id` as a query param (lines
+  22-30 only declared resource_id/bsa_id/request_id/calendar_type), so
+  FastAPI silently dropped it. The query effectively ran as
+  `WHERE calendar_start >= :start AND calendar_end <= :end` across ALL
+  assignments — a full table scan over 34 days that timed out via the
+  external DB connection.
+  Fix: `mock_data_v2/database_application_v2/api/routers/assignments.py`
+  now declares `team_id: Optional[int]` and adds a subquery filter
+  `resource_id IN (SELECT resource_id FROM resources WHERE team_id = :team_id)`.
+  The resources table is on the same external DB so no cross-DB join.
+  Verified post-rebuild: `GET /assignments/?team_id=X&…` returns HTTP 200
+  across all teams. Two follow-up bugs surfaced by the rebuild and also
+  fixed inline:
+    - Type mismatch across the external DB:
+      `assignments.resource_id` is VARCHAR while `resources.resource_id`
+      is INTEGER. Cast both to `::text` in the subquery.
+    - asyncpg rejects string date parameters on TIMESTAMP columns
+      (documented gotcha in MEMORY.md). Added `_parse_date_param()` in
+      the router that converts `YYYY-MM-DD` strings to `datetime.date`
+      before binding — returns HTTP 400 on malformed input rather than 500.
+  Observation (not a bug, documented for Report #2): on the QA external
+  DB, teams 7557/7566/7549 have 0 existing assignments; team 7556 holds
+  all 7,235 rows. So Report #2's LC-06 analyzer will see `existing=0`
+  and compare NEW allocations directly against targets.
+- [x] **#9 1,188 of 1,753 demands have `team_id=null`.** Forces the solver's
+  demand filter to be wider than a strict team-based match.
+  **Classified as intentional, no code change 2026-04-21.** Documented
+  here for future report diffs:
+  - The solver's demand filter for `target_team_ids=[...]` is NOT a
+    simple `demand.team_id IN (...)` match. The solver resolves target
+    teams → resource set, then retains demands where the demand's
+    required `resource_category` overlaps with the resource set's
+    capabilities within the matching `region_code` / `division_code`.
+  - This is WHY Holistic Report #1 showed 613 solver-filtered demands
+    while my `demand.team_id IN (7557, 7566, 7549)` reconstruction only
+    found 93: most demands legitimately have `team_id=null` at the row
+    level because demand scoping happens via category/region matching,
+    not direct team ownership.
+  - Verification approach for future reports: compare against the solver
+    log's `Actual counts: X demands, Y resources` emission directly
+    rather than trying to reproduce the internal filter rule.
+  - **If FE ever needs an explicit team_id per demand** (e.g. for
+    dashboard filtering), that's an upstream mapping project — outside
+    scope of the solver-side validation series.
+
+Gaps #7–#9 do not necessarily need fixing before Report #2; they are data-side
+observations that may be orthogonal to Report #1's solver findings.
+
+---
+
+## Reproduction — how to run Report #N+1
+
+1. **Keep the payload frozen.** Do **not** edit
+   `./holistic_report_01_payload.json`. If a future scope change is needed,
+   start a new series (e.g. `holistic_report_02_payload.json` **only** for
+   deliberately different scopes — document why in the report).
+2. **Check containers healthy:**
+   ```bash
+   docker ps --filter name=cff-solver-qa --filter name=cff_api_qa
+   ```
+3. **Snapshot the baseline** before triggering (weights, constraint values,
+   replannable types, enabled constraints, test team sizes, solver image
+   SHA) — see Report #1 Stage 0 for the exact curls.
+4. **Trigger the job:**
+   ```bash
+   SUBMIT_TS=$(date +%s)
+   curl -s -X POST 'http://localhost:8005/qa/planner/api/v1/solver/trigger' \
+     -H 'Content-Type: application/json' \
+     -d @./holistic_report_01_payload.json
+   ```
+5. **Tail logs + poll status** until `complete`. Use the `job_id` from the
+   response. Capture the final `/solver/status/{job_id}` response —
+   `analysis_summary` is the main comparison target.
+6. **Extract output:**
+   ```bash
+   # Full planner output (includes assignments JSONB)
+   curl -s "http://localhost:8003/qa/ai/api/v1/planner-output/plan/${PLAN_ID}"
+   # Paginated normalized assignments (per_page=200 cap)
+   for p in 1 2 3 4 5 6; do
+     curl -s "http://localhost:8003/qa/ai/api/v1/planner-output/assignments/?plan_id=${PLAN_ID}&per_page=200&page=${p}"
+   done
+   ```
+7. **Independent constraint checks.** Reuse the per-constraint checks from
+   Report #1 §5. They are self-contained python snippets that read the
+   reconstructed input + output and emit PASS/FAIL per constraint.
+8. **Write the new report** using the structure of `holistic_report_01-…md`.
+   The sections (Executive / Run / Baseline / Input / Accuracy / Objectives /
+   Analyzers / CT-RT Deep Dive / Findings / Appendix) are fixed for diff-ability.
+
+### Diff targets (report-to-report)
+
+When comparing Report #N+1 against Report #N, focus on these values — each is
+a concrete metric improvement or regression:
+
+| Section | Metric | Source in report |
+|---|---|---|
+| §1 Executive | Verdict flips (✅/⚠️/❌) | Top table |
+| §5 Accuracy | PASS/FAIL count per constraint | §5 table |
+| §6.1 Objectives | "Observable metric" column — shifts in coverage%, variance, violations | §6.1 table |
+| §6.2 Instrumentation gaps | Lines removed from "Not surfaced" → populated | §6.2 |
+| §7.1 Insights | `Specific? / Actionable? / Quantified?` counts | §7.1 table |
+| §7.3 ct_rt_compliance | `alerts_total` change | §7.3 quoted JSON |
+| §8.1 CT/RT distribution | CT count vs static target ratio (was 4× over) | §8.1 table |
+| §9 Gap list | Count of unresolved gaps | §9 priority tables |
+
+A minimal "pass" for a follow-up report is: all gaps the batch claimed to fix
+are closed in §9, AND no new ❌ rows appear in §1 that weren't there in #N.
+
+---
+
+## What NOT to change between reports
+
+- The payload (scope, teams, dates, replannable types, time limit, lock flags).
+- The three teams `[7557, 7566, 7549]` and their 49 resources (size drift
+  across runs is expected — document if any team's `total` changes).
+- The verification methodology (same constraint checks, same cross-analysis).
+- The report section order (Executive / Run / Baseline / Input / Accuracy /
+  Objectives / Analyzers / CT-RT Deep Dive / Findings / Appendix).
+
+If any of the above must change, start a new numbering branch — e.g.
+`holistic_report_02a-…md` for a deliberate scope change — rather than
+silently drifting.
+
+---
+
+## Files in this folder related to the series
+
+| File | Role |
+|---|---|
+| `holistic_reports_README.md` | This file — series index + methodology |
+| `holistic_report_01-2026-04-21.md` | Report #1 — baseline |
+| `holistic_report_01_payload.json` | Frozen payload used for Report #1 (and all follow-ups until a scope change) |
+
+Future files expected:
+- `holistic_report_02-YYYY-MM-DD.md` — after P1 fixes land
+- `holistic_report_03-YYYY-MM-DD.md` — after P2 fixes land
+- etc.

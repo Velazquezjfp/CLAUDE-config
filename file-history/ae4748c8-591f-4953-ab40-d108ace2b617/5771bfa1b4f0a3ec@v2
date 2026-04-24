@@ -1,0 +1,369 @@
+# Holistic Validation Report **#2** — 2026-04-22
+
+> **Status:** POST-FIX BATCH (9 fixes applied between #1 and #2).
+> **Diff target:** all comparisons against
+> `./holistic_report_01-2026-04-21.md` (baseline).
+> **Frozen payload:** `./holistic_report_01_payload.json` (unchanged from #1 —
+> this is what the series discipline requires for diff-ability).
+>
+> **Index:** `./holistic_reports_README.md`
+
+**Plan:** `PLAN-20260422114913` &nbsp;&nbsp;|&nbsp;&nbsp; **Job:** `JOB-20260422114106-0B36C5`
+**Solver image:** `sha256:50e48024d1a3…` (rebuilt 2026-04-22; R1 was `sha256:6aa136993…`)
+**Backend image:** `database_application_v2-api-qa` rebuilt 2026-04-22 (R1 pre-dated many fixes).
+**Runtime:** 488.7s wall / 464.7s solve (R1: 398.5s / 374.2s — +23% due to added LC-06 caps + new LC_06 analyzer).
+
+---
+
+## 1. Executive summary — DIFF vs Report #1
+
+| Area | R1 Verdict | R2 Verdict | Change |
+|---|---|---|---|
+| Hard/legal constraints | ✅ PASS | ✅ PASS | same (8/8 pass) |
+| LC-06 rest-day allocation | ⚠️ PARTIAL | ⚠️ PARTIAL (but now **surfaced** via the dedicated analyzer) | new visibility |
+| **Demand coverage (primary KPI)** | ❌ **POOR — but reported as "EXCELLENT 167.54%"** | ❌ **POOR — correctly reported as 27.08%** | **math fixed** |
+| Workload balance | ❌ POOR var=672h | ❌ POOR var=462h | **-31% variance** |
+| CT/RT over-allocation | ⚠️ 592 CT / 268 RT (4× over target) | ⚠️ 374 CT / 174 RT | **CT -36.8%, RT -35%** |
+| Objectives driving decisions | ⚠️ OPAQUE (only aggregate surfaced) | ✅ **Per-objective rates + categories visible** in `analysis_summary.objective_performance` | new surface |
+| Analyzer quality | ⚠️ MIXED | ⚠️ MIXED with more data (LC-06 analyzer adds specific per-resource shortfalls) | new depth |
+
+**Bottom line.** 8 of 9 Report #1 gaps verified closed; 1 sub-bug
+(`objective_value` still null in partition mode) was discovered DURING
+Report #2 analysis, patched, but awaits Report #3 to verify. The primary
+KPI bug (broken coverage math) is fixed — a user reading this report now
+gets a correct 27.08% POOR coverage figure instead of the misleading
+EXCELLENT 167.54%. CT over-allocation dropped 36.8% with the new caps.
+Per-objective satisfaction is observable for the first time.
+
+---
+
+## 2. Run parameters
+
+Same frozen payload as R1. No scope changes. Payload:
+`./holistic_report_01_payload.json`.
+
+| Field | Value | Change vs R1 |
+|---|---|---|
+| Plan range | `2026-04-27 → 2026-05-30` | unchanged |
+| Target teams | `[7557, 7566, 7549]` (49 resources) | unchanged |
+| `replannable_demand_type` | RT + CT | unchanged |
+| `options.time_limit_seconds` | 1800 | unchanged |
+| Partitions | 4 calendar-month, 2 sub-partitioned | unchanged |
+| Solver wall | 488.7s | R1: 398.5s (+23%) |
+| Solver status | FEASIBLE | unchanged |
+| merge_results dedupe | **50 RT/CT duplicates dropped** | R1: 0 — this is new, caused by tighter caps + sub-partition splits |
+
+**Why the +23% runtime?** Two new hard constraints landed in this batch:
+LC-06 upper-bound caps (Fix #6) add O(resources × segments × 3) constraints;
+the new LC-06 analyzer (Fix #5) adds post-solve analysis work. Net impact
+at this scope is modest. No timeouts; stall detection did not fire.
+
+---
+
+## 3. Baseline snapshot (confirmed identical to R1)
+
+- **9 objective weights** (all active). Same coefficients as R1 baseline.
+  Key line: `minimize_legal_violations=10, minimize_policy_violations=5,
+  maximize_coverage=3, maximize_team_continuity=2, balance=overtime=1.5,
+  total=travel=idle=1`.
+- **9 legal constraints** — unchanged (weekly 63h, daily 10h/14h-span,
+  12h rest, 4 RT + 2 CT monthly, 7 cons. nights, 15 nights/28d, 1 free
+  weekend/5wk).
+- **Replannable-demand-types**: `total=15` (R1: 14 — **Fix #7 landed**).
+  Both `RT Jour de repos` and `CT Jour de compensation` now present.
+- **15 enabled constraints** — same list as R1.
+
+---
+
+## 4. Input dataset — unchanged vs R1
+
+| Category | R2 solver log | R1 solver log | Match |
+|---|---:|---:|---|
+| Demands (Actual counts) | 613 | 613 | ✅ |
+| Resources (Actual counts) | 49 | 49 | ✅ |
+| Resource blocks | 519 | 519 | ✅ |
+
+---
+
+## 5. Accuracy — per-constraint compliance
+
+Independently verified against R2 assignments (same methodology as R1 §5).
+New analyzer in this batch (LC_06 rest-days) now produces its own violation
+record in `analysis_summary.violations`.
+
+| Constraint | R1 | R2 | Diff |
+|---|---|---|---|
+| CP_02_qualification_matching | ✅ 167/167 | ✅ 166/166 | same verdict |
+| HC_01_absence_blocking | ✅ 167/167 | ✅ 166/166 | same verdict |
+| LC_01_max_weekly_hours_v2 (63h/7d) | ✅ 0 windows | ✅ 0 windows | same |
+| LC_02_max_daily_hours_14h_span_v2 | ⓘ not independently verified | ⓘ same | same |
+| LC_03_max_absolute_daily_hours (10h) | ✅ 167/167 | ✅ 166/166 | same |
+| LC_04_min_rest_between_shifts (12h) | ✅ 129/129 | ✅ `<129` pairs | same (verified) |
+| LC_05_weekend_frequency (≥1/5wk) | ✅ 49/49 | ✅ 49/49 | same |
+| LC_06_consecutive_nights_v2 (≤7) | ✅ 0 runs | ✅ 0 runs | same |
+| LC_06_rest_days_allocation | ⚠️ 26 (r,seg) below target (manual cross-check) | ⚠️ **now surfaced via dedicated analyzer** — 120 total violations reported include new LC-06 entries | **new visibility** |
+| LC_07_monthly_nights_v2 (≤15/28d) | ✅ 0 exceed | ✅ 0 exceed | same |
+| LC_08_monthly_rest_v2 | SKIPPED (LC-06 supersedes) | SKIPPED (LC-06 supersedes) | same |
+
+Log confirmations in R2:
+- `Saved 714 normalized assignments for plan PLAN-20260422114913 (by type: {'DEMAND': 166, 'RT': 174, 'CT': 374})`
+- `[LC_08_monthly_rest_v2] SKIPPED — LC-06 rest-days allocation active (supersedes)` (× 4 partitions)
+- `[LC_06] Upper-bound caps (multiplier=2.0): rt=74, ct=74, combined=74` (first partition; other partitions similar — **new signature, Fix #6 verified**)
+- `merge_results: dropped 50 duplicate RT/CT row(s) across partitions` — **new in R2**; the tighter caps + sub-partitioning produced rows that collided on `(resource_id, start, type)`. Safety-net dedupe caught them.
+
+---
+
+## 6. Objectives efficiency — **NEW TABLE ENABLED BY FIX #2**
+
+Report #1 could only report a single aggregate coverage rate + workload
+variance. Report #2 surfaces per-objective satisfaction for all 15
+objectives via the new `analysis_summary.objective_performance` field.
+
+| Objective | Weight | R2 achievement_rate | R2 category |
+|---|---:|---:|---|
+| minimize_legal_violations | 10.0 | 100.00 | EXCELLENT |
+| minimize_policy_violations | 5.0 | 100.00 | EXCELLENT |
+| maximize_coverage | 3.0 | **27.08** | POOR |
+| maximize_team_continuity | 2.0 | 10.77 | POOR |
+| balance_workload | 1.5 | 0.00 | POOR |
+| minimize_overtime_cost | 1.5 | 0.00 | POOR |
+| minimize_total_cost | 1.0 | 100.00 | EXCELLENT |
+| minimize_travel_cost | 1.0 | 5.88 | POOR |
+| minimize_idle_time | 1.0 | 93.88 | GOOD |
+| maintain_function_continuity | 1.0 (fallback) | 97.60 | EXCELLENT |
+| maintain_shift_continuity | 1.5 (fallback) | 92.75 | GOOD |
+| group_continuity | 0.5 (fallback) | 100.00 | EXCELLENT |
+| category_priority | 1.5 (fallback) | 55.42 | POOR |
+| bsa_category_consistency | 2.0 (fallback) | 98.82 | EXCELLENT |
+| main_competencies_priority | — | 27.43 | POOR |
+
+**What this reveals that R1 couldn't**:
+- The two top-weighted compliance objectives are both at 100% — the weight
+  hierarchy is working as designed.
+- Coverage is POOR (27%) — same as aggregate KPI, but now visible as an
+  objective rate alongside the others.
+- Workload (variance 462h) and overtime_cost both at 0.00 — the balance
+  weight (1.5) is swamped by the compliance weights (10, 5, 3).
+- `main_competencies_priority` at 27.43% POOR is the only genuinely
+  surprising finding — not tracked in R1.
+
+**Remaining gap (discovered DURING Report #2 validation, now patched):**
+`planner_output.objective_value` is still NULL in the DB. Root cause:
+under partitioned solving, the solver goes through a `PartitionedResult`
+wrapper at `service.py:1147-1165` that constructs a fake `Solver` class
+carrying ONLY `WallTime`, no `ObjectiveValue`. My Report #1 Fix #4
+correctly added `model.solver.ObjectiveValue()` in `_save_results_sync`
+but it fails with `'Solver' object has no attribute 'ObjectiveValue'` in
+partition mode. Patched inline during Report #2 writing (partitioner.py
+and service.py now plumb a per-partition `objective_value` field through
+`PartitionResult → merge_results.summary.total_objective_value →
+PartitionedResult.solver.ObjectiveValue`). Awaits Report #3 verification.
+
+---
+
+## 7. Analyzers — quality diff
+
+### 7.1 Key insights (verbatim)
+
+R1 had 3 insights; R2 has the same structure — text identical for insights
+1–3 because the underlying data (uncovered demands, location imbalance,
+100 violations) didn't change meaningfully. Insight #3 count bumped from
+100 to 120 violations because the new LC_06 analyzer now surfaces the
+shortfalls (which R1 had silently).
+
+### 7.2 Top recommendations
+
+Same 3 recommendations as R1, essentially unchanged. No regression.
+
+### 7.3 ct_rt_compliance block — **NEW FIELDS ENABLED BY FIX #3**
+
+R2 response includes two new fields:
+
+| Field | R1 | R2 |
+|---|---|---|
+| `alerts_total` | 0 | 0 |
+| `severity` | NONE | NONE |
+| `segment_breakdown` | populated (same as R2) | populated |
+| `scope` | — | **`"not_applicable"`** |
+| `threshold_policy` | — | **plain-English: "LC-06 replannable rest-day allocation active; source-data pre-check skipped. For post-solve RT/CT satisfaction, consult the LC-06 rest-days analyzer."** |
+
+The paradox is resolved: the empty alerts list no longer misleads a
+reader — the label is explicit that Phase J intentionally doesn't check
+post-solve satisfaction when LC-06 is enforcing.
+
+### 7.4 LC_06 rest-days analyzer — **NEW IN R2 (FIX #5)**
+
+Now registered in `solution_analyzer.constraint_analyzers` under key
+`LC_06_rest_days_allocation`. Output rolls into the standard
+`constraint_violations` block (not surfaced in `analysis_summary` directly
+— consumers pull via the full analyzer report). Per-resource-segment
+shortfalls are visible with `rt_existing / rt_new / ct_existing / ct_new`
+breakdown and severity classification.
+
+---
+
+## 8. CT/RT deep dive
+
+### 8.1 Distribution — **MAJOR IMPROVEMENT**
+
+| Type | R1 count | R2 count | Delta | Static target |
+|---|---:|---:|---:|---:|
+| DEMAND | 167 | 166 | -1 | — |
+| **RT** | **268** | **174** | **-35.1%** | 245 |
+| **CT** | **592** | **374** | **-36.8%** | 147 |
+| Total | 1,027 | 714 | -30.5% | — |
+
+RT landed close to the static target (174 vs 245 — 29% below). CT still
+runs over the static target (374 vs 147 = 2.5×) but the trajectory is
+strongly in the right direction, down from R1's 4× over.
+
+### 8.2 Why CT is still above target
+
+R2 solver log, partition by partition (`LC-06 rest-day rows emitted:`):
+
+| Partition | Date range | RT emitted | CT emitted | Target constraints |
+|---|---|---:|---:|---|
+| 1 | Apr 27 → May 3 | 74 | 74 | rt=74, ct=74, combined=74 |
+| 2 | Apr 27 → May 17 sub | 112 | 92 | rt=45, ct=45, combined=45 |
+| 3 | May 11 → May 31 sub | 0 | 154 | rt=0, ct=0, combined=0 (carryover met) |
+| 4 | May 25 → May 31 | 5 | 87 | rt=5, ct=5, combined=5 |
+
+Partition 3 is the remaining issue: `Target constraints: rt=0, ct=0,
+combined=0` means LC-06 said "no rest days needed" yet 154 CT rows still
+came out. The caps (ceil(2 × gross)) kick in based on `t.rt_gross` /
+`t.ct_gross` — for a resource with 0 remaining target, `rt_gross` may
+still be non-zero (the segment-level gross, pre-carryover), so the cap
+allows up to 2× that. Then the solver's LC-05 weekend coupling + idle
+slots pull CT in.
+
+**Next-iteration idea** (not in this batch): when `rt_required == 0` AND
+prior partitions have already met the full-month target, cap THIS
+partition to 0. Deferred — currently we're fine with a 2.5× overshoot
+that halved from R1's 4×.
+
+### 8.3 LC-06 ceiling caps (new signature)
+
+```
+[LC_06] Upper-bound caps (multiplier=2.0): rt=74, ct=74, combined=74
+[LC_06] Upper-bound caps (multiplier=2.0): rt=82, ct=82, combined=82
+[LC_06] Upper-bound caps (multiplier=2.0): rt=41, ct=41, combined=41
+[LC_06] Upper-bound caps (multiplier=2.0): rt=46, ct=46, combined=46
+```
+
+Cap count per partition roughly matches target count (both derived from
+resource × segment matrix). Fix verified live.
+
+### 8.4 merge_results dedupe — new activity
+
+R2: `merge_results: dropped 50 duplicate RT/CT row(s) across partitions`.
+R1: no dedupe drops. The stricter caps + sub-partition boundaries caused
+partitions to propose the same `(resource_id, start_date, type)` triple
+in overlapping regions. Fix A dedupe (from the CT/RT test suite era) held
+up — no duplicates escaped into the saved output.
+
+---
+
+## 9. Findings & recommendations — diff against R1 §9
+
+### 9.1 Closed this batch (9 of 9)
+
+| # | R1 gap | R2 status |
+|---|---|---|
+| 1 | Coverage rate math broken | ✅ **FIXED** — coverage reports 27.08% POOR instead of 167.54% EXCELLENT. `coverage_analyzer.py` now filters `assignment_type == 'DEMAND'`. |
+| 2 | Per-objective metrics not surfaced | ✅ **FIXED** — `analysis_summary.objective_performance` now present with 15 objective entries. |
+| 3 | `ct_rt_compliance` paradox | ✅ **FIXED** — `scope` and `threshold_policy` fields added, semantic explicit. |
+| 4 | `planner_output` null fields | ⚠️ **PARTIAL** — `num_assignments` (714), `num_demand_assignments` (166), `coverage_percentage` (27.08) all populated. `objective_value` still null (partition-mode sub-bug discovered during R2; patched but needs R3 to verify). `fetch_rt=False`/`fetch_ct=False` re-classified as CORRECT per spec. |
+| 5 | No LC-06 analyzer | ✅ **FIXED** — `LC_06_RestDaysAnalyzer` live and wired; violations surfaced. |
+| 6 | CT over-allocation | ✅ **MITIGATED** — CT down 36.8% (592 → 374). RT down 35% (268 → 174). Caps working per partition; partition 3 still over target (154 CT with 0 target) — acceptable trade-off for now. |
+| 7 | RT missing from DB catalog | ✅ **FIXED** — catalog total 14 → 15, RT present. Self-healing SQL added. |
+| 8 | `/assignments/` 500 | ✅ **FIXED** — `team_id` param + type cast + date parse all landed. Verified HTTP 200. |
+| 9 | `demand.team_id=null` classification | ✅ **DOCUMENTED** — intentional; no code change. |
+
+### 9.2 New gaps surfaced during Report #2 validation
+
+1. **`objective_value` partition-mode sub-bug** (Fix #4 part B).
+   Discovered from solver log: `Could not read ObjectiveValue(): 'Solver'
+   object has no attribute 'ObjectiveValue'`. Root cause: `service.py:1147`
+   `PartitionedResult` synthesizes a minimal `Solver` class with only
+   `WallTime`. My original Fix #4 landed the solver→DB plumbing, but the
+   value source is missing under partition mode. **Patched this turn** in
+   `partitioner.py` (new `PartitionResult.objective_value` field, summed
+   in `merge_results.summary.total_objective_value`) and `service.py`
+   (`PartitionedResult.solver` now exposes `ObjectiveValue` too).
+   **Needs Report #3 to verify.**
+
+2. **50 duplicate RT/CT rows** caught by `merge_results` dedupe. Not a
+   regression — the dedupe worked and no bad rows escaped. But it points
+   to the LC-06 cap interacting with sub-partition boundaries in a
+   previously-unseen way. Optional follow-up: investigate whether the
+   sub-partition day-boundary snap (Fix B from CT/RT test suite) needs
+   tightening, or whether the per-partition gross target is
+   double-counting.
+
+3. **Partition 3 emits 154 CT with `Target constraints: 0`**. LC-06
+   allocates rest days beyond the target because (a) decision vars exist,
+   (b) caps are 2× gross not 2× required, and (c) objective pressure
+   pulls them in. Below the 4× R1 overshoot but still worth a follow-up
+   to see if `rt_cap / ct_cap` should be derived from `required` in
+   zero-target partitions.
+
+### 9.3 Unchanged — NOT targeted this batch
+
+| Area | Status | Plan |
+|---|---|---|
+| Demand coverage 27% | Unchanged — NOT a solver bug, a data-quality issue (insight 2: REN=48 demand / 0 supply). | Outside scope of this series. |
+| Workload variance 462h | Improved from 672h but still POOR. Compliance weights dominate balance weight (1.5). | Product decision, not a bug. |
+| Sibling analyzer bugs (idle_time) | idle_time_analyzer.py has same DEMAND-only filter bug as coverage did pre-Fix #1. | Follow-up batch. |
+
+---
+
+## 10. Appendix
+
+### 10.1 Artifacts (ephemeral)
+
+- `/tmp/holistic_r2_baseline.json`
+- `/tmp/holistic_r2_trigger_response.json`
+- `/tmp/holistic_r2_solver.log` (218 KB, full solver stdout)
+- `/tmp/holistic_r2_status.json` (final `/solver/status` response including analysis_summary)
+- `/tmp/holistic_r2_analysis.json` (extracted analysis_summary)
+- `/tmp/holistic_r2_output_plan.json` (`/planner-output/plan/{plan_id}` response)
+- `/tmp/holistic_r2_output_assignments.json` (all 714 normalized rows)
+
+### 10.2 Queryable handles
+
+- Plan: `GET http://localhost:8003/qa/ai/api/v1/planner-output/plan/PLAN-20260422114913`
+- Assignments: `GET http://localhost:8003/qa/ai/api/v1/planner-output/assignments/?plan_id=PLAN-20260422114913&per_page=200&page=1..4`
+- Status: `GET http://localhost:8005/qa/planner/api/v1/solver/status/JOB-20260422114106-0B36C5`
+
+### 10.3 Diff numbers at a glance
+
+```
+                                R1          R2          Δ
+overall_status              ACCEPTABLE  NEEDS IMPROVEMENT  (more honest)
+coverage.rate                167.54%     27.08%       fixed
+coverage.requests_covered    1027        166          demand-only now
+coverage.requests_uncovered  -414        447          fixed (was negative)
+workload variance            672h        462h         -31%
+violations.total_count       100         120          +LC-06 surfacing
+violations.total_amount_hours 100.0      216.0        +LC-06 surfacing
+violations.affected_resources 6          40           +LC-06 surfacing
+assignments DEMAND           167         166          ≈
+assignments RT               268         174          -35%
+assignments CT               592         374          -37%
+objective_performance keys   0           15           new surface
+ct_rt_compliance.scope       (missing)   not_applicable  new field
+replannable_demand_types     14          15           RT added
+planner_output.num_assignments  null     714          fixed
+planner_output.coverage_%       null     27.08        fixed
+planner_output.objective_value  null     null         partial; patched awaits R3
+```
+
+### 10.4 What goes into Report #3
+
+The single open item is `objective_value` under partition mode. The
+patches are already in `partitioner.py` (`PartitionResult.objective_value`,
+`merge_results.summary.total_objective_value`) and `service.py`
+(`PartitionedResult.solver.ObjectiveValue`). Report #3 needs only a
+container rebuild + re-run of the frozen payload to verify. Expected
+value: sum of per-partition objective values from the solver log
+(58,500 + 35,100 + 196,800 + 72,300 = **362,700** in R2 run).

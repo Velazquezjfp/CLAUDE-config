@@ -1,0 +1,199 @@
+"""
+OBJ-09: BSA-ID Category Consistency Objective
+Quality Objective (Layer 3)
+
+Purpose: When a resource works on the same construction site (BSA-ID) across
+         multiple shifts, keep them in the same category. Penalize category
+         switches within the same BSA-ID.
+
+Weight from backend database (objective_name: 'bsa_category_consistency')
+- Default weight: 2.0
+- Weight Range: 0.5 - 3.0
+- This is a MINIMIZE objective (penalty for category switches on same BSA-ID)
+- Scaled by 1000 for solver precision
+
+Logic:
+- Group demands by bsa_id
+- For each BSA-ID with mixed categories (>1 distinct resource_category):
+  - Sort demands by start time
+  - Use first demand's category as "reference" (or prior partition's if available)
+  - For each subsequent demand with a different category:
+    - For each resource: detect switch via AND-constraint BoolVar
+    - Penalty = switch_var * SCALED_WEIGHT
+
+Optimization: Skip BSA-IDs where all demands have same category (common case).
+
+Follows same BoolVar AND-constraint pattern as function_continuity.py.
+"""
+from ortools.sat.python import cp_model
+from datetime import datetime, timezone
+import re
+import sys
+sys.path.append('..')
+
+
+def _parse_dt(dt_string: str) -> datetime:
+    """Parse ISO datetime string, ensure timezone-aware (UTC)."""
+    dt = datetime.fromisoformat(dt_string)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _normalize_string(s) -> str:
+    """Normalize a string for comparison."""
+    if s is None:
+        return ""
+    return re.sub(r'\s+', ' ', str(s).strip()).lower()
+
+
+def add_bsa_category_consistency_objective(model: cp_model.CpModel,
+                                            x_vars: dict,
+                                            data,
+                                            weight: float = 2.0,
+                                            incoming_state=None) -> list:
+    """
+    Add BSA-ID category consistency objective.
+
+    Penalizes when a resource switches categories within the same BSA-ID
+    (construction site).
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with requests containing bsa_id
+        weight: Weight coefficient from backend (default: 2.0)
+        incoming_state: Optional PartitionState for BSA category carryover
+
+    Returns:
+        List of penalty terms (positive = penalty for category switch on same BSA-ID)
+    """
+    if weight <= 0:
+        print("\n[BSA CATEGORY CONSISTENCY] Weight is 0 or negative, skipping")
+        return []
+
+    print(f"\n[BSA CATEGORY CONSISTENCY] Adding BSA-ID category consistency objective...")
+    print(f"  Backend weight: {weight}")
+
+    SCALED_WEIGHT = int(weight * 1000)
+    print(f"  Scaled weight: {SCALED_WEIGHT} per switch")
+
+    # Group demands by bsa_id
+    demands_by_bsa = {}
+    for request in data.requests:
+        bsa_id = request.get('bsa_id')
+        if not bsa_id:
+            continue
+        bsa_key = str(bsa_id)
+        if bsa_key not in demands_by_bsa:
+            demands_by_bsa[bsa_key] = []
+        demands_by_bsa[bsa_key].append(request)
+
+    if not demands_by_bsa:
+        print("  WARNING: No demands with bsa_id found")
+        return []
+
+    print(f"  Total BSA-IDs: {len(demands_by_bsa)}")
+
+    # Filter to BSA-IDs with mixed categories (optimization: skip homogeneous ones)
+    mixed_bsa_ids = {}
+    for bsa_id, demands in demands_by_bsa.items():
+        categories = set()
+        for d in demands:
+            cat = _normalize_string(d.get('resource_category', ''))
+            if cat:
+                categories.add(cat)
+        if len(categories) > 1:
+            mixed_bsa_ids[bsa_id] = demands
+
+    if not mixed_bsa_ids:
+        print("  No BSA-IDs with mixed categories — no switches possible")
+        return []
+
+    print(f"  BSA-IDs with mixed categories: {len(mixed_bsa_ids)}")
+
+    # Build switch detection
+    objective_terms = []
+    total_switch_vars = 0
+
+    for bsa_id, demands in mixed_bsa_ids.items():
+        # Sort demands by start time
+        sorted_demands = sorted(demands, key=lambda d: _get_start_time(d))
+
+        # Determine reference category for this BSA-ID
+        # Use prior partition's category if available, otherwise first demand
+        reference_cat = None
+        if incoming_state:
+            for resource_id in data.resource_ids:
+                prior_map = incoming_state.get_bsa_category_map(resource_id)
+                if bsa_id in prior_map:
+                    reference_cat = _normalize_string(prior_map[bsa_id])
+                    break
+
+        if not reference_cat:
+            # Use first demand's category as reference
+            reference_cat = _normalize_string(sorted_demands[0].get('resource_category', ''))
+
+        if not reference_cat:
+            continue
+
+        # Find demands with different category than reference
+        ref_demands = []  # Demands matching reference category
+        other_demands = []  # Demands with different category
+
+        for demand in sorted_demands:
+            cat = _normalize_string(demand.get('resource_category', ''))
+            if not cat:
+                continue
+            if cat == reference_cat:
+                ref_demands.append(demand)
+            else:
+                other_demands.append(demand)
+
+        if not ref_demands or not other_demands:
+            continue
+
+        # For each resource, detect when assigned to both ref and other demands on same BSA-ID
+        for resource_id in data.resource_ids:
+            # Pick one representative ref demand (first one — enough for AND detection)
+            ref_demand = ref_demands[0]
+            ref_key = (resource_id, ref_demand['id'])
+            if ref_key not in x_vars:
+                continue
+
+            for other_demand in other_demands:
+                other_key = (resource_id, other_demand['id'])
+                if other_key not in x_vars:
+                    continue
+
+                # Create switch detection: resource assigned to both ref and other category
+                switch_var = model.NewBoolVar(
+                    f'bsa_switch_{resource_id}_{bsa_id}_{other_demand["id"]}'
+                )
+
+                # switch_var = 1 iff both x_vars are 1
+                model.AddBoolAnd([x_vars[ref_key], x_vars[other_key]]).OnlyEnforceIf(switch_var)
+                model.AddBoolOr([x_vars[ref_key].Not(), x_vars[other_key].Not()]).OnlyEnforceIf(switch_var.Not())
+
+                objective_terms.append(SCALED_WEIGHT * switch_var)
+                total_switch_vars += 1
+
+    if not objective_terms:
+        print("  No switch detection terms created")
+        return []
+
+    print(f"  Created {total_switch_vars} BSA-ID category switch detection variables")
+    print(f"  Effect: Solver keeps resources in same category on same construction site")
+
+    return objective_terms
+
+
+def _get_start_time(demand: dict) -> datetime:
+    """Get start time from demand, with fallback."""
+    start_str = demand.get('shift_start_time', '')
+    if not start_str:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    try:
+        return _parse_dt(start_str)
+    except (ValueError, AttributeError):
+        return datetime.min.replace(tzinfo=timezone.utc)

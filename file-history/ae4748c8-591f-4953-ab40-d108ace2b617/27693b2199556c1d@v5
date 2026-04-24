@@ -1,0 +1,636 @@
+"""
+Checkpoint Manager for Partitioned Solving
+
+Handles saving and restoring solver state between partitions to enable:
+- Resume after interruption
+- Progress monitoring
+- State inspection for debugging
+
+TASK-062: Implement Partitioning Strategy
+"""
+import json
+import os
+from datetime import date, datetime
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+import logging
+
+from solver.partition_state import PartitionState
+from solver.proration_engine import ProrationEngine
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CheckpointInfo:
+    """Information about a checkpoint."""
+    checkpoint_id: str
+    timestamp: datetime
+    partition_index: int
+    status: str  # 'in_progress', 'completed', 'failed'
+    filepath: str
+
+
+class CheckpointManager:
+    """
+    Manages checkpoints for partitioned solving.
+
+    Checkpoints are saved after each partition is solved, enabling:
+    - Resume from last successful partition
+    - Progress monitoring
+    - State inspection
+
+    Usage:
+        manager = CheckpointManager(checkpoint_dir='/path/to/checkpoints')
+
+        # Before solving
+        checkpoint = manager.get_latest_checkpoint(job_id)
+        if checkpoint:
+            state = manager.load_checkpoint(checkpoint)
+
+        # After each partition
+        manager.save_checkpoint(job_id, partition_index, state, proration_engine)
+
+        # List checkpoints
+        checkpoints = manager.list_checkpoints(job_id)
+    """
+
+    def __init__(self, checkpoint_dir: str = None):
+        """
+        Initialize checkpoint manager.
+
+        Args:
+            checkpoint_dir: Directory to store checkpoints. Defaults to './checkpoints'
+        """
+        self.checkpoint_dir = checkpoint_dir or './checkpoints'
+        try:
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
+        except (PermissionError, OSError):
+            self.checkpoint_dir = '/tmp/checkpoints'
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
+            print(f"  [WARNING] Checkpoint dir fallback to {self.checkpoint_dir}")
+
+    def _get_checkpoint_path(self, job_id: str, partition_index: int) -> str:
+        """Get path for a specific checkpoint file."""
+        return os.path.join(
+            self.checkpoint_dir,
+            f"{job_id}_partition_{partition_index:03d}.json"
+        )
+
+    def _get_metadata_path(self, job_id: str) -> str:
+        """Get path for job metadata file."""
+        return os.path.join(self.checkpoint_dir, f"{job_id}_metadata.json")
+
+    def save_checkpoint(
+        self,
+        job_id: str,
+        partition_index: int,
+        partition_state: PartitionState,
+        proration_engine: Optional[ProrationEngine] = None,
+        partition_result: Dict[str, Any] = None,
+        status: str = 'completed'
+    ):
+        """
+        Save a checkpoint after solving a partition.
+
+        Args:
+            job_id: Unique identifier for the solving job
+            partition_index: Index of the partition just solved
+            partition_state: State to carry forward
+            proration_engine: Optional proration engine state
+            partition_result: Optional result summary from partition
+            status: Checkpoint status ('in_progress', 'completed', 'failed')
+        """
+        checkpoint_path = self._get_checkpoint_path(job_id, partition_index)
+
+        checkpoint_data = {
+            'checkpoint_version': '1.0',
+            'job_id': job_id,
+            'partition_index': partition_index,
+            'timestamp': datetime.now().isoformat(),
+            'status': status,
+            'partition_state': partition_state.to_dict() if partition_state else None,
+        }
+
+        if proration_engine:
+            checkpoint_data['proration_engine'] = proration_engine.to_dict()
+
+        if partition_result:
+            checkpoint_data['partition_result'] = {
+                'status': partition_result.get('status'),
+                'solve_time_seconds': partition_result.get('solve_time_seconds'),
+                'assignments_count': partition_result.get('assignments_count', 0),
+            }
+
+        with open(checkpoint_path, 'w') as f:
+            json.dump(checkpoint_data, f, indent=2, default=str)
+
+        # Update metadata
+        self._update_metadata(job_id, partition_index, status, checkpoint_path)
+
+        logger.info(f"Checkpoint saved: {checkpoint_path}")
+
+    def load_checkpoint(self, checkpoint_path: str) -> Dict[str, Any]:
+        """
+        Load a checkpoint file.
+
+        Returns:
+            Dict with:
+            - partition_state: PartitionState object
+            - proration_engine: ProrationEngine object (if saved)
+            - metadata: checkpoint metadata
+        """
+        with open(checkpoint_path, 'r') as f:
+            data = json.load(f)
+
+        result = {
+            'metadata': {
+                'job_id': data.get('job_id'),
+                'partition_index': data.get('partition_index'),
+                'timestamp': data.get('timestamp'),
+                'status': data.get('status'),
+            },
+            'partition_state': PartitionState.from_dict(data['partition_state']),
+        }
+
+        if 'proration_engine' in data:
+            result['proration_engine'] = ProrationEngine.from_dict(data['proration_engine'])
+
+        return result
+
+    def get_latest_checkpoint(self, job_id: str) -> Optional[str]:
+        """
+        Get path to the latest successful checkpoint for a job.
+
+        Returns:
+            Checkpoint filepath or None if no checkpoints exist
+        """
+        metadata_path = self._get_metadata_path(job_id)
+        if not os.path.exists(metadata_path):
+            return None
+
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+
+        latest = metadata.get('latest_successful_checkpoint')
+        if latest and os.path.exists(latest):
+            return latest
+
+        return None
+
+    def list_checkpoints(self, job_id: str) -> List[CheckpointInfo]:
+        """List all checkpoints for a job."""
+        metadata_path = self._get_metadata_path(job_id)
+        if not os.path.exists(metadata_path):
+            return []
+
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+
+        checkpoints = []
+        for cp in metadata.get('checkpoints', []):
+            checkpoints.append(CheckpointInfo(
+                checkpoint_id=cp.get('checkpoint_id', ''),
+                timestamp=datetime.fromisoformat(cp['timestamp']),
+                partition_index=cp['partition_index'],
+                status=cp['status'],
+                filepath=cp['filepath']
+            ))
+
+        return checkpoints
+
+    def get_resume_state(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get state needed to resume a job from the latest checkpoint.
+
+        Returns:
+            Dict with partition_state, proration_engine, and resume_from_partition
+            or None if no checkpoint exists
+        """
+        latest_path = self.get_latest_checkpoint(job_id)
+        if not latest_path:
+            return None
+
+        checkpoint = self.load_checkpoint(latest_path)
+        return {
+            'partition_state': checkpoint['partition_state'],
+            'proration_engine': checkpoint.get('proration_engine'),
+            'resume_from_partition': checkpoint['metadata']['partition_index'] + 1,
+            'checkpoint_metadata': checkpoint['metadata']
+        }
+
+    def clean_old_checkpoints(self, job_id: str, keep_last: int = 3):
+        """
+        Remove old checkpoints, keeping only the most recent ones.
+
+        Args:
+            job_id: Job identifier
+            keep_last: Number of recent checkpoints to keep
+        """
+        checkpoints = self.list_checkpoints(job_id)
+        if len(checkpoints) <= keep_last:
+            return
+
+        # Sort by partition index descending
+        checkpoints.sort(key=lambda x: x.partition_index, reverse=True)
+
+        # Remove old checkpoints
+        for cp in checkpoints[keep_last:]:
+            if os.path.exists(cp.filepath):
+                os.remove(cp.filepath)
+                logger.info(f"Removed old checkpoint: {cp.filepath}")
+
+    def _update_metadata(self, job_id: str, partition_index: int, status: str, filepath: str):
+        """Update job metadata file."""
+        metadata_path = self._get_metadata_path(job_id)
+
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+        else:
+            metadata = {
+                'job_id': job_id,
+                'created_at': datetime.now().isoformat(),
+                'checkpoints': []
+            }
+
+        # Add checkpoint entry
+        checkpoint_entry = {
+            'checkpoint_id': f"{job_id}_p{partition_index:03d}",
+            'partition_index': partition_index,
+            'timestamp': datetime.now().isoformat(),
+            'status': status,
+            'filepath': filepath
+        }
+        metadata['checkpoints'].append(checkpoint_entry)
+
+        # Update latest successful
+        if status == 'completed':
+            metadata['latest_successful_checkpoint'] = filepath
+            metadata['latest_partition_index'] = partition_index
+
+        metadata['updated_at'] = datetime.now().isoformat()
+
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+
+
+def _split_oversized_partition(partition, max_demands: int):
+    """
+    Split an oversized partition into sub-partitions by demand date boundaries.
+
+    Instead of splitting by equal days (which creates unbalanced partitions),
+    this splits at demand count boundaries: walk through demands sorted by date,
+    and cut when the count reaches max_demands.
+
+    Sub-partitions get sequential solving with full carryover, so time-sensitive
+    constraints (LC-01, LC-04, LC-06, LC-07) remain valid across boundaries.
+
+    Args:
+        partition: The oversized Partition object
+        max_demands: Maximum demands per sub-partition
+
+    Returns:
+        List of Partition objects (sub-partitions)
+    """
+    from solver.partitioner import Partition
+    from datetime import datetime as _dt
+
+    demands = partition.demands
+    if len(demands) <= max_demands:
+        return [partition]
+
+    # Sort demands by start date
+    def get_demand_date(d):
+        start_str = d.get('shift_start_time') or d.get('start_datetime')
+        if start_str:
+            try:
+                if isinstance(start_str, str):
+                    return _dt.fromisoformat(start_str.replace('Z', '+00:00')).date()
+                return start_str.date() if hasattr(start_str, 'date') else start_str
+            except (ValueError, TypeError):
+                pass
+        return partition.start_date
+
+    sorted_demands = sorted(demands, key=get_demand_date)
+
+    # Split into chunks of max_demands, snapping to day boundaries.
+    # 2026-04-20: previous behavior allowed same-date demands to split across
+    # two consecutive sub-partitions. That made the sub-partitions' date ranges
+    # overlap by 1 day, which in turn caused LC-06 to create two independent
+    # rt[r,d]/ct[r,d] BoolVars for the overlap day — one per sub-partition.
+    # When both sub-partition solves happened to set the var to 1, two RT/CT
+    # rows were emitted for the same (resource, day) (observed in TC-05 probe).
+    # Fix: after the demand-count cut, push the boundary forward to the next
+    # distinct date so every calendar day belongs to exactly one sub-partition.
+    # Consequence: sub-partitions may slightly exceed max_demands when a single
+    # day has >max_demands demands. Acceptable — max_demands is a memory
+    # safety valve, not a hard model-size cap.
+    sub_partitions = []
+    chunk_start_idx = 0
+
+    while chunk_start_idx < len(sorted_demands):
+        chunk_end_idx = min(chunk_start_idx + max_demands, len(sorted_demands))
+        # Snap to day boundary: if the last demand in the chunk shares a date
+        # with the first demand of the next chunk, extend the current chunk
+        # until the date changes (or we run out of demands).
+        if chunk_end_idx < len(sorted_demands):
+            last_date = get_demand_date(sorted_demands[chunk_end_idx - 1])
+            while chunk_end_idx < len(sorted_demands) and get_demand_date(sorted_demands[chunk_end_idx]) == last_date:
+                chunk_end_idx += 1
+
+        chunk_demands = sorted_demands[chunk_start_idx:chunk_end_idx]
+        chunk_dates = [get_demand_date(d) for d in chunk_demands]
+        sub_start = min(chunk_dates)
+        sub_end = max(chunk_dates)
+
+        # Filter resources by categories needed in this sub-partition
+        # (reuse partitioner's category filtering logic)
+        needed_cats = set()
+        for d in chunk_demands:
+            cat = d.get('resource_category', '')
+            if cat:
+                needed_cats.add(' '.join(str(cat).lower().split()))
+
+        if needed_cats:
+            sub_resources = [
+                r for r in partition.resources
+                if any(
+                    ' '.join(str(c).lower().split()) in needed_cats
+                    for c in (r.get('resource_categories', []) if isinstance(r.get('resource_categories', []), list) else [r.get('resource_categories', '')])
+                    if c
+                )
+            ] or partition.resources  # fallback to all if no match
+        else:
+            sub_resources = partition.resources
+
+        # Filter absences for sub-partition date range
+        # Include 1 extra day beyond sub_end for overnight shift blocking
+        from datetime import timedelta as _td
+        extended_sub_end = sub_end + _td(days=1)
+        sub_absences = []
+        for absence in partition.absences:
+            abs_start_str = absence.get('start_date')
+            abs_end_str = absence.get('end_date')
+            if abs_start_str and abs_end_str:
+                try:
+                    from datetime import date as _date
+                    # API returns datetime strings like '2026-01-01 00:00:00+00'
+                    # date.fromisoformat() only accepts 'YYYY-MM-DD', so extract date portion
+                    def _parse_date(v):
+                        if isinstance(v, _date): return v
+                        if isinstance(v, str): return _date.fromisoformat(v[:10])
+                        return None
+                    abs_s = _parse_date(abs_start_str)
+                    abs_e = _parse_date(abs_end_str)
+                    if abs_s and abs_e and abs_s <= extended_sub_end and abs_e >= sub_start:
+                        sub_absences.append(absence)
+                except (ValueError, TypeError):
+                    pass
+
+        sub_partition = Partition(
+            index=partition.index,  # Keep parent index for checkpoint tracking
+            start_date=sub_start,
+            end_date=sub_end,
+            demands=chunk_demands,
+            resources=sub_resources,
+            absences=sub_absences,
+            # Fix #14: forward the parent partition's full unfiltered
+            # resource list so LC-06 in each sub-partition enforces monthly
+            # rest-day minimums on ALL in-scope resources, not just those
+            # whose categories match this sub-partition's demands.
+            all_resources=partition.all_resources,
+        )
+        sub_partitions.append(sub_partition)
+
+        # INSTRUMENTATION (2026-04-20): detect date-overlap between consecutive
+        # sub-partitions. LC-06 emits rest rows per (resource, day); overlapping
+        # date ranges between sub-partitions are the suspected cause of
+        # duplicate CT/RT rows observed in TC-05 probe (resource 226, Apr 18-19).
+        overlap_warning = ""
+        if len(sub_partitions) >= 2:
+            prev_end = sub_partitions[-2].end_date
+            cur_start = sub_partition.start_date
+            if cur_start <= prev_end:
+                overlap_days = (prev_end - cur_start).days + 1
+                overlap_warning = f"  ⚠ DATE-OVERLAP with prev sub-partition: {cur_start} ≤ {prev_end} ({overlap_days}d)"
+        logger.info(
+            f"    Sub-partition {len(sub_partitions)-1}: {sub_start} to {sub_end}, "
+            f"{len(chunk_demands)} demands, {len(sub_resources)} resources{overlap_warning}"
+        )
+
+        chunk_start_idx = chunk_end_idx
+
+    return sub_partitions
+
+
+def solve_with_checkpointing(
+    partitioner,
+    partitions: List,
+    constraint_values,
+    objective_weights,
+    job_id: str,
+    checkpoint_manager: CheckpointManager = None,
+    proration_engine: ProrationEngine = None,
+    resume: bool = True,
+    progress_callback=None,
+    cancellation_check=None,
+    rt_replannable: bool = False,
+    ct_replannable: bool = False,
+) -> Dict[str, Any]:
+    """
+    Solve partitions with automatic checkpointing.
+
+    Features:
+    - Safety re-partitioning: oversized partitions are automatically split into
+      sub-partitions with full carryover for time-sensitive constraints
+    - Checkpoint resume: resumes from last successful partition on restart
+    - Error handling: catches crashes, saves partial results, continues if possible
+
+    Args:
+        partitioner: SolverPartitioner instance
+        partitions: List of Partition objects
+        constraint_values: ConstraintValues object
+        objective_weights: ObjectiveWeights object
+        job_id: Unique job identifier for checkpointing
+        checkpoint_manager: Optional checkpoint manager (creates default if None)
+        proration_engine: Optional proration engine for OC-01
+        resume: If True, attempt to resume from checkpoint
+
+    Returns:
+        Merged results dict
+    """
+    if checkpoint_manager is None:
+        checkpoint_manager = CheckpointManager()
+
+    max_demands = partitioner.config.max_demands_per_partition
+
+    # Check for resume state
+    start_partition = 0
+    current_state = None
+
+    if resume:
+        resume_state = checkpoint_manager.get_resume_state(job_id)
+        if resume_state:
+            start_partition = resume_state['resume_from_partition']
+            current_state = resume_state['partition_state']
+            if resume_state.get('proration_engine'):
+                proration_engine = resume_state['proration_engine']
+            logger.info(f"Resuming job {job_id} from partition {start_partition}")
+
+    results = []
+
+    for i, partition in enumerate(partitions):
+        # Cancel between partitions — current partition already finished, skip the rest
+        if cancellation_check and cancellation_check():
+            logger.info(f"Job {job_id} cancelled before partition {i}")
+            break
+
+        if i < start_partition:
+            logger.info(f"Skipping partition {i} (already completed)")
+            continue
+
+        # Skip empty partitions (can occur from boundary edge cases)
+        if not partition.demands:
+            logger.info(f"Skipping partition {i} (no demands)")
+            continue
+
+        # Update proration engine for this partition
+        if proration_engine:
+            proration_engine.set_partition_period(partition.start_date, partition.end_date)
+
+        # Fire progress callback before solving
+        if progress_callback:
+            progress_callback(i, len(partitions), "solving")
+
+        # Safety check: split oversized partitions into sub-partitions
+        # Sub-partitions get full carryover for time-sensitive constraints
+        # (LC-01, LC-04, LC-06, LC-07) — identical to main partition boundaries
+        num_demands = len(partition.demands)
+        if num_demands > max_demands:
+            logger.info(
+                f"  [SAFETY] Partition {i} has {num_demands} demands (max={max_demands}). "
+                f"Splitting into sub-partitions with carryover..."
+            )
+            sub_partitions = _split_oversized_partition(partition, max_demands)
+            logger.info(f"  [SAFETY] Created {len(sub_partitions)} sub-partitions")
+
+            # Solve sub-partitions sequentially with carryover
+            sub_state = current_state  # Start with incoming state from prior partition
+            sub_results = []
+
+            for j, sub_part in enumerate(sub_partitions):
+                logger.info(
+                    f"  [SAFETY] Solving sub-partition {j+1}/{len(sub_partitions)}: "
+                    f"{len(sub_part.demands)} demands, {sub_part.start_date} to {sub_part.end_date}"
+                )
+                try:
+                    sub_result = partitioner.solve_partition(
+                        sub_part,
+                        constraint_values,
+                        objective_weights,
+                        incoming_state=sub_state,
+                        rt_replannable=rt_replannable,
+                        ct_replannable=ct_replannable,
+                    )
+                    sub_results.append(sub_result)
+
+                    # Carryover state to next sub-partition
+                    if sub_result.outgoing_state:
+                        sub_state = sub_result.outgoing_state
+
+                    if sub_result.status == 'ERROR':
+                        logger.error(f"  [SAFETY] Sub-partition {j} failed: {sub_result.error_message}")
+                        break
+                except Exception as e:
+                    logger.error(f"  [SAFETY] Sub-partition {j} crashed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    from solver.partitioner import PartitionResult
+                    sub_results.append(PartitionResult(
+                        partition_index=i,
+                        status="ERROR",
+                        solve_time_seconds=0,
+                        assignments=[],
+                        error_message=str(e)
+                    ))
+                    break
+
+            # Merge sub-partition results into a single PartitionResult
+            from solver.partitioner import PartitionResult
+            merged_assignments = []
+            total_sub_time = 0
+            sub_statuses = []
+            for sr in sub_results:
+                merged_assignments.extend(sr.assignments)
+                total_sub_time += sr.solve_time_seconds
+                sub_statuses.append(sr.status)
+
+            if all(s in ['OPTIMAL', 'FEASIBLE'] for s in sub_statuses):
+                merged_status = 'FEASIBLE'
+            elif 'ERROR' in sub_statuses:
+                merged_status = 'PARTIAL'  # Some sub-partitions succeeded
+            else:
+                merged_status = 'FEASIBLE'
+
+            result = PartitionResult(
+                partition_index=i,
+                status=merged_status,
+                solve_time_seconds=total_sub_time,
+                assignments=merged_assignments,
+                outgoing_state=sub_state  # Final sub-partition's state
+            )
+        else:
+            # Normal-sized partition: solve directly
+            try:
+                result = partitioner.solve_partition(
+                    partition,
+                    constraint_values,
+                    objective_weights,
+                    incoming_state=current_state,
+                    rt_replannable=rt_replannable,
+                    ct_replannable=ct_replannable,
+                )
+            except Exception as e:
+                logger.error(f"Partition {i} crashed: {e}")
+                import traceback
+                traceback.print_exc()
+                from solver.partitioner import PartitionResult
+                result = PartitionResult(
+                    partition_index=i,
+                    status="ERROR",
+                    solve_time_seconds=0,
+                    assignments=[],
+                    error_message=str(e)
+                )
+
+        results.append(result)
+
+        # Fire progress callback after solving
+        if progress_callback:
+            progress_callback(i, len(partitions), result.status)
+
+        # Save checkpoint
+        checkpoint_manager.save_checkpoint(
+            job_id=job_id,
+            partition_index=i,
+            partition_state=result.outgoing_state,
+            proration_engine=proration_engine,
+            partition_result={
+                'status': result.status,
+                'solve_time_seconds': result.solve_time_seconds,
+                'assignments_count': len(result.assignments)
+            },
+            status='completed' if result.status in ['OPTIMAL', 'FEASIBLE', 'PARTIAL'] else 'failed'
+        )
+
+        # Update state for next partition
+        if result.outgoing_state:
+            current_state = result.outgoing_state
+
+        # On error, log but continue with remaining partitions (partial results > no results)
+        if result.status == 'ERROR':
+            logger.error(f"Partition {i} failed, continuing with remaining partitions...")
+            # Don't break — try remaining partitions for partial coverage
+
+    return partitioner.merge_results(results)

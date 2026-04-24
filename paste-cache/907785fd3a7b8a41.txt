@@ -1,0 +1,31 @@
+The following Law Constraints are important for our system and have to be adhered to 100%.
+
+1. Distance Between Work-Free Weekends
+At minimum every 5 weeks, one work-free weekend (entire Saturday and Sunday) must be allocated
+
+Vacation time replaces work-free weekend allocation if it includes complete weekends
+
+2. Time Balance Limits
+Time balance must remain within: +100 / -40 hours during each month
+
+Priority must always be 41 hours a week (with user preference slider)
+
+3. Maximum Work-Time
+a person must never exceed 10 hours a day
+
+a person must never exceed 63 hours over 7 work days
+
+a person must never exceed 5 hours without a break (breaks are not relevant right now, might be in the future though)
+
+4. Rest Time Between Shifts
+a person must have a minimum of 12 hours of rest time between shifts
+
+5. Night Shift
+a person must not exceed 7 concurrent Night Shifts
+
+a person must not exceed 15 Night Shifts in 28 Days
+
+6. Rest Days
+a person must have a minimum of 4 Rest-Days (RT) and 2 Compensation Days (CT), so in total a minimum of 6 days of in a month
+
+See 1.): A person must have minimum of 1 weekend each Month as Rest Days (Saturday and Sunday concurrent). Between these Rest Weekends there must not be a gap of more than 5 Weeks

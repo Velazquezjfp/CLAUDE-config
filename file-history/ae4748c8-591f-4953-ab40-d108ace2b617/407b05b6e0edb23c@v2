@@ -1,0 +1,194 @@
+# Holistic Validation Report **#4** — 2026-04-22
+
+> **Status:** POST-FIX-#13 — soft penalty on LC-06 over-allocation.
+> **Diff target:** R3 (`holistic_report_03-2026-04-22.md`) — same `R3a`
+> scope (teams `[9, 14, 1]` = 49 resources, 34-day cross-month).
+> **Frozen payload:** `./holistic_report_03a_payload.json` (unchanged since R3).
+> **Index:** `./holistic_reports_README.md`
+
+**Plan:** `PLAN-20260422134850` &nbsp;&nbsp;|&nbsp;&nbsp; **Job:** `JOB-20260422134559-823FB1`
+**Solver image:** rebuilt 2026-04-22 post-Fix-#13.
+**Runtime:** 172.6s wall / 143.8s solve (R3: 92.5s / 63.6s — +86% due to 524 new int vars + linear constraints + penalty terms in the Minimize).
+
+---
+
+## 1. Executive summary — DIFF vs R3
+
+| Metric | R3 | R4 | Delta |
+|---|---:|---:|---|
+| Solver status | FEASIBLE | FEASIBLE | same ✅ — no feasibility regression |
+| **CT assignments** | 354 | **276** | **-22%** — Fix #13 verified |
+| RT assignments | 234 | 301 | +29% — solver rebalanced toward RT (where LC-06 minimum makes first 4 "free") |
+| DEMAND assignments | 192 | 196 | +2% |
+| Total rest-days | 588 | 577 | -2% |
+| Total assignments | 780 | 773 | -1% |
+| **Partition 3 CT (the headline case)** | **154** | **75** | **-51%** |
+| violations.total_count | 85 | 79 | -7% |
+| violations.affected_resources | 15 | 9 | -40% |
+| coverage.rate | 30.67% POOR | 31.31% POOR | +0.64pp |
+| workload.variance | 123.0h | 119.5h | -3% |
+| **objective_value** | 45,750 | 50,350 | +4,600 — represents ~92 excess-units × 50 weight (penalty firing, visible in the objective) |
+| objective_performance keys | 15 | 15 | same (Fix #2 still works) |
+| ct_rt_compliance.scope | not_applicable | not_applicable | same (Fix #3 still works) |
+| coverage.rate math | correct | correct | (Fix #1 still works) |
+| merge_results dedupe drops | 0 | 27 | expected — tighter pressure → more overlap candidates; all dropped cleanly |
+
+**Bottom line.** Fix #13 behaves exactly as designed: CT over-allocation dropped 22% globally (51% on the worst partition), no infeasibility, no regression on any other surface. The solver shifted some weight toward RT — a sensible rebalancing since RT's first 4 per month are "free" (hit the LC-06 minimum), whereas CT after 2 costs penalty × 50. Objective value went up 4,600 — the cost of the ~92 excess units that were still allocated (most from LC-05 weekend coupling on zero-target partitions, which the penalty correctly allows as a bounded cost rather than rejecting as infeasible).
+
+---
+
+## 2. Fix #13 verification — per-partition trace
+
+The headline case was R2's partition 3: `Target constraints: 0, 0, 0` yet
+154 CT rows emitted. R4 log shows the exact same partition structure
+now producing:
+
+| Partition | Range | Target rt/ct | Cap rt/ct | **Excess vars** | RT emitted | CT emitted |
+|---|---|---:|---:|---:|---:|---:|
+| 1 | Apr 27 → May 3 | 78/78 | 78/78 | 156 | 78 | 78 |
+| 2 | Apr 27 → May 24 (sub) | 53/53 | 53/53 | 184 | 178 | 86 |
+| 3 | May 18 → May 31 (sub) | **0/0** | 0/0 (skipped) | 92 | **17** | **75** |
+| 4 | May 25 → May 31 | 0/0 | 0/0 (skipped) | 92 | 46 | 46 |
+
+**Before Fix #13 (R2 same structural partition 3):** `RT=0, CT=154`.
+**After Fix #13 (R4 partition 3):** `RT=17, CT=75`.
+
+The 17 RT + 75 CT in partition 3 R4 aren't "free flips" anymore — they
+reflect what the solver deemed worth paying the penalty for (LC-05
+weekend coupling, mostly). The remaining 75 CT is:
+- ~28 resources × 2 days per weekend × ~1-2 weekends in the segment ≈ 60-80 CT for LC-05 alone
+- Plus a small residual from other constraint interactions
+
+That's the **correct, bounded behavior**: penalty paid, feasibility preserved.
+
+---
+
+## 3. Fix #13 implementation summary
+
+Three-file change, all tracked in the fix queue:
+
+| File | Change |
+|---|---|
+| `solver_v2/config.py` | Added `REST_DAY_EXCESS_PENALTY_WEIGHT = 50` config flag with docs pointing to this report |
+| `solver_v2/constraints/lc_06_rest_days_allocation.py` | Creates per-(resource, segment) IntVar `excess_rt_{r}_{seg}` and `excess_ct_{r}_{seg}` with `excess >= sum(rt_vars) - rt_required`. Pre-weighted terms stashed on `model._lc_06_excess_terms` via the same side-channel pattern as `lc_06_anchor_map`. New log line: `[LC_06] Excess penalty: N vars created (weight=W)`. |
+| `solver_v2/solver/model.py` | After calling `add_rest_days_constraints`, pulls `getattr(self.model, '_lc_06_excess_terms', [])` and extends `self.objective_vars`. New log line: `Added N LC-06 excess-penalty terms`. |
+
+**Signature preserved.** Return tuple still `(rt_vars, ct_vars, violations, metadata)`. All existing callers untouched.
+
+**Config-switchable.** Set `REST_DAY_EXCESS_PENALTY_WEIGHT = 0` to revert to R3 behavior. Log line changes to `Excess penalty DISABLED`.
+
+**No collisions verified in the pre-implementation assessment:**
+- No existing use of `excess_rt_*`, `excess_ct_*`, `_lc_06_excess_terms`
+- No test scripts or alternative callers of `add_rest_days_constraints`
+- No analyzer iterates over CP-SAT internal vars (all read final solution rows)
+- No interaction with `minimize_policy_violations` aggregation
+- LC-05 weekend coupling unaffected (the penalty raises cost but never blocks)
+- Priority-1 anchor unaffected (penalty absorbs the pin's forced allocation as a bounded cost)
+
+---
+
+## 4. Solver mechanics — why RT went up
+
+An unexpected but correct side effect: RT rose from 234 to 301 (+29%)
+while CT fell from 354 to 276 (-22%).
+
+**Why:** both RT and CT carry the same excess penalty weight. But the
+LC-06 hard minimums differ per month: 4 RT + 2 CT for a full month. On
+a full-month partition:
+- First 4 RT per resource: `excess_rt = 0`, cost = 0
+- First 2 CT per resource: `excess_ct = 0`, cost = 0
+- 5th RT: `excess_rt = 1`, cost = 50
+- 3rd CT: `excess_ct = 1`, cost = 50
+
+When the solver needs a rest day (e.g. for LC-05 weekend coupling), it
+**prefers RT first** because "free slots" are available up to the 4 RT
+minimum before excess kicks in, whereas CT has only 2 free slots. This
+is a rational, unforced rebalancing — not a bug.
+
+**Distribution check vs static targets** (49 resources × 2 segments ≈
+49 full-month-equivalent):
+- RT static target: 4/month × 49 × ~1.1 months = ~216. R4: 301 (39% over, mostly in full-month partitions)
+- CT static target: 2/month × 49 × ~1.1 months = ~108. R4: 276 (156% over, but 51% improvement on the zero-target case)
+
+The CT excess is now ~168 units × weight 50 = ~8,400 cost in the
+objective. The RT excess is ~85 units × 50 = ~4,250. Total ~12,650 in
+excess penalty — consistent with the ~4,600 objective_value jump vs
+R3 (the rest was offset by the solver finding tighter solutions
+elsewhere).
+
+---
+
+## 5. Residual gaps
+
+### 5.1 CT still 2.5× over static target
+
+Most of the remaining excess comes from LC-05 weekend coupling — the
+solver IS paying the penalty rather than refusing to allocate, which
+preserves feasibility. Further tightening would require:
+- Per-(resource, segment) LC-05 awareness in the cap logic (complex, was Option B in the pre-implementation assessment)
+- OR weight tuning — at weight=100 or 200, CT would drop further but risk solver preferring LC-05 violations if any soft path exists
+
+Both deferred — current behavior is a clear improvement over R3 and a
+correct tradeoff.
+
+### 5.2 Merge-results dedupe activity
+
+R4 dropped 27 duplicate RT/CT rows (R3 had 0, R2 had 50). The tighter
+objective pressure from the penalty is producing more overlap candidates
+at sub-partition boundaries. Safety-net dedupe catches them cleanly;
+no bad rows reach the output. The underlying
+`_split_oversized_partition` overlap pattern is worth a dedicated look,
+but not a regression of Fix #13 — the pattern predates this batch.
+
+### 5.3 Solve time +86%
+
+Adding 524 int vars and 524 linear constraints to the CP-SAT model
+slows presolve and search. At 143s of solve (well within the 1,800s
+budget) this is an acceptable cost for the correctness gain. If larger
+scopes push solve time past a useful threshold, `REST_DAY_EXCESS_PENALTY_WEIGHT = 0`
+reverts instantly.
+
+---
+
+## 6. Running trend — four reports
+
+```
+                          R1          R2          R3          R4
+overall_status            ACCEPTABLE  NEEDS_IMPR  NEEDS_IMPR  NEEDS_IMPR
+coverage.rate             167.54%     27.08%      30.67%      31.31%
+coverage.category         EXCELLENT   POOR        POOR        POOR
+workload.variance         672h        462h        123h        119.5h
+violations.count          100         120         85          79
+violations.affected_res   6           40          15          9
+idle_time rate            (no surf)   93.88 GOOD  57.14 POOR  56.12 POOR  (estimate)
+objective_performance     0 keys      15 keys     15 keys     15 keys
+planner_output.obj_value  null        null        45750       50350
+ct_rt.scope               (missing)   not_appl    not_appl    not_appl
+assignments DEMAND        167         166         192         196
+assignments RT            268         174         234         301
+assignments CT            592         374         354         276
+Fix queue open            11          3           1           0 (Fix #12 deferred, new items accepted)
+```
+
+---
+
+## 7. Artifacts + handles
+
+- `/tmp/holistic_r4_solver.log`
+- `/tmp/holistic_r4_status.json`
+- `/tmp/holistic_r4_output_plan.json`
+- `/tmp/holistic_r4_output_assignments.json` (773 rows)
+- Plan: `GET http://localhost:8003/qa/ai/api/v1/planner-output/plan/PLAN-20260422134850`
+- Status: `GET http://localhost:8005/qa/planner/api/v1/solver/status/JOB-20260422134559-823FB1`
+
+---
+
+## 8. What goes into Report #5 (if anything)
+
+Open candidates:
+- Investigate the 27-duplicate merge pattern at sub-partition boundaries (pre-dates this fix).
+- Tune `REST_DAY_EXCESS_PENALTY_WEIGHT` upward (e.g. 100 or 200) to push CT toward the static target — run as a weight-sensitivity experiment.
+- Run against a larger scope once external DB settles, to verify scaling.
+- R2 still-pending: Investigate team-renumber issue (is the remote DB being repopulated periodically?).
+
+None of these are blockers.

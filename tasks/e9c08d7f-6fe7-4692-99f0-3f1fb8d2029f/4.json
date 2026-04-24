@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "Install express (generate package-lock.json)",
+  "description": "Run npm install to produce package-lock.json and node_modules",
+  "activeForm": "Running npm install",
+  "status": "in_progress",
+  "blocks": [],
+  "blockedBy": []
+}

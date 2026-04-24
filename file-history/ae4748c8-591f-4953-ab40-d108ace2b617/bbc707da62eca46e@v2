@@ -1,0 +1,470 @@
+# Plan: CT/RT Rest Days as HARD Constraint
+
+**Date**: 2026-04-13
+**Supersedes**: `ct_rt_generator-27.03.md` (post-processing approach — abandoned)
+**Status**: Approved structure; ready for implementation
+**Legal basis**: Swiss AZG (railway labor law) + BAR CCT (CFF collective agreement)
+
+---
+
+## Context
+
+CT (Compensation Days, "CT Jour de compensation") and RT (Rest Days, "RT Jour de repos") are the only two of the 9 always-blocking absence calendar types that may be marked as **replannable** by the Front End via the trigger payload's `replannable_demand_type` array. When marked replannable, the solver must:
+
+1. Allow the existing CT/RT records in the external DB to be ignored as blockers
+2. **Allocate** new CT/RT days as decision variables, exactly the way it allocates demand assignments
+3. Enforce the BAR CCT minimum: **4 RT + 2 CT = 6 rest days per calendar month** as a HARD constraint
+4. Honor non-midnight rest boundaries (24-24, 12-12, or 13-13)
+5. Couple to LC-05 (1 free Sat+Sun weekend per 5 weeks) — those weekend days count toward the 6
+6. Honor LC-04 (≥12h rest between shifts) when picking CT/RT anchor times
+
+When CT or RT is **not** replannable, the existing 9-type absence-blocking pipeline remains untouched and the analyzer issues a **post-processing alert** if the existing data fails the 4 RT + 2 CT count.
+
+---
+
+## Law Constraints Reference (verbatim, for traceability)
+
+```
+1. Distance Between Work-Free Weekends
+   At minimum every 5 weeks, one work-free weekend (entire Saturday and Sunday) must be allocated.
+   Vacation time replaces work-free weekend allocation if it includes complete weekends.
+
+4. Rest Time Between Shifts
+   A person must have a minimum of 12 hours of rest time between shifts.
+
+6. Rest Days
+   A person must have a minimum of 4 Rest-Days (RT) and 2 Compensation Days (CT),
+   so in total a minimum of 6 days of rest in a month.
+   See 1.): A person must have minimum of 1 weekend each Month as Rest Days
+   (Saturday and Sunday concurrent). Between these Rest Weekends there must not
+   be a gap of more than 5 Weeks.
+```
+
+---
+
+## Existing Code That This Plan Builds On
+
+| File | Role |
+|---|---|
+| `solver_v2/api/data_pipeline.py:13-40` | `sanitize_replannable_types()` — currently strips RT/CT (must reverse) |
+| `solver_v2/config.py:164` | `ALWAYS_BLOCKING_CALENDAR_TYPES` (9 items) |
+| `solver_v2/api/service.py:758, 1754` | Trigger paths that call sanitizer |
+| `solver_v2/constraints/lc_04_min_rest_between_shifts.py` | Pattern for datetime-arithmetic hard constraint with state carryover |
+| `solver_v2/constraints/lc_05_weekend_frequency.py:110` | Already enforces ≥1 free Sat+Sun per 5 weeks (HARD); `free_weekend_vars` are local — must be exposed |
+| `solver_v2/constraints/lc_08_monthly_rest_v2.py` | Current ".date()" calendar-day approach — to be deprecated/restricted |
+| `solver_v2/constraints/hc_01_absence_blocking.py` | Reference pattern for datetime overlap checks |
+| `solver_v2/solver/model.py:244-451` | Constraint module wiring |
+| `solver_v2/solver/model.py:697-779` | `_extract_solution()` — currently emits DEMAND only |
+| `solver_v2/solver/partition_state.py` | `ResourceState` — extend with CT/RT counts |
+| `solver_v2/api/service.py:879-900` | Normalized `planner_assignments` bulk insert |
+| `mock_data_v2/.../routers/planner_output.py` | 3 GET endpoints (list, by id, by plan_id) + POST |
+| `mock_data_v2/.../routers/planner_assignments.py` | Bulk insert |
+| `mock_data_v2/.../database/schema_planner_assignments.sql` | Add `assignment_type`, make `request_id` NULLABLE |
+
+---
+
+## Decision Summary (from review session)
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Approach | HARD constraint (CP-SAT decision variables), NOT post-processing |
+| 2 | Day-level vs interval | Day-level Boolean decision variables `rt[r,d]`, `ct[r,d]` |
+| 3 | Anchor (start time) | `[shift_end_prev, shift_end_prev + 24h]` — naturally yields 12-12 / 13-13; falls back to midnight for the first day in range |
+| 4 | Per-month vs window | Window-based with calendar-month decomposition; `ceil` rounding for partial months |
+| 5 | Combined target | `≥6` rest days (RT+CT combined) per full month or prorated window |
+| 6 | Weekend rest | Reuse LC-05 hard constraint; couple its `free_weekend_vars` to RT/CT to mark Sat+Sun as RT/CT |
+| 7 | Output A | JSONB `planner_output.assignments` includes CT/RT objects with `assignment_type` |
+| 8 | Output B | `planner_assignments` table includes CT/RT rows with `assignment_type`, `request_id=NULL` |
+| 9 | `request_id` | **NULLABLE** for CT/RT (no demand exists); DEMAND rows unchanged |
+| 10 | Output flags | `fetch_rt`, `fetch_ct` BOOLEAN on `planner_output` (FE-driven decision: re-fetch from external DB or read solver output) |
+| 11 | Non-replannable case | No solver change; analyzer post-processing alert if external data violates 4 RT + 2 CT |
+| 12 | Other 7 absence types | Stay protected by `sanitize_replannable_types()` — never replannable |
+
+---
+
+## Implementation — 9 Phases
+
+### Phase A — Trigger Pipeline: Allow RT/CT to Pass Through
+
+**File**: `solver_v2/api/data_pipeline.py` (lines 13-40)
+
+Modify `sanitize_replannable_types()`:
+- Build a "protected" subset = `ALWAYS_BLOCKING_CALENDAR_TYPES` MINUS `{"RT Jour de repos", "CT Jour de compensation"}`
+- Strip only the protected subset from the user's `replannable_demand_type`
+- RT and CT pass through unchanged into the API's `exclude_calendar_types`
+
+**File**: `solver_v2/config.py`
+
+Add named constants:
+```python
+RT_CALENDAR_TYPE = "RT Jour de repos"
+CT_CALENDAR_TYPE = "CT Jour de compensation"
+REPLANNABLE_REST_TYPES = {RT_CALENDAR_TYPE, CT_CALENDAR_TYPE}
+MIN_RT_PER_MONTH = 4
+MIN_CT_PER_MONTH = 2
+MIN_REST_DAYS_PER_MONTH = 6
+MIN_REST_GAP_HOURS = 24
+```
+
+**File**: `solver_v2/api/service.py` (`_execute_solver_job`, around lines 758 and 1754)
+
+After calling `sanitize_replannable_types()`, compute:
+```python
+rt_replannable = RT_CALENDAR_TYPE in replannable_demand_type
+ct_replannable = CT_CALENDAR_TYPE in replannable_demand_type
+```
+Store both flags into `preprocessed_data` (or pass through job context) so they reach (a) the constraint module, (b) the post-processing analyzer, and (c) `planner_output` insertion.
+
+---
+
+### Phase B — Output Flags `fetch_rt` / `fetch_ct`
+
+**File**: `mock_data_v2/database_application_v2/database/schema_planner_output.sql`
+
+Add columns:
+```sql
+ALTER TABLE planner_output
+  ADD COLUMN IF NOT EXISTS fetch_rt BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS fetch_ct BOOLEAN NOT NULL DEFAULT TRUE;
+```
+Semantics: `fetch_rt = NOT rt_replannable`. If TRUE → FE must fetch RT from external DB (solver did not produce them). If FALSE → solver produced them; FE reads from `planner_assignments` where `assignment_type='RT'`.
+
+**File**: `mock_data_v2/database_application_v2/api/routers/planner_output.py`
+
+Update all 3 GET endpoints (list, by `output_id`, by `plan_id`) to SELECT `po.fetch_rt, po.fetch_ct`. Update POST to accept and INSERT both fields.
+
+**File**: `solver_v2/api/client.py`
+
+Update `post_planner_output()` payload to include `fetch_rt` and `fetch_ct`.
+
+**File**: `solver_v2/api/service.py` (`_save_results_sync`)
+
+When building the planner_output payload, set:
+```python
+"fetch_rt": not rt_replannable,
+"fetch_ct": not ct_replannable,
+```
+
+---
+
+### Phase C — Schema: `planner_assignments`
+
+**File**: `mock_data_v2/database_application_v2/database/schema_planner_assignments.sql`
+
+```sql
+ALTER TABLE planner_assignments
+  ALTER COLUMN request_id DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS assignment_type VARCHAR(20) NOT NULL DEFAULT 'DEMAND';
+
+CREATE INDEX IF NOT EXISTS idx_pa_assignment_type ON planner_assignments(assignment_type);
+```
+
+**File**: `mock_data_v2/database_application_v2/api/routers/planner_assignments.py`
+
+- Bulk-insert SQL: include `assignment_type` column; allow NULL `request_id`
+- GET endpoints: return `assignment_type`
+- Add optional filter `?assignment_type=DEMAND|CT|RT`
+
+**File**: `solver_v2/api/client.py`
+
+Update `post_planner_assignments_bulk()` to forward `assignment_type` (default `"DEMAND"`) and allow `request_id=None`.
+
+---
+
+### Phase D — Pre-Processing: Window-Based Targets
+
+**File**: `solver_v2/preprocessing/data_processor.py` (or new `rest_targets.py` if cleaner)
+
+New function: `compute_rest_targets(planning_start, planning_end, resource_ids, partition_state) -> Dict[resource_id, Dict[month_key, RestTarget]]`
+
+```python
+@dataclass
+class RestTarget:
+    rt_required: int       # min RT days for this segment
+    ct_required: int       # min CT days
+    combined_required: int # min RT+CT (≥6 for full month)
+    segment_start: datetime
+    segment_end: datetime
+    is_full_month: bool
+```
+
+**Algorithm**:
+1. Decompose `[planning_start, planning_end]` into per-calendar-month segments.
+2. For each month segment:
+   - `days_in_segment = (segment_end - segment_start).days + 1`
+   - `days_in_full_month = calendar.monthrange(year, month)[1]`
+   - `fraction = days_in_segment / days_in_full_month`
+   - If `is_full_month` (fraction == 1.0): `rt=4, ct=2, combined=6`
+   - Else: `rt = ceil(4 * fraction)`, `ct = ceil(2 * fraction)`, `combined = ceil(6 * fraction)`
+3. Subtract carryover from `partition_state.resource_states[r].rt_count_by_month[month_key]` and same for CT — this prevents double-counting across partitions of the same month.
+4. **Special case for short ranges (< 5 weeks total)**: do not split by month; compute single combined target `ceil(6 * planning_days / 30)`.
+
+---
+
+### Phase E — Hard Constraint Module: LC-06 Rest Days Allocation
+
+**New file**: `solver_v2/constraints/lc_06_rest_days_allocation.py`
+
+**Activation**: Only run when `rt_replannable OR ct_replannable`. If neither, skip the constraint entirely (Phase I analyzer handles the alert).
+
+**Function**: `add_rest_days_constraints(model, x_vars, data, constraints, rest_targets, lc_05_free_weekend_vars) -> tuple[List, List]`
+
+Returns `(rt_vars, ct_vars)` for `_extract_solution()` to consume.
+
+**Decision variables** (per resource × per calendar day in planning range):
+```python
+rt[r,d] = model.NewBoolVar(f'rt_{r}_{d}')   # only if rt_replannable
+ct[r,d] = model.NewBoolVar(f'ct_{r}_{d}')   # only if ct_replannable
+```
+
+**Constraints**:
+
+1. **Mutual exclusion** (a day cannot be both RT and CT):
+   ```
+   rt[r,d] + ct[r,d] ≤ 1
+   ```
+
+2. **No overlap with assigned demand** — for each resource × day, define the rest interval as `[anchor_start, anchor_start + 24h]` where `anchor_start = max(midnight_d, last_shift_end_in_24h_before_d)`. Then for any demand request `req` whose `[start, end]` overlaps that interval:
+   ```
+   x[r,req] + rt[r,d] + ct[r,d] ≤ 1
+   ```
+   This single inequality enforces both: "if rest day chosen, no overlapping work" and "if work scheduled, no rest day on this slot".
+
+3. **Per-segment targets** (from Phase D):
+   - If `rt_replannable`: `Σ_{d ∈ segment} rt[r,d] ≥ rest_targets[r][month].rt_required`
+   - If `ct_replannable`: `Σ_{d ∈ segment} ct[r,d] ≥ rest_targets[r][month].ct_required`
+   - Combined safety net: `Σ (rt[r,d] + ct[r,d]) ≥ rest_targets[r][month].combined_required`
+
+4. **LC-05 weekend coupling** — for each free-weekend variable `fw[r,w]` exposed by LC-05 (Phase F):
+   ```
+   fw[r,w] ≤ rt[r,Sat] + ct[r,Sat]
+   fw[r,w] ≤ rt[r,Sun] + ct[r,Sun]
+   ```
+   This makes the Sat+Sun of the chosen rest weekend explicitly an RT or CT day, counting toward the monthly 6.
+
+5. **LC-04 (12h rest between shifts) coherence** — handled implicitly because:
+   - Anchor start uses `last_shift_end` when within 24h
+   - The 24h rest interval automatically includes ≥12h before any next shift starting later that day
+   - No explicit additional constraint needed; LC-04 already enforces global 12h gap on demand assignments
+
+6. **Anchor pinning for output**: store the chosen anchor `[anchor_start, anchor_start + 24h]` per `(r,d)` for `_extract_solution` to emit the correct timestamps.
+
+**Anchor computation** (deterministic, pre-computed per (r,d)):
+- If a demand assignment exists for resource `r` ending at time `t` within the 24h prior to midnight of day `d` → anchor_start = `t` (yields 12-12, 13-13, etc.)
+- Else → anchor_start = `midnight of day d` (yields 24-24)
+- Cross-partition: use `partition_state.resource_states[r].last_shift_end` for day-1 anchor
+
+---
+
+### Phase F — LC-05 Adjustment: Expose `free_weekend_vars`
+
+**File**: `solver_v2/constraints/lc_05_weekend_frequency.py`
+
+Modify `add_weekend_frequency_constraints()` return signature to additionally return the dict `free_weekend_vars: Dict[(resource_id, weekend_index), BoolVar]`.
+
+**File**: `solver_v2/solver/model.py:244-451`
+
+In the constraint orchestration, capture LC-05's returned `free_weekend_vars` and pass them to LC-06 when LC-06 is enabled.
+
+---
+
+### Phase G — Solver Model Wiring & Solution Extraction
+
+**File**: `solver_v2/solver/model.py`
+
+1. In `_add_constraint_modules()`:
+   ```python
+   if rt_replannable or ct_replannable:
+       rt_vars, ct_vars = add_rest_days_constraints(
+           model, x_vars, data, constraints, rest_targets, free_weekend_vars
+       )
+       self.rt_vars = rt_vars
+       self.ct_vars = ct_vars
+   ```
+2. In `_extract_solution()` (lines 697-779), after extracting demand assignments, append CT/RT rows:
+   ```python
+   for (r, d), var in self.rt_vars.items():
+       if solver.Value(var) == 1:
+           anchor_start, anchor_end = self._get_anchor(r, d)
+           assignments_list.append({
+               "assignment_type": "RT",
+               "resource_id": r,
+               "resource_name": data.get_resource_name(r),
+               "request_id": None,
+               "bsa_id": None,
+               "calendar_start": anchor_start.isoformat(),
+               "calendar_end": anchor_end.isoformat(),
+               "duration_hours": (anchor_end - anchor_start).total_seconds() / 3600,
+               "is_night_shift": False,
+           })
+   # Same loop for ct_vars with assignment_type="CT"
+   ```
+3. Demand rows in the JSONB get `"assignment_type": "DEMAND"` added.
+
+---
+
+### Phase H — Service Integration & Output Persistence
+
+**File**: `solver_v2/api/service.py:879-900` (`_save_results_sync`)
+
+1. The JSONB `planner_output.assignments` now naturally includes the CT/RT rows (extracted by Phase G).
+2. The normalized bulk insert into `planner_assignments`:
+   - For DEMAND rows: unchanged (`assignment_type='DEMAND'`, `request_id=<demand_id>`)
+   - For CT/RT rows: `assignment_type=<'CT' or 'RT'>`, `request_id=NULL`, `bsa_id=NULL`
+3. The `planner_output` POST payload includes `fetch_rt` and `fetch_ct` (Phase B).
+
+---
+
+### Phase I — Partition State Carryover
+
+**File**: `solver_v2/solver/partition_state.py`
+
+Extend `ResourceState`:
+```python
+@dataclass
+class ResourceState:
+    # ... existing fields ...
+    rt_count_by_month: Dict[str, int] = field(default_factory=dict)  # "YYYY-MM" → count
+    ct_count_by_month: Dict[str, int] = field(default_factory=dict)
+```
+
+Update `extract_state_from_solution()` to walk the new CT/RT assignments and populate the dicts (keyed by anchor_start's `YYYY-MM`).
+
+Update `to_dict()` and `from_dict()` for serialization.
+
+---
+
+### Phase J — Analyzer Alert (Non-Replannable Case)
+
+**File**: `solver_v2/analysis/constraint_analyzers/lc_08_monthly_rest_analyzer.py`
+
+Add `_analyze_ct_rt_compliance()`:
+
+- Read the resource_blocks data fed into the solver (already contains `block_type`)
+- For each resource × calendar month in planning range:
+  - Count blocks with `block_type='RT Jour de repos'` → `rt_actual`
+  - Count blocks with `block_type='CT Jour de compensation'` → `ct_actual`
+- If `not rt_replannable` and `rt_actual < 4` (prorated for partial months): emit warning
+- If `not ct_replannable` and `ct_actual < 2`: emit warning
+- Add to `analysis_report.warnings` with clear message:
+  ```
+  "Resource {name} has only {n} RT days in {YYYY-MM} (required: {target}).
+   RT was not marked replannable; planner did not create new RT.
+   Source data may need correction or RT should be added to replannable_demand_type."
+  ```
+
+This is **post-processing only** — never blocks the solve.
+
+---
+
+### Phase K — Deprecate Broken LC-08 Logic
+
+**File**: `solver_v2/constraints/lc_08_monthly_rest_v2.py`
+
+The existing constraint uses `.date()` which forces midnight boundaries. Two options:
+
+- **Option 1 (preferred)**: Disable LC-08 in `config.ENABLED_CONSTRAINTS` when LC-06 is active. The 6-rest-days requirement is now enforced by LC-06.
+- **Option 2**: Keep LC-08 as a "calendar-day all-blocked" sanity check fallback when LC-06 is disabled.
+
+**Implementation**: gate inside `_add_constraint_modules()`:
+```python
+if 'LC_06' in config.ENABLED_CONSTRAINTS and (rt_replannable or ct_replannable):
+    # Skip LC-08; LC-06 supersedes
+    pass
+else:
+    add_monthly_rest_constraints(...)
+```
+
+Update LC-08 docstring to note its scope is now limited.
+
+---
+
+## Files Summary
+
+| File | Action | Purpose |
+|---|---|---|
+| `solver_v2/config.py` | MODIFY | Add RT/CT named constants and target constants |
+| `solver_v2/api/data_pipeline.py` | MODIFY | Allow RT/CT through `sanitize_replannable_types` |
+| `solver_v2/api/service.py` | MODIFY | Compute `rt_replannable`/`ct_replannable`; wire into preprocessing/output |
+| `solver_v2/api/client.py` | MODIFY | Pass `fetch_rt`/`fetch_ct` and `assignment_type` in payloads |
+| `solver_v2/preprocessing/data_processor.py` | MODIFY | Add `compute_rest_targets()` |
+| `solver_v2/constraints/lc_06_rest_days_allocation.py` | NEW | HARD constraint with `rt[r,d]`/`ct[r,d]` BoolVars + LC-05 coupling |
+| `solver_v2/constraints/lc_05_weekend_frequency.py` | MODIFY | Expose `free_weekend_vars` in return |
+| `solver_v2/constraints/lc_08_monthly_rest_v2.py` | MODIFY | Gate behind LC-06; docstring update |
+| `solver_v2/solver/model.py` | MODIFY | Wire LC-06; extract CT/RT in `_extract_solution` |
+| `solver_v2/solver/partition_state.py` | MODIFY | Add `rt_count_by_month`/`ct_count_by_month` |
+| `solver_v2/analysis/constraint_analyzers/lc_08_monthly_rest_analyzer.py` | MODIFY | Add `_analyze_ct_rt_compliance()` post-process alert |
+| `mock_data_v2/database_application_v2/database/schema_planner_output.sql` | MODIFY | Add `fetch_rt`, `fetch_ct` columns |
+| `mock_data_v2/database_application_v2/database/schema_planner_assignments.sql` | MODIFY | Add `assignment_type`; make `request_id` NULLABLE; index |
+| `mock_data_v2/database_application_v2/api/routers/planner_output.py` | MODIFY | Return/accept `fetch_rt`/`fetch_ct` |
+| `mock_data_v2/database_application_v2/api/routers/planner_assignments.py` | MODIFY | Accept `assignment_type`; allow NULL `request_id`; filter param |
+
+**Total**: 1 NEW + 14 MODIFY
+
+---
+
+## Verification Plan
+
+### Unit Tests
+
+`solver_v2/tests/test_lc_06_rest_days.py` (NEW):
+
+1. **Targets**: 30-day month → `rt=4, ct=2, combined=6`
+2. **Targets prorated**: 10-day window → `rt=ceil(4*10/30)=2, ct=ceil(2*10/30)=1, combined=ceil(6*10/30)=2`
+3. **Mutual exclusion**: solver chooses `rt[r,d]=1` → `ct[r,d]=0`
+4. **Demand exclusion**: a demand spanning Mon 08:00-16:00 → `rt[r,Mon]=0`, `ct[r,Mon]=0`
+5. **Anchor selection**: previous shift ends Mon 13:00 → anchor for Tue = Mon 13:00 → Tue 13:00 (12-12 style)
+6. **Anchor fallback**: no recent shift → anchor = Tue 00:00 → Wed 00:00 (24-24)
+7. **LC-05 coupling**: when LC-05's `fw[r,w]=1` → `rt[r,Sat]+ct[r,Sat] ≥ 1` and same for Sun
+8. **Combined constraint**: month with 4 RT + 2 CT = 6 satisfies; 4 RT + 1 CT = 5 fails
+9. **Carryover**: partition 1 produces 3 RT in month X → partition 2 only needs 1 more RT in month X
+10. **Disabled when both flags false**: no `rt_vars`/`ct_vars` created
+
+### Integration Tests
+
+`solver_v2/Planner_test/test_ct_rt_hard_constraint.py` (NEW):
+
+1. Trigger with `replannable_demand_type=["RT Jour de repos"]` only:
+   - Verify `planner_assignments` has `assignment_type='RT'` rows
+   - Verify NO `assignment_type='CT'` rows (CT not replannable)
+   - Verify `planner_output.fetch_rt=false`, `fetch_ct=true`
+2. Trigger with both RT and CT replannable:
+   - Verify both `'RT'` and `'CT'` rows
+   - Verify `fetch_rt=fetch_ct=false`
+   - Verify `request_id IS NULL` for CT/RT rows; populated for DEMAND rows
+3. Trigger with neither replannable:
+   - Verify no CT/RT rows produced by solver
+   - If external data is short on RT/CT → verify analyzer warnings present
+4. Partitioned solve across 2 calendar months:
+   - Verify month 1 totals + month 2 totals each meet 4+2
+   - Verify carryover prevents double-counting boundary days
+
+### Manual Validation
+
+1. Resource on Mon-Fri night shifts ending 06:00 → CT chosen on Sat → anchor = Fri 06:00 to Sat 06:00 (NOT Sat 00:00)
+2. Resource with planning range = Apr 1 to Apr 10 (10 days) → solver allocates ≥2 rest days (combined target)
+3. Resource with full month + free weekend on Apr 19-20 → those 2 days emitted as RT/CT
+
+### Analyzer Validation (Non-Replannable Case)
+
+1. Resource has only 2 RT records in month, RT NOT replannable → analyzer emits warning with `required=4, actual=2`
+2. Same scenario, RT IS replannable → no warning (solver handles it)
+
+---
+
+## Out of Scope (Future Work)
+
+- LC-08 full migration to time-based gaps (currently `.date()` based) — covered partially by LC-06; LC-08 deprecation finishes the job
+- AZG Art. 10 annual 63-rest-days enforcement (currently no constraint)
+- Removing the transitional `ALWAYS_BLOCKING_CALENDAR_TYPES` list once dedicated `absences` table migration is complete (per March 27 changelog)
+
+---
+
+## Open Items (none — all resolved during review)
+
+- ~~Anchor semantics~~ → resolved (Q3): use shift-end coupling, fall back to midnight
+- ~~Fractional month rounding~~ → resolved (Q2): `ceil`
+- ~~Weekend rest constraint~~ → resolved (Q4/#6): no new constraint, couple to LC-05
+- ~~Non-replannable case~~ → resolved (Q1): analyzer warning only
+- ~~`request_id` for CT/RT~~ → resolved: NULLABLE; CT/RT rows get NULL
+- ~~Other always-blocking types~~ → resolved (Q5): only RT/CT count toward 6; others stay protected

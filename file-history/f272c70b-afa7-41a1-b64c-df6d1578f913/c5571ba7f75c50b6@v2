@@ -1,0 +1,153 @@
+"""
+OBJ-08: Category Priority Objective
+Quality Objective (Layer 3)
+
+Purpose: Prefer assigning resources to their primary (highest-priority) category.
+         Resources have an ordered resource_categories array where position 0
+         is the highest-priority category. Penalize assignments that use
+         lower-priority categories.
+
+Weight from backend database (objective_name: 'category_priority')
+- Default weight: 1.5
+- Weight Range: 0.5 - 3.0
+- This is a MINIMIZE objective (penalty for non-primary category assignments)
+- Scaled by 1000 for solver precision
+
+Logic:
+- For each (resource, demand) pair where x_var exists:
+  - Look up demand's resource_category in resource's ordered resource_categories
+  - Get position index (0 = primary, 1 = secondary, etc.)
+  - Penalty = x_var * index * SCALED_WEIGHT
+
+Example:
+- Resource R1 has categories: ["Contremaitre", "Monteur VF", "Chef/fe d'equipe"]
+- Demand D1 requires "Monteur VF" (index 1)
+- Penalty = x[R1,D1] * 1 * 1500 = 1500 when assigned
+- Demand D2 requires "Contremaitre" (index 0)
+- Penalty = x[R1,D2] * 0 * 1500 = 0 (free — primary category)
+
+No auxiliary BoolVars needed — pure linear terms on existing x_vars.
+"""
+from ortools.sat.python import cp_model
+import re
+import sys
+sys.path.append('..')
+
+
+def _normalize_string(s) -> str:
+    """
+    Normalize a string for comparison.
+    Same logic as cp_02_qualification_matching.normalize_string.
+    """
+    if s is None:
+        return ""
+    return re.sub(r'\s+', ' ', str(s).strip()).lower()
+
+
+def add_category_priority_objective(model: cp_model.CpModel,
+                                     x_vars: dict,
+                                     data,
+                                     weight: float = 1.5) -> list:
+    """
+    Add category priority objective to prefer primary categories.
+
+    Penalizes when a resource is assigned to a demand that matches a
+    lower-priority category in the resource's ordered category list.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object with resources containing resource_categories
+        weight: Weight coefficient from backend (default: 1.5)
+
+    Returns:
+        List of penalty terms (positive = penalty for non-primary assignment)
+    """
+    if weight <= 0:
+        print("\n[CATEGORY PRIORITY] Weight is 0 or negative, skipping")
+        return []
+
+    print(f"\n[CATEGORY PRIORITY] Adding category priority objective...")
+    print(f"  Backend weight: {weight}")
+
+    SCALED_WEIGHT = int(weight * 1000)
+    print(f"  Scaled weight: {SCALED_WEIGHT} per index level")
+
+    # Build per-resource category index lookup: {resource_id: {norm_cat: index}}
+    resource_cat_index = {}
+    for resource in data.resources:
+        res_id = resource.get('resource_id', resource.get('id'))
+        categories = resource.get('resource_categories', [])
+
+        if not categories or not isinstance(categories, list):
+            continue
+
+        cat_index = {}
+        for idx, cat in enumerate(categories):
+            norm_cat = _normalize_string(cat)
+            if norm_cat and norm_cat not in cat_index:
+                # First occurrence wins (preserve original priority order)
+                cat_index[norm_cat] = idx
+
+        if cat_index:
+            resource_cat_index[res_id] = cat_index
+
+    if not resource_cat_index:
+        print("  WARNING: No resources with ordered category lists found")
+        return []
+
+    print(f"  Resources with category priority data: {len(resource_cat_index)}")
+
+    # Build demand category lookup
+    demand_categories = {}
+    for request in data.requests:
+        req_id = request['id']
+        cat = request.get('resource_category', '')
+        if cat:
+            demand_categories[req_id] = _normalize_string(cat)
+
+    # Generate penalty terms
+    objective_terms = []
+    penalties_by_index = {}  # index -> count (for logging)
+
+    for resource_id in data.resource_ids:
+        cat_index = resource_cat_index.get(resource_id)
+        if not cat_index:
+            continue
+
+        for request_id in data.request_ids:
+            key = (resource_id, request_id)
+            if key not in x_vars:
+                continue
+
+            demand_cat = demand_categories.get(request_id)
+            if not demand_cat:
+                continue
+
+            idx = cat_index.get(demand_cat)
+            if idx is None:
+                # Category not in resource's list — CP-02 should block this,
+                # but if it somehow passes, skip (don't penalize)
+                continue
+
+            if idx == 0:
+                # Primary category — no penalty
+                continue
+
+            # Penalty proportional to index: secondary=1x, tertiary=2x, etc.
+            penalty = idx * SCALED_WEIGHT
+            objective_terms.append(penalty * x_vars[key])
+
+            penalties_by_index[idx] = penalties_by_index.get(idx, 0) + 1
+
+    if not objective_terms:
+        print("  No penalty terms created (all demands match primary categories)")
+        return []
+
+    total_terms = sum(penalties_by_index.values())
+    print(f"  Created {total_terms} penalty terms:")
+    for idx in sorted(penalties_by_index.keys()):
+        print(f"    Index {idx} (penalty {idx * SCALED_WEIGHT}): {penalties_by_index[idx]} terms")
+    print(f"  Effect: Solver prefers assigning resources to their primary category")
+
+    return objective_terms

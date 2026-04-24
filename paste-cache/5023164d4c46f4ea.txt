@@ -1,0 +1,56 @@
+Proceed? (y/n): y
+🚀 DEV (preserve): rebuild without wiping data...
+[+] Running 3/3
+ ✔ Container cff_api       Removed                                                                                                                                 1.7s
+ ✔ Container cff_postgres  Removed                                                                                                                                 0.3s
+ ! Network cff_network     Resource is still in use                                                                                                                0.0s
+Compose can now delegate builds to bake for better performance.
+ To do so, set COMPOSE_BAKE=true.
+[+] Building 2.5s (26/26) FINISHED                                                                                                                       docker:default
+ => [postgres internal] load build definition from Dockerfile.postgres                                                                                             0.0s
+ => => transferring dockerfile: 2.88kB                                                                                                                             0.0s
+ => [postgres internal] load metadata for docker.io/library/postgres:14-alpine                                                                                     1.9s
+ => [postgres auth] library/postgres:pull token for registry-1.docker.io                                                                                           0.0s
+ => [postgres internal] load .dockerignore                                                                                                                         0.0s
+ => => transferring context: 2B                                                                                                                                    0.0s
+ => [postgres internal] load build context                                                                                                                         0.0s
+ => => transferring context: 132.02kB                                                                                                                              0.0s
+ => [postgres  1/21] FROM docker.io/library/postgres:14-alpine@sha256:bc06a4b2c6e50e3a9b7638fe7d3064d4497c89b3ce5e45a0bbc1124af6958adf                             0.0s
+ => CACHED [postgres  2/21] RUN apk add --no-cache python3 py3-pip postgresql-dev gcc python3-dev musl-dev                                                         0.0s
+ => CACHED [postgres  3/21] RUN pip3 install --break-system-packages psycopg2-binary                                                                               0.0s
+ => CACHED [postgres  4/21] COPY ../database/schema.sql /docker-entrypoint-initdb.d/01-schema.sql                                                                  0.0s
+ => CACHED [postgres  5/21] COPY ../database/constraints_seed_data.sql /docker-entrypoint-initdb.d/02-constraints.sql                                              0.0s
+ => CACHED [postgres  6/21] COPY ../database/schema_planner_output.sql /docker-entrypoint-initdb.d/03-schema-planner-output.sql                                    0.0s
+ => CACHED [postgres  7/21] COPY ../database/schema_constraints_v2.sql /docker-entrypoint-initdb.d/04-schema-constraints-v2.sql                                    0.0s
+ => CACHED [postgres  8/21] COPY ../database/planner_output_seed.sql /docker-entrypoint-initdb.d/05-planner-output-seed.sql                                        0.0s
+ => CACHED [postgres  9/21] COPY ../database/constraints_v2_seed_data.sql /docker-entrypoint-initdb.d/06-constraints-v2-seed.sql                                   0.0s
+ => CACHED [postgres 10/21] COPY ../database/schema_replannable_demand_types.sql /docker-entrypoint-initdb.d/07-schema-replannable-demand-types.sql                0.0s
+ => CACHED [postgres 11/21] COPY ../database/replannable_demand_types_seed.sql /docker-entrypoint-initdb.d/08-replannable-demand-types-seed.sql                    0.0s
+ => CACHED [postgres 12/21] COPY ../database/schema_solver_jobs.sql /docker-entrypoint-initdb.d/09-schema-solver-jobs.sql                                          0.0s
+ => CACHED [postgres 13/21] COPY ../database/schema_planner_output_add_job_id.sql /docker-entrypoint-initdb.d/10-schema-planner-output-add-job-id.sql              0.0s
+ => CACHED [postgres 14/21] COPY ../database/schema_solver_jobs_add_plan_range.sql /docker-entrypoint-initdb.d/11-schema-solver-jobs-add-plan-range.sql            0.0s
+ => CACHED [postgres 15/21] COPY ../database/schema_planner_assignments.sql /docker-entrypoint-initdb.d/12-schema-planner-assignments.sql                          0.0s
+ => CACHED [postgres 16/21] COPY ../database/schema_solver_jobs_add_fetch_flags.sql /docker-entrypoint-initdb.d/13-schema-solver-jobs-add-fetch-flags.sql          0.0s
+ => CACHED [postgres 17/21] COPY ../database/schema_planner_assignments_add_category_priority.sql /docker-entrypoint-initdb.d/14-schema-planner-assignments-add-c  0.0s
+ => [postgres 18/21] COPY ../database/schema_planner_output_add_fetch_flags.sql /docker-entrypoint-initdb.d/15-schema-planner-output-add-fetch-flags.sql           0.0s
+ => [postgres 19/21] COPY ../database/init-db.sh /docker-entrypoint-initdb.d/16-init-db.sh                                                                         0.0s
+ => [postgres 20/21] COPY ../database/migrate_json_to_sql_v2.py /docker-entrypoint-initdb.d/migrate_json_to_sql_v2.py                                              0.0s
+ => ERROR [postgres 21/21] RUN chmod +x /docker-entrypoint-initdb.d/15-init-db.sh                                                                                  0.4s
+------
+ > [postgres 21/21] RUN chmod +x /docker-entrypoint-initdb.d/15-init-db.sh:
+0.326 chmod: /docker-entrypoint-initdb.d/15-init-db.sh: No such file or directory
+------
+failed to solve: process "/bin/sh -c chmod +x /docker-entrypoint-initdb.d/15-init-db.sh" did not complete successfully: exit code: 1
+WARN[0000] Found orphan containers ([cff_api_uat cff_postgres_uat cff_api_qa cff_postgres_qa]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 2/2
+ ✔ Container cff_postgres  Healthy                                                                                                                                 5.9s
+ ✔ Container cff_api       Started                                                                                                                                 6.1s
+
+--- Applying idempotent migrations ---
+  Waiting for cff_postgres to accept SQL...
+    ✓ schema_replannable_demand_types.sql
+    ✓ schema_solver_jobs_add_fetch_flags.sql
+    ✓ schema_planner_output_add_fetch_flags.sql
+    ✓ schema_planner_assignments_add_category_priority.sql
+  DEV migrations: 4 applied, 0 failed.
+🎉 All requested deployments are complete (preserve mode).

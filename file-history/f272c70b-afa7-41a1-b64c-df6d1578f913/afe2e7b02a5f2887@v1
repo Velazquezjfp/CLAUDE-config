@@ -1,0 +1,654 @@
+"""
+Partition State for Constraint Carryover
+
+Tracks constraint state at partition boundaries to ensure rolling constraints
+(LC-01, LC-05, LC-06, LC-07) and annual constraints (OC-01) are satisfied
+across partitions.
+
+TASK-062: Implement Partitioning Strategy
+
+State Categories:
+1. Rolling Window States (LC-01, LC-04, LC-05, LC-06, LC-07):
+   - Track last N days of activity for rolling constraint windows
+   - Clean up old data outside relevant windows at each partition boundary
+
+2. Annual Target States (OC-01):
+   - Track year-to-date (YTD) activity toward annual targets
+   - Protecteur shifts, Chef sécurité shifts, CVM hours
+   - Used for prorating targets in subsequent partitions
+"""
+from dataclasses import dataclass, field
+from datetime import datetime, date, timedelta, timezone
+from typing import Dict, List, Any, Optional
+import json
+
+
+def _ensure_aware(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware (UTC). Handles naive datetimes from DB."""
+    if dt is not None and dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+# =============================================================================
+# OC-01 CATEGORY ACTIVITY TRACKING
+# =============================================================================
+
+@dataclass
+class CategoryActivityState:
+    """
+    Tracks annual category activity for OC-01 constraint.
+
+    This enables accurate prorating when planning in partitions.
+    """
+    # Shift-based categories (count)
+    shifts_protecteur: int = 0
+    shifts_chef_securite: int = 0
+
+    # Hour-based categories
+    hours_cvm: float = 0.0
+
+    # Generic category tracking for future extensibility
+    shifts_by_category: Dict[str, int] = field(default_factory=dict)
+    hours_by_category: Dict[str, float] = field(default_factory=dict)
+
+    def add_shift(self, category: str):
+        """Record a shift assignment in a category."""
+        norm_cat = category.lower().strip() if category else ''
+
+        if norm_cat == 'protecteur':
+            self.shifts_protecteur += 1
+        elif norm_cat in ('chef sécurité', 'chef securite'):
+            self.shifts_chef_securite += 1
+
+        # Also track in generic dict
+        self.shifts_by_category[norm_cat] = self.shifts_by_category.get(norm_cat, 0) + 1
+
+    def add_hours(self, category: str, hours: float):
+        """Record hours worked in a category."""
+        norm_cat = category.lower().strip() if category else ''
+
+        if norm_cat == 'cvm':
+            self.hours_cvm += hours
+
+        # Also track in generic dict
+        self.hours_by_category[norm_cat] = self.hours_by_category.get(norm_cat, 0.0) + hours
+
+    def get_activity(self, category: str, activity_type: str = 'shifts') -> float:
+        """Get activity for a category (shifts or hours)."""
+        norm_cat = category.lower().strip() if category else ''
+
+        if activity_type == 'shifts':
+            if norm_cat == 'protecteur':
+                return self.shifts_protecteur
+            elif norm_cat in ('chef sécurité', 'chef securite'):
+                return self.shifts_chef_securite
+            return self.shifts_by_category.get(norm_cat, 0)
+        else:  # hours
+            if norm_cat == 'cvm':
+                return self.hours_cvm
+            return self.hours_by_category.get(norm_cat, 0.0)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict."""
+        return {
+            'shifts_protecteur': self.shifts_protecteur,
+            'shifts_chef_securite': self.shifts_chef_securite,
+            'hours_cvm': self.hours_cvm,
+            'shifts_by_category': dict(self.shifts_by_category),
+            'hours_by_category': dict(self.hours_by_category),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CategoryActivityState':
+        """Deserialize from dict."""
+        state = cls()
+        state.shifts_protecteur = data.get('shifts_protecteur', 0)
+        state.shifts_chef_securite = data.get('shifts_chef_securite', 0)
+        state.hours_cvm = data.get('hours_cvm', 0.0)
+        state.shifts_by_category = data.get('shifts_by_category', {})
+        state.hours_by_category = data.get('hours_by_category', {})
+        return state
+
+
+# =============================================================================
+# ANNUAL CONTEXT FOR YTD TRACKING
+# =============================================================================
+
+@dataclass
+class AnnualContext:
+    """
+    Tracks annual planning context for year-based constraints like OC-01.
+
+    This enables correct prorating of annual targets across partitions.
+    """
+    # The calendar year being planned
+    planning_year: int = 0
+
+    # Year start/end dates (for calculating annual fraction)
+    year_start: Optional[date] = None
+    year_end: Optional[date] = None
+
+    # Days already processed this year (for prorating)
+    days_processed: int = 0
+
+    # Total days in planning horizon for this year
+    total_days_planned: int = 0
+
+    def get_annual_fraction_so_far(self) -> float:
+        """Get fraction of year processed so far."""
+        if self.total_days_planned <= 0:
+            return 0.0
+        return min(1.0, self.days_processed / 365.0)
+
+    def get_remaining_fraction(self) -> float:
+        """Get fraction of year remaining."""
+        return max(0.0, 1.0 - self.get_annual_fraction_so_far())
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict."""
+        return {
+            'planning_year': self.planning_year,
+            'year_start': str(self.year_start) if self.year_start else None,
+            'year_end': str(self.year_end) if self.year_end else None,
+            'days_processed': self.days_processed,
+            'total_days_planned': self.total_days_planned,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AnnualContext':
+        """Deserialize from dict."""
+        ctx = cls()
+        ctx.planning_year = data.get('planning_year', 0)
+        if data.get('year_start'):
+            ctx.year_start = date.fromisoformat(data['year_start'])
+        if data.get('year_end'):
+            ctx.year_end = date.fromisoformat(data['year_end'])
+        ctx.days_processed = data.get('days_processed', 0)
+        ctx.total_days_planned = data.get('total_days_planned', 0)
+        return ctx
+
+
+# =============================================================================
+# RESOURCE STATE
+# =============================================================================
+
+@dataclass
+class ResourceState:
+    """State for a single resource at partition boundary."""
+
+    # LC-01: Weekly hours - hours worked in last 6 days
+    hours_last_6_days: Dict[date, float] = field(default_factory=dict)
+
+    # LC-04: Min rest - last shift end time
+    last_shift_end: Optional[datetime] = None
+
+    # LC-05: Weekend frequency - tracking
+    last_free_weekend: Optional[date] = None
+    weekends_worked_last_5_weeks: List[date] = field(default_factory=list)
+
+    # LC-06: Consecutive nights - counter
+    consecutive_night_count: int = 0
+    last_night_shift_date: Optional[date] = None
+
+    # LC-07: Monthly nights - night shifts in last 27 days
+    night_shifts_last_27_days: Dict[date, int] = field(default_factory=dict)
+
+    # OC-01: Annual category activity (YTD tracking)
+    category_activity: CategoryActivityState = field(default_factory=CategoryActivityState)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict for JSON storage."""
+        return {
+            'hours_last_6_days': {str(k): v for k, v in self.hours_last_6_days.items()},
+            'last_shift_end': self.last_shift_end.isoformat() if self.last_shift_end else None,
+            'last_free_weekend': str(self.last_free_weekend) if self.last_free_weekend else None,
+            'weekends_worked_last_5_weeks': [str(d) for d in self.weekends_worked_last_5_weeks],
+            'consecutive_night_count': self.consecutive_night_count,
+            'last_night_shift_date': str(self.last_night_shift_date) if self.last_night_shift_date else None,
+            'night_shifts_last_27_days': {str(k): v for k, v in self.night_shifts_last_27_days.items()},
+            'category_activity': self.category_activity.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ResourceState':
+        """Deserialize from dict."""
+        state = cls()
+
+        if data.get('hours_last_6_days'):
+            state.hours_last_6_days = {
+                date.fromisoformat(k): v
+                for k, v in data['hours_last_6_days'].items()
+            }
+
+        if data.get('last_shift_end'):
+            state.last_shift_end = _ensure_aware(datetime.fromisoformat(data['last_shift_end']))
+
+        if data.get('last_free_weekend'):
+            state.last_free_weekend = date.fromisoformat(data['last_free_weekend'])
+
+        if data.get('weekends_worked_last_5_weeks'):
+            state.weekends_worked_last_5_weeks = [
+                date.fromisoformat(d) for d in data['weekends_worked_last_5_weeks']
+            ]
+
+        state.consecutive_night_count = data.get('consecutive_night_count', 0)
+
+        if data.get('last_night_shift_date'):
+            state.last_night_shift_date = date.fromisoformat(data['last_night_shift_date'])
+
+        if data.get('night_shifts_last_27_days'):
+            state.night_shifts_last_27_days = {
+                date.fromisoformat(k): v
+                for k, v in data['night_shifts_last_27_days'].items()
+            }
+
+        if data.get('category_activity'):
+            state.category_activity = CategoryActivityState.from_dict(data['category_activity'])
+
+        return state
+
+
+@dataclass
+class PartitionState:
+    """
+    State to carry forward between partitions.
+
+    Tracks all rolling constraint state needed to ensure compliance
+    across partition boundaries.
+    """
+
+    # Partition metadata
+    partition_index: int = 0
+    partition_start: Optional[date] = None
+    partition_end: Optional[date] = None
+
+    # Per-resource state
+    resource_states: Dict[str, ResourceState] = field(default_factory=dict)
+
+    # CP-02: External percentage tracking (global)
+    total_assignments_so_far: int = 0
+    external_assignments_so_far: int = 0
+
+    # OC-01: Annual context for YTD tracking
+    annual_context: AnnualContext = field(default_factory=AnnualContext)
+
+    # Solution tracking
+    previous_assignments: List[Dict[str, Any]] = field(default_factory=list)
+
+    def get_resource_state(self, resource_id) -> ResourceState:
+        """Get or create resource state. Normalizes ID to int for consistency with x_vars keys."""
+        try:
+            key = int(resource_id)
+        except (ValueError, TypeError):
+            key = resource_id
+        if key not in self.resource_states:
+            self.resource_states[key] = ResourceState()
+        return self.resource_states[key]
+
+    def get_hours_in_window(self, resource_id, window_start: date, window_days: int = 7) -> float:
+        """
+        Get total hours worked by resource in a date window.
+        Used for LC-01 weekly hours constraint carryover.
+        """
+        state = self.get_resource_state(resource_id)
+        total = 0.0
+        for day_offset in range(window_days):
+            check_date = window_start + timedelta(days=day_offset)
+            total += state.hours_last_6_days.get(check_date, 0.0)
+        return total
+
+    def get_night_shifts_in_window(self, resource_id: str, window_start: date, window_days: int = 28) -> int:
+        """
+        Get total night shifts by resource in a date window.
+        Used for LC-07 monthly nights constraint carryover.
+        """
+        state = self.get_resource_state(resource_id)
+        total = 0
+        for day_offset in range(window_days):
+            check_date = window_start + timedelta(days=day_offset)
+            total += state.night_shifts_last_27_days.get(check_date, 0)
+        return total
+
+    def get_external_percentage(self) -> float:
+        """Get current external resource percentage."""
+        if self.total_assignments_so_far == 0:
+            return 0.0
+        return (self.external_assignments_so_far / self.total_assignments_so_far) * 100
+
+    def get_category_activity(self, resource_id: str, category: str,
+                               activity_type: str = 'shifts') -> float:
+        """
+        Get accumulated category activity for a resource (OC-01).
+
+        Args:
+            resource_id: Resource ID
+            category: Category name (e.g., 'protecteur', 'cvm')
+            activity_type: 'shifts' or 'hours'
+
+        Returns:
+            Accumulated activity value (shifts count or hours)
+        """
+        res_state = self.resource_states.get(resource_id)
+        if not res_state:
+            return 0.0
+        return res_state.category_activity.get_activity(category, activity_type)
+
+    def get_prior_activity_dict(self) -> Dict[str, Dict[str, float]]:
+        """
+        Get prior activity dict for OC-01 PeriodContext.
+
+        Returns:
+            Dict of {resource_id: {category: accumulated_value}}
+        """
+        result = {}
+        for res_id, res_state in self.resource_states.items():
+            cat_activity = res_state.category_activity
+            activity = {}
+
+            # Add shift-based categories
+            if cat_activity.shifts_protecteur > 0:
+                activity['protecteur'] = cat_activity.shifts_protecteur
+            if cat_activity.shifts_chef_securite > 0:
+                activity['chef sécurité'] = cat_activity.shifts_chef_securite
+
+            # Add hour-based categories
+            if cat_activity.hours_cvm > 0:
+                activity['cvm'] = cat_activity.hours_cvm
+
+            # Add any other tracked categories
+            for cat, shifts in cat_activity.shifts_by_category.items():
+                if cat not in activity and shifts > 0:
+                    activity[cat] = shifts
+            for cat, hours in cat_activity.hours_by_category.items():
+                if cat not in activity and hours > 0:
+                    activity[cat] = hours
+
+            if activity:
+                result[res_id] = activity
+
+        return result
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict for JSON storage."""
+        return {
+            'partition_index': self.partition_index,
+            'partition_start': str(self.partition_start) if self.partition_start else None,
+            'partition_end': str(self.partition_end) if self.partition_end else None,
+            'resource_states': {
+                rid: state.to_dict()
+                for rid, state in self.resource_states.items()
+            },
+            'total_assignments_so_far': self.total_assignments_so_far,
+            'external_assignments_so_far': self.external_assignments_so_far,
+            'annual_context': self.annual_context.to_dict(),
+            'previous_assignments_count': len(self.previous_assignments),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'PartitionState':
+        """Deserialize from dict."""
+        state = cls()
+        state.partition_index = data.get('partition_index', 0)
+
+        if data.get('partition_start'):
+            state.partition_start = date.fromisoformat(data['partition_start'])
+        if data.get('partition_end'):
+            state.partition_end = date.fromisoformat(data['partition_end'])
+
+        if data.get('resource_states'):
+            state.resource_states = {}
+            for rid, rs_data in data['resource_states'].items():
+                try:
+                    key = int(rid)
+                except (ValueError, TypeError):
+                    key = rid
+                state.resource_states[key] = ResourceState.from_dict(rs_data)
+
+        state.total_assignments_so_far = data.get('total_assignments_so_far', 0)
+        state.external_assignments_so_far = data.get('external_assignments_so_far', 0)
+
+        if data.get('annual_context'):
+            state.annual_context = AnnualContext.from_dict(data['annual_context'])
+
+        return state
+
+    def save(self, filepath: str):
+        """Save state to JSON file."""
+        with open(filepath, 'w') as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def load(cls, filepath: str) -> 'PartitionState':
+        """Load state from JSON file."""
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        return cls.from_dict(data)
+
+
+def extract_state_from_solution(
+    solution_assignments: List[Dict[str, Any]],
+    resources_data: List[Dict[str, Any]],
+    partition_end: date,
+    previous_state: Optional[PartitionState] = None,
+    partition_start: Optional[date] = None
+) -> PartitionState:
+    """
+    Extract partition state from a solved partition's assignments.
+
+    This extracts the constraint state needed for the next partition:
+    - Last 6 days of hours per resource (LC-01)
+    - Last shift end time per resource (LC-04)
+    - Weekend work status (LC-05)
+    - Consecutive night count (LC-06)
+    - Night shifts in last 27 days (LC-07)
+    - External percentage tracking (CP-02)
+    - Category activity YTD (OC-01)
+
+    Args:
+        solution_assignments: List of assignments from solved partition
+        resources_data: List of resource dicts with is_external flag
+        partition_end: End date of the current partition
+        previous_state: State from previous partition (if any)
+        partition_start: Optional start date of partition (for annual context)
+
+    Returns:
+        PartitionState ready for next partition
+    """
+    from datetime import datetime, timedelta
+
+    # Create new state, carrying forward previous state if exists
+    state = PartitionState()
+    if previous_state:
+        state.partition_index = previous_state.partition_index + 1
+        state.total_assignments_so_far = previous_state.total_assignments_so_far
+        state.external_assignments_so_far = previous_state.external_assignments_so_far
+        state.previous_assignments = previous_state.previous_assignments.copy()
+
+        # Carry forward annual context
+        state.annual_context = AnnualContext.from_dict(previous_state.annual_context.to_dict())
+
+        # Carry forward ALL resource state from previous partition
+        for res_id, prev_res_state in previous_state.resource_states.items():
+            new_res_state = state.get_resource_state(res_id)
+            # Copy all rolling state fields (will be updated/overwritten by current assignments)
+            new_res_state.last_shift_end = prev_res_state.last_shift_end
+            new_res_state.hours_last_6_days = dict(prev_res_state.hours_last_6_days)
+            new_res_state.consecutive_night_count = prev_res_state.consecutive_night_count
+            new_res_state.last_night_shift_date = prev_res_state.last_night_shift_date
+            new_res_state.night_shifts_last_27_days = dict(prev_res_state.night_shifts_last_27_days)
+            new_res_state.weekends_worked_last_5_weeks = list(prev_res_state.weekends_worked_last_5_weeks)
+            new_res_state.last_free_weekend = prev_res_state.last_free_weekend
+            new_res_state.category_activity = CategoryActivityState.from_dict(
+                prev_res_state.category_activity.to_dict()
+            )
+
+    state.partition_end = partition_end
+    if partition_start:
+        state.partition_start = partition_start
+
+    # Build resource lookup for is_external
+    resource_is_external = {}
+    for res in resources_data:
+        res_id = str(res.get('resource_id', res.get('id', '')))
+        resource_is_external[res_id] = res.get('is_external', False)
+
+    # Process assignments
+    boundary_start = partition_end - timedelta(days=27)  # Cover all rolling windows
+
+    for assignment in solution_assignments:
+        raw_id = assignment.get('resource_id', '')
+        if not raw_id:
+            continue
+        # Store as int to match data.resource_ids type used in x_vars keys
+        try:
+            res_id = int(raw_id)
+        except (ValueError, TypeError):
+            res_id = raw_id
+
+        res_state = state.get_resource_state(res_id)
+
+        # Parse assignment times (solver uses 'start'/'end', API uses 'shift_start_time'/'shift_finish_time')
+        start_str = assignment.get('start') or assignment.get('shift_start_time') or assignment.get('start_datetime')
+        end_str = assignment.get('end') or assignment.get('shift_finish_time') or assignment.get('end_datetime')
+
+        if not start_str or not end_str:
+            continue
+
+        try:
+            if isinstance(start_str, str):
+                start_dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+            else:
+                start_dt = start_str
+            if isinstance(end_str, str):
+                end_dt = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+            else:
+                end_dt = end_str
+            # Ensure timezone-aware (DB returns naive timestamps)
+            start_dt = _ensure_aware(start_dt)
+            end_dt = _ensure_aware(end_dt)
+        except (ValueError, TypeError):
+            continue
+
+        assignment_date = start_dt.date()
+        duration_hours = (end_dt - start_dt).total_seconds() / 3600
+        is_night = assignment.get('is_night_shift', False)
+
+        # Only track state in the boundary window (last 27 days)
+        if assignment_date >= boundary_start:
+            # LC-01: Track hours (last 6 days)
+            if assignment_date >= partition_end - timedelta(days=6):
+                current = res_state.hours_last_6_days.get(assignment_date, 0.0)
+                res_state.hours_last_6_days[assignment_date] = current + duration_hours
+
+            # LC-04: Track last shift end
+            if res_state.last_shift_end is None or end_dt > res_state.last_shift_end:
+                res_state.last_shift_end = end_dt
+
+            # LC-05: Track weekend work
+            if assignment_date.weekday() >= 5:  # Saturday or Sunday
+                if assignment_date not in res_state.weekends_worked_last_5_weeks:
+                    res_state.weekends_worked_last_5_weeks.append(assignment_date)
+
+            # LC-06: Track consecutive nights
+            if is_night:
+                if (res_state.last_night_shift_date is None or
+                    assignment_date == res_state.last_night_shift_date + timedelta(days=1)):
+                    res_state.consecutive_night_count += 1
+                else:
+                    res_state.consecutive_night_count = 1
+                res_state.last_night_shift_date = assignment_date
+
+            # LC-07: Track night shifts (last 27 days)
+            if is_night:
+                current = res_state.night_shifts_last_27_days.get(assignment_date, 0)
+                res_state.night_shifts_last_27_days[assignment_date] = current + 1
+
+        # CP-02: Track external assignments (all assignments)
+        state.total_assignments_so_far += 1
+        if resource_is_external.get(res_id, False):
+            state.external_assignments_so_far += 1
+
+        # OC-01: Track category activity (always, for YTD totals)
+        resource_category = assignment.get('resource_category', '')
+        if resource_category:
+            # Track shift for shift-based categories
+            res_state.category_activity.add_shift(resource_category)
+            # Track hours for hour-based categories
+            if duration_hours > 0:
+                res_state.category_activity.add_hours(resource_category, duration_hours)
+
+        # Store assignment for reference
+        state.previous_assignments.append(assignment)
+
+    # Clean up old data outside relevant windows
+    for res_id, res_state in state.resource_states.items():
+        # Keep only last 6 days for hours
+        cutoff_6d = partition_end - timedelta(days=6)
+        res_state.hours_last_6_days = {
+            d: h for d, h in res_state.hours_last_6_days.items()
+            if d >= cutoff_6d
+        }
+
+        # Keep only last 5 weeks for weekend tracking
+        cutoff_5w = partition_end - timedelta(weeks=5)
+        res_state.weekends_worked_last_5_weeks = [
+            d for d in res_state.weekends_worked_last_5_weeks
+            if d >= cutoff_5w
+        ]
+
+        # Keep only last 27 days for night shifts
+        cutoff_27d = partition_end - timedelta(days=27)
+        res_state.night_shifts_last_27_days = {
+            d: n for d, n in res_state.night_shifts_last_27_days.items()
+            if d >= cutoff_27d
+        }
+
+    # Update annual context
+    if partition_start and partition_end:
+        days_in_partition = (partition_end - partition_start).days + 1
+        state.annual_context.days_processed += days_in_partition
+        state.annual_context.planning_year = partition_end.year
+
+        if state.annual_context.year_start is None:
+            state.annual_context.year_start = partition_start
+        state.annual_context.year_end = partition_end
+
+    return state
+
+
+def create_period_context_from_state(
+    partition_state: PartitionState,
+    partition_start: date,
+    partition_end: date
+) -> dict:
+    """
+    Create OC-01 PeriodContext data from partition state.
+
+    This function creates the dictionary needed to initialize
+    constraints.oc_01_min_category_activity.PeriodContext with
+    prior activity from previous partitions.
+
+    Args:
+        partition_state: State from previous partition(s)
+        partition_start: Start date of current partition
+        partition_end: End date of current partition
+
+    Returns:
+        Dict with period_start, period_end, annual_fraction, prior_activity
+    """
+    from datetime import datetime
+
+    # Calculate annual fraction for this partition
+    days_in_partition = (partition_end - partition_start).days + 1
+    annual_fraction = days_in_partition / 365.0
+
+    # Get prior activity from partition state
+    prior_activity = partition_state.get_prior_activity_dict()
+
+    return {
+        'period_start': datetime.combine(partition_start, datetime.min.time()),
+        'period_end': datetime.combine(partition_end, datetime.min.time()),
+        'annual_fraction': annual_fraction,
+        'prior_activity': prior_activity
+    }

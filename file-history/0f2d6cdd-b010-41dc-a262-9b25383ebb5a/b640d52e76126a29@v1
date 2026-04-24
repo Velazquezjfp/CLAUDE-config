@@ -1,0 +1,46 @@
+# CFF Workforce Planning Solver - UAT Environment
+# Usage: docker-compose -f docker-compose.uat.yml up
+
+name: cff-solver-uat
+
+version: '3.8'
+
+services:
+  solver-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cff-solver-uat
+    ports:
+      - "8006:8004"
+    environment:
+      - SOLVER_ENV=uat
+      # Connect to UAT backend container by name (on same network)
+      - BACKEND_HOST=cff_api_uat
+      - BACKEND_PORT=8000  # Internal container port
+      - BACKEND_PORT_UAT=8000
+      - PYTHONUNBUFFERED=1
+      # Optional: Force WSS if nginx doesn't set X-Forwarded-Proto header
+      # - FORCE_HTTPS_WEBSOCKET=true
+    volumes:
+      # Mount output directory for results
+      - ./output:/app/output
+    networks:
+      - cff_network_uat  # Use the UAT backend's existing network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8004/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  cff_network_uat:
+    external: true  # Connect to existing UAT network from database_application_v2

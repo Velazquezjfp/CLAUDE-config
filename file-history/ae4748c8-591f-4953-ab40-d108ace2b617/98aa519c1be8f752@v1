@@ -1,0 +1,188 @@
+"""
+Overtime Cost Objective Analyzer
+Analyzes overtime cost performance and identifies opportunities to reduce overtime
+"""
+from .base_analyzer import ObjectiveAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class OvertimeCostAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for minimize_overtime_cost objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='minimize_overtime_cost',
+            objective_name='Minimize Overtime Cost'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """
+        Analyze overtime cost performance
+        """
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        # Calculate weekly hours for each resource
+        weekly_hours = {}
+        for assignment in assignments:
+            resource_id = assignment['resource_id']
+            duration = assignment.get('duration_hours', assignment.get('duration', 0))
+            
+            if resource_id not in weekly_hours:
+                weekly_hours[resource_id] = 0
+            weekly_hours[resource_id] += duration
+
+        # Target is 41 hours per week
+        target_hours = 41
+        total_overtime_hours = 0
+        resources_over_target = []
+        overtime_by_resource = {}
+
+        for resource_id, hours in weekly_hours.items():
+            if hours > target_hours:
+                overtime_hours = hours - target_hours
+                total_overtime_hours += overtime_hours
+                resources_over_target.append(resource_id)
+                overtime_by_resource[resource_id] = {
+                    'total_hours': round(hours, 2),
+                    'overtime_hours': round(overtime_hours, 2)
+                }
+
+        # Calculate metrics
+        total_resources = len(data.resource_ids)
+        working_resources = len(weekly_hours)
+        average_weekly_hours = sum(weekly_hours.values()) / len(weekly_hours) if weekly_hours else 0
+        max_weekly_hours = max(weekly_hours.values()) if weekly_hours else 0
+
+        # Achievement rate: 100% = no overtime, decreases as overtime increases
+        # Use inverse relationship: more overtime = lower achievement
+        if total_overtime_hours == 0:
+            achievement_rate = 100.0
+        else:
+            # Calculate based on percentage of resources working overtime
+            # and the severity of overtime
+            overtime_percentage = len(resources_over_target) / working_resources * 100 if working_resources > 0 else 0
+            avg_overtime_per_resource = total_overtime_hours / len(resources_over_target) if resources_over_target else 0
+            
+            # Penalize both frequency and severity
+            # 100% - (percentage of resources with overtime + severity factor)
+            severity_factor = min(avg_overtime_per_resource * 2, 50)  # Cap at 50%
+            achievement_rate = max(0, 100 - overtime_percentage - severity_factor)
+
+        # Analyze gaps
+        gaps = self.get_gap_details(solution, data, weekly_hours, overtime_by_resource)
+
+        return {
+            "objective_id": "minimize_overtime_cost",
+            "objective_name": "Minimize Overtime Cost",
+            "target_description": "Keep all resources at or below 41 hours per week",
+            "achieved_value": 0,  # No overtime is the goal
+            "max_possible_value": total_overtime_hours,
+            "achievement_rate": round(achievement_rate, 2),
+            "performance_category": self.classify_performance(achievement_rate),
+            "gaps": gaps,
+            "metrics": {
+                "total_overtime_hours": round(total_overtime_hours, 2),
+                "resources_over_target": len(resources_over_target),
+                "total_working_resources": working_resources,
+                "average_weekly_hours": round(average_weekly_hours, 2),
+                "max_weekly_hours": round(max_weekly_hours, 2),
+                "overtime_by_resource": overtime_by_resource,
+                "resource_ids_over_target": resources_over_target
+            }
+        }
+
+    def get_gap_details(self, solution, data, weekly_hours=None, overtime_by_resource=None):
+        """
+        Analyze why overtime occurred and provide recommendations
+        """
+        gaps = []
+
+        if not overtime_by_resource:
+            return gaps
+
+        # Calculate weekly hours if not provided
+        if weekly_hours is None:
+            assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+            weekly_hours = {}
+            for assignment in assignments:
+                resource_id = assignment['resource_id']
+                duration = assignment.get('duration_hours', assignment.get('duration', 0))
+                if resource_id not in weekly_hours:
+                    weekly_hours[resource_id] = 0
+                weekly_hours[resource_id] += duration
+
+        # Analyze overtime severity levels
+        moderate_overtime = []  # 41-45 hours
+        high_overtime = []      # 45-50 hours
+        severe_overtime = []    # 50+ hours
+
+        for resource_id, ot_data in overtime_by_resource.items():
+            total_hours = ot_data['total_hours']
+            if total_hours > 50:
+                severe_overtime.append((resource_id, total_hours))
+            elif total_hours > 45:
+                high_overtime.append((resource_id, total_hours))
+            else:
+                moderate_overtime.append((resource_id, total_hours))
+
+        # Build gap report based on severity
+        if severe_overtime:
+            gaps.append({
+                "gap_type": "SEVERE_OVERTIME",
+                "description": f"{len(severe_overtime)} resources working 50+ hours per week",
+                "impact": f"Critical workload imbalance affecting {len(severe_overtime)} resources",
+                "recommendations": [
+                    "URGENT: Redistribute workload from overloaded resources",
+                    f"Resources at risk: {[r[0] for r in severe_overtime[:5]]}",
+                    "Consider hiring additional resources with similar qualifications",
+                    "Review if requests can be rescheduled or delayed"
+                ]
+            })
+
+        if high_overtime:
+            gaps.append({
+                "gap_type": "HIGH_OVERTIME",
+                "description": f"{len(high_overtime)} resources working 45-50 hours per week",
+                "impact": f"Significant overtime cost from {len(high_overtime)} resources",
+                "recommendations": [
+                    "Redistribute assignments to underutilized resources",
+                    "Review qualification requirements - may be too restrictive",
+                    "Consider cross-training resources to increase flexibility"
+                ]
+            })
+
+        if moderate_overtime:
+            gaps.append({
+                "gap_type": "MODERATE_OVERTIME",
+                "description": f"{len(moderate_overtime)} resources working 41-45 hours per week",
+                "impact": f"Minor overtime affecting {len(moderate_overtime)} resources",
+                "recommendations": [
+                    "Optimize assignment distribution to balance workload",
+                    "Monitor resource utilization to prevent escalation",
+                    "Look for opportunities to reduce assignment durations"
+                ]
+            })
+
+        # Analyze underutilized resources
+        target_hours = 41
+        underutilized = []
+        for resource_id, hours in weekly_hours.items():
+            if hours < target_hours * 0.7:  # Less than 70% utilization
+                underutilized.append((resource_id, hours))
+
+        if underutilized and overtime_by_resource:
+            gaps.append({
+                "gap_type": "WORKLOAD_IMBALANCE",
+                "description": f"{len(underutilized)} underutilized resources while {len(overtime_by_resource)} are working overtime",
+                "impact": "Inefficient resource allocation increasing overtime costs",
+                "recommendations": [
+                    f"Redistribute work from overtime resources to underutilized ones",
+                    f"Underutilized resources: {[r[0] for r in underutilized[:5]]}",
+                    "Review qualification matching to enable better distribution",
+                    "Consider cross-training to increase assignment flexibility"
+                ]
+            })
+
+        return gaps

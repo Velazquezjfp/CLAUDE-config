@@ -1,0 +1,615 @@
+"""
+Solver Jobs router - Tracks solver job lifecycle
+Connects to INTERNAL database (parameter tables)
+
+This table is populated via webhook from solver_v2 service.
+Provides job status tracking so frontend only needs to call one API.
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional
+from datetime import date, datetime, timedelta
+from pydantic import BaseModel, Field
+import math
+import logging
+
+from database import get_internal_db
+from models import PaginatedResponse
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/solver-jobs", tags=["Solver Jobs"])
+
+
+# =============================================================================
+# PYDANTIC MODELS
+# =============================================================================
+
+class WebhookPayload(BaseModel):
+    """Payload received from solver_v2 webhook."""
+    job_id: str = Field(..., description="Unique job identifier")
+    user_id: str = Field(..., description="User who triggered the job")
+    status: str = Field(..., description="Job status: QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED")
+    progress: float = Field(default=0.0, ge=0.0, le=100.0, description="Progress percentage")
+    current_step: Optional[str] = Field(None, description="Current step name")
+    plan_id: Optional[str] = Field(None, description="Plan ID (set on completion)")
+    error_message: Optional[str] = Field(None, description="Error message (set on failure)")
+    metadata: Optional[dict] = Field(default_factory=dict, description="Additional metadata")
+
+
+class JobSummary(BaseModel):
+    """Summary view of a solver job."""
+    job_id: str
+    user_id: str
+    status: str
+    progress: float
+    current_step: Optional[str]
+    plan_id: Optional[str]
+    error_message: Optional[str]
+    test_mode: Optional[bool]
+    num_demands: Optional[int]
+    num_resources: Optional[int]
+    estimated_seconds: Optional[int]
+    current_partition: Optional[int]
+    total_partitions: Optional[int]
+    partition_label: Optional[str]
+    websocket_url: Optional[str]
+    plan_start_date: Optional[str]
+    plan_end_date: Optional[str]
+    created_at: datetime
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+
+
+# =============================================================================
+# CLEANUP CONFIGURATION
+# =============================================================================
+
+CLEANUP_RETENTION_DAYS = 30  # Keep jobs for 30 days
+
+
+# =============================================================================
+# ENDPOINTS
+# =============================================================================
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_solver_jobs(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    status_filter: Optional[str] = Query(None, description="Filter by status (QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED)"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    List solver jobs with pagination and optional filters.
+
+    **Filters:**
+    - `user_id`: Filter jobs by user (optional - if not provided, returns all jobs)
+    - `status_filter`: Filter by job status
+
+    **Returns:**
+    Jobs sorted by created_at (newest first), without full error messages in list view.
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        # Build WHERE clause
+        where_clauses = []
+        params = {"limit": per_page, "offset": offset}
+
+        if user_id:
+            where_clauses.append("user_id = :user_id")
+            params["user_id"] = user_id
+
+        if status_filter:
+            if status_filter.upper() not in ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED'):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid status_filter. Use: QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED"
+                )
+            where_clauses.append("status = :status_filter")
+            params["status_filter"] = status_filter.upper()
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        # Count total
+        count_query = text(f"SELECT COUNT(*) as total FROM solver_jobs {where_sql}")
+        count_result = await db.execute(count_query, params)
+        total = count_result.scalar()
+
+        # Fetch jobs (summary view - no full error_message)
+        query = text(f"""
+            SELECT
+                job_id, user_id, status, progress, current_step,
+                plan_id,
+                CASE WHEN LENGTH(error_message) > 100
+                     THEN SUBSTRING(error_message, 1, 100) || '...'
+                     ELSE error_message
+                END as error_message,
+                test_mode, num_demands, num_resources, estimated_seconds,
+                current_partition, total_partitions, partition_label,
+                websocket_url,
+                plan_start_date, plan_end_date,
+                created_at, started_at, completed_at
+            FROM solver_jobs
+            {where_sql}
+            ORDER BY created_at DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        jobs = [dict(row._mapping) for row in rows]
+        total_pages = math.ceil(total / per_page) if total > 0 else 0
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            data=jobs,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching solver jobs: {str(e)}",
+        )
+
+
+@router.get("/active")
+async def list_active_jobs(
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    List only active (QUEUED or RUNNING) jobs.
+
+    Useful for showing the user what's currently in progress.
+    """
+    try:
+        where_clauses = ["status IN ('QUEUED', 'RUNNING')"]
+        params = {}
+
+        if user_id:
+            where_clauses.append("user_id = :user_id")
+            params["user_id"] = user_id
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}"
+
+        query = text(f"""
+            SELECT
+                job_id, user_id, status, progress, current_step,
+                plan_id, test_mode, num_demands, num_resources, estimated_seconds,
+                current_partition, total_partitions, partition_label,
+                websocket_url,
+                plan_start_date, plan_end_date,
+                created_at, started_at
+            FROM solver_jobs
+            {where_sql}
+            ORDER BY created_at DESC
+        """)
+
+        result = await db.execute(query, params)
+        rows = result.fetchall()
+
+        return {
+            "total": len(rows),
+            "data": [dict(row._mapping) for row in rows]
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching active jobs: {str(e)}",
+        )
+
+
+@router.get("/{job_id}")
+async def get_solver_job(
+    job_id: str,
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Get a single solver job by ID.
+
+    Returns full job details including complete error message.
+    """
+    try:
+        query = text("""
+            SELECT
+                job_id, user_id, status, progress, current_step,
+                plan_id, error_message,
+                test_mode, num_demands, num_resources, estimated_seconds,
+                current_partition, total_partitions, partition_label,
+                websocket_url,
+                plan_start_date, plan_end_date,
+                created_at, started_at, completed_at, updated_at
+            FROM solver_jobs
+            WHERE job_id = :job_id
+        """)
+
+        result = await db.execute(query, {"job_id": job_id})
+        row = result.fetchone()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Solver job {job_id} not found",
+            )
+
+        return dict(row._mapping)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching solver job: {str(e)}",
+        )
+
+
+@router.post("/webhook", status_code=status.HTTP_200_OK)
+async def webhook_update(
+    payload: WebhookPayload,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Webhook endpoint for solver_v2 to push job status updates.
+
+    **Called by solver at these milestones:**
+    - Job created (QUEUED)
+    - Job started (RUNNING)
+    - Partition completed (RUNNING with partition_info)
+    - Job completed (COMPLETED with plan_id)
+    - Job failed (FAILED with error_message)
+
+    Creates a new record if job_id doesn't exist, updates if it does.
+    """
+    try:
+        job_id = payload.job_id
+
+        # Extract metadata fields (handle None safely)
+        metadata = payload.metadata or {}
+        test_mode = metadata.get("test_mode")
+        num_demands = metadata.get("num_demands")
+        num_resources = metadata.get("num_resources")
+        estimated_seconds = metadata.get("estimated_seconds")
+        websocket_url = metadata.get("websocket_url")
+
+        plan_range = metadata.get("plan_range") or {}
+        plan_start_date = date.fromisoformat(plan_range["start_date"]) if plan_range.get("start_date") else None
+        plan_end_date = date.fromisoformat(plan_range["end_date"]) if plan_range.get("end_date") else None
+
+        # partition_info might be None even if key exists, so use `or {}`
+        partition_info = metadata.get("partition_info") or {}
+        current_partition = partition_info.get("current_partition")
+        total_partitions = partition_info.get("total_partitions")
+        partition_label = partition_info.get("partition_label")
+
+        # Check if job exists
+        check_query = text("SELECT job_id, status FROM solver_jobs WHERE job_id = :job_id")
+        check_result = await db.execute(check_query, {"job_id": job_id})
+        existing = check_result.fetchone()
+
+        now = datetime.utcnow()
+
+        if existing:
+            # Update existing job
+            update_fields = [
+                "status = :status",
+                "progress = :progress",
+                "updated_at = :updated_at"
+            ]
+            params = {
+                "job_id": job_id,
+                "status": payload.status.upper(),
+                "progress": payload.progress,
+                "updated_at": now
+            }
+
+            if payload.current_step:
+                update_fields.append("current_step = :current_step")
+                params["current_step"] = payload.current_step
+
+            if payload.plan_id:
+                update_fields.append("plan_id = :plan_id")
+                params["plan_id"] = payload.plan_id
+
+            if payload.error_message:
+                update_fields.append("error_message = :error_message")
+                params["error_message"] = payload.error_message
+
+            # Update partition info if provided
+            if current_partition is not None:
+                update_fields.append("current_partition = :current_partition")
+                params["current_partition"] = current_partition
+            if total_partitions is not None:
+                update_fields.append("total_partitions = :total_partitions")
+                params["total_partitions"] = total_partitions
+            if partition_label:
+                update_fields.append("partition_label = :partition_label")
+                params["partition_label"] = partition_label
+            if num_demands is not None:
+                update_fields.append("num_demands = :num_demands")
+                params["num_demands"] = num_demands
+            if num_resources is not None:
+                update_fields.append("num_resources = :num_resources")
+                params["num_resources"] = num_resources
+            if websocket_url:
+                update_fields.append("websocket_url = :websocket_url")
+                params["websocket_url"] = websocket_url
+            if plan_start_date:
+                update_fields.append("plan_start_date = :plan_start_date")
+                params["plan_start_date"] = plan_start_date
+            if plan_end_date:
+                update_fields.append("plan_end_date = :plan_end_date")
+                params["plan_end_date"] = plan_end_date
+
+            # Set started_at if transitioning to RUNNING
+            if payload.status.upper() == "RUNNING" and existing.status == "QUEUED":
+                update_fields.append("started_at = :started_at")
+                params["started_at"] = now
+
+            # Set completed_at if transitioning to terminal state
+            if payload.status.upper() in ("COMPLETED", "FAILED", "CANCELLED"):
+                update_fields.append("completed_at = :completed_at")
+                params["completed_at"] = now
+
+            update_query = text(f"""
+                UPDATE solver_jobs
+                SET {', '.join(update_fields)}
+                WHERE job_id = :job_id
+            """)
+            await db.execute(update_query, params)
+
+            logger.info(f"Updated job {job_id}: status={payload.status}, progress={payload.progress}")
+
+        else:
+            # Create new job
+            insert_query = text("""
+                INSERT INTO solver_jobs (
+                    job_id, user_id, status, progress, current_step,
+                    plan_id, error_message,
+                    test_mode, num_demands, num_resources, estimated_seconds,
+                    current_partition, total_partitions, partition_label,
+                    websocket_url,
+                    plan_start_date, plan_end_date,
+                    created_at, updated_at
+                ) VALUES (
+                    :job_id, :user_id, :status, :progress, :current_step,
+                    :plan_id, :error_message,
+                    :test_mode, :num_demands, :num_resources, :estimated_seconds,
+                    :current_partition, :total_partitions, :partition_label,
+                    :websocket_url,
+                    :plan_start_date, :plan_end_date,
+                    :created_at, :updated_at
+                )
+            """)
+
+            await db.execute(insert_query, {
+                "job_id": job_id,
+                "user_id": payload.user_id,
+                "status": payload.status.upper(),
+                "progress": payload.progress,
+                "current_step": payload.current_step,
+                "plan_id": payload.plan_id,
+                "error_message": payload.error_message,
+                "test_mode": test_mode,
+                "num_demands": num_demands,
+                "num_resources": num_resources,
+                "estimated_seconds": estimated_seconds,
+                "current_partition": current_partition,
+                "total_partitions": total_partitions,
+                "partition_label": partition_label,
+                "websocket_url": websocket_url,
+                "plan_start_date": plan_start_date,
+                "plan_end_date": plan_end_date,
+                "created_at": now,
+                "updated_at": now
+            })
+
+            logger.info(f"Created job {job_id}: user={payload.user_id}, status={payload.status}")
+
+        await db.commit()
+
+        # Schedule cleanup in background (non-blocking)
+        background_tasks.add_task(cleanup_old_jobs_task, db)
+
+        return {"status": "ok", "job_id": job_id}
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Webhook error for job {payload.job_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing webhook: {str(e)}",
+        )
+
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_solver_job(
+    job_id: str,
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Delete a solver job record.
+
+    Note: This only deletes the job tracking record. Associated planner_output
+    records are not affected.
+    """
+    try:
+        # Check if job exists
+        check_query = text("SELECT job_id FROM solver_jobs WHERE job_id = :job_id")
+        check_result = await db.execute(check_query, {"job_id": job_id})
+        if not check_result.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Solver job {job_id} not found",
+            )
+
+        delete_query = text("DELETE FROM solver_jobs WHERE job_id = :job_id")
+        await db.execute(delete_query, {"job_id": job_id})
+        await db.commit()
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting solver job: {str(e)}",
+        )
+
+
+@router.post("/cleanup", status_code=status.HTTP_200_OK)
+async def trigger_cleanup(
+    days: int = Query(default=CLEANUP_RETENTION_DAYS, ge=1, le=365, description="Delete jobs older than this many days"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Manually trigger cleanup of old completed/failed jobs.
+
+    By default, deletes jobs older than 30 days that are in terminal states
+    (COMPLETED, FAILED, CANCELLED).
+    """
+    try:
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+
+        # Count jobs to delete
+        count_query = text("""
+            SELECT COUNT(*) FROM solver_jobs
+            WHERE status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+            AND created_at < :cutoff_date
+        """)
+        count_result = await db.execute(count_query, {"cutoff_date": cutoff_date})
+        count = count_result.scalar()
+
+        if count == 0:
+            return {
+                "status": "ok",
+                "message": f"No jobs older than {days} days to clean up",
+                "deleted_count": 0
+            }
+
+        # Delete old jobs
+        delete_query = text("""
+            DELETE FROM solver_jobs
+            WHERE status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+            AND created_at < :cutoff_date
+        """)
+        await db.execute(delete_query, {"cutoff_date": cutoff_date})
+        await db.commit()
+
+        logger.info(f"Cleaned up {count} old solver jobs (older than {days} days)")
+
+        return {
+            "status": "ok",
+            "message": f"Deleted {count} jobs older than {days} days",
+            "deleted_count": count,
+            "cutoff_date": cutoff_date.isoformat()
+        }
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during cleanup: {str(e)}",
+        )
+
+
+@router.get("/stats/summary")
+async def get_job_stats(
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Get summary statistics for solver jobs.
+
+    Returns counts by status and recent activity metrics.
+    """
+    try:
+        where_clause = "WHERE user_id = :user_id" if user_id else ""
+        params = {"user_id": user_id} if user_id else {}
+
+        query = text(f"""
+            SELECT
+                COUNT(*) as total_jobs,
+                COUNT(*) FILTER (WHERE status = 'QUEUED') as queued,
+                COUNT(*) FILTER (WHERE status = 'RUNNING') as running,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
+                COUNT(*) FILTER (WHERE status = 'FAILED') as failed,
+                COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled,
+                COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as last_24h,
+                COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as last_7d,
+                AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) FILTER (WHERE status = 'COMPLETED' AND started_at IS NOT NULL) as avg_duration_seconds
+            FROM solver_jobs
+            {where_clause}
+        """)
+
+        result = await db.execute(query, params)
+        row = result.fetchone()
+
+        return {
+            "total_jobs": row.total_jobs,
+            "by_status": {
+                "queued": row.queued,
+                "running": row.running,
+                "completed": row.completed,
+                "failed": row.failed,
+                "cancelled": row.cancelled
+            },
+            "recent_activity": {
+                "last_24h": row.last_24h,
+                "last_7d": row.last_7d
+            },
+            "avg_duration_seconds": round(row.avg_duration_seconds, 2) if row.avg_duration_seconds else None
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching job stats: {str(e)}",
+        )
+
+
+# =============================================================================
+# BACKGROUND CLEANUP TASK
+# =============================================================================
+
+async def cleanup_old_jobs_task(db: AsyncSession):
+    """
+    Background task to clean up old jobs.
+    Called periodically (e.g., after webhook updates).
+    Uses a simple rate limiting to avoid running on every request.
+    """
+    import random
+
+    # Only run cleanup 1% of the time to avoid overhead
+    if random.random() > 0.01:
+        return
+
+    try:
+        cutoff_date = datetime.utcnow() - timedelta(days=CLEANUP_RETENTION_DAYS)
+
+        delete_query = text("""
+            DELETE FROM solver_jobs
+            WHERE status IN ('COMPLETED', 'FAILED', 'CANCELLED')
+            AND created_at < :cutoff_date
+        """)
+
+        result = await db.execute(delete_query, {"cutoff_date": cutoff_date})
+        if result.rowcount > 0:
+            await db.commit()
+            logger.info(f"Background cleanup: deleted {result.rowcount} old jobs")
+
+    except Exception as e:
+        logger.warning(f"Background cleanup failed: {e}")
+        # Don't raise - this is a background task

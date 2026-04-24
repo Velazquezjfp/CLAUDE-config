@@ -1,0 +1,9 @@
+{
+  "id": "7",
+  "subject": "Update requirement frontmatter",
+  "description": "Mark status implemented and add tests_* fields",
+  "activeForm": "Updating frontmatter",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

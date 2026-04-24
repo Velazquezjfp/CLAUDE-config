@@ -1,0 +1,734 @@
+"""
+API Client for fetching data from CFF Database
+All data is fetched from the live database at runtime
+"""
+import httpx
+from typing import Dict, List, Optional
+import sys
+sys.path.append('..')
+from config import API_BASE_URL, Environment, get_api_base_url
+
+
+class CFFApiClient:
+    """Client for interacting with CFF Database API"""
+
+    def __init__(self, base_url: str = None, env: Environment = None, user_id: Optional[str] = None):
+        """
+        Initialize API client.
+        
+        Args:
+            base_url: Direct URL override (for backward compatibility)
+            env: Target environment (DEV or QA). If provided, overrides base_url.
+            user_id: Optional user ID for audit trail. Defaults to "system".
+        """
+        if env is not None:
+            self.base_url = get_api_base_url(env)
+            self.env = env
+        else:
+            self.base_url = base_url or API_BASE_URL
+            self.env = Environment.DEV  # Default assumption
+        
+        self.user_id = user_id if user_id else "system"
+        # httpx client timeout. Observed 180s timeout in TC-09A during
+        # fetching_data (external DB CONCAT JOIN on resource_blocks is slow —
+        # see planner_dev/data-fetch.md). Bumped default to 300s and made
+        # configurable via CFF_CLIENT_TIMEOUT_SECONDS for tuning without rebuild.
+        import os as _os
+        _timeout = float(_os.environ.get('CFF_CLIENT_TIMEOUT_SECONDS', '300.0'))
+        self.client = httpx.Client(timeout=_timeout)
+        
+        # Set default headers for audit trail
+        self.client.headers.update({
+            "X-User-Id": self.user_id,
+            "X-Environment": self.env.value,
+        })
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
+
+    # ==================== Demands (formerly Requests) ====================
+
+    def get_demands(self, limit: Optional[int] = None,
+                    status: Optional[str] = None,
+                    start_date: Optional[str] = None,
+                    end_date: Optional[str] = None) -> Dict:
+        """
+        Fetch demands/tasks from database.
+        Handles pagination automatically.
+
+        Args:
+            limit: Maximum number of demands to return
+            status: Filter by assignment_status
+            start_date: Filter demands from this date (YYYY-MM-DD)
+            end_date: Filter demands to this date (YYYY-MM-DD)
+
+        Returns:
+            Dict with 'data', 'total', 'page', 'per_page'
+        """
+        params = {
+            'per_page': 200  # Fetch 200 items per page for efficiency
+        }
+        if status:
+            params['assignment_status'] = status
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+
+        all_demands = []
+        page = 1
+        total_pages = None  # Will be set from first response when date filter is set
+
+        # Fetch all pages when date filter is set, otherwise just first page
+        fetch_all_pages = start_date or end_date
+
+        while total_pages is None or page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/demands/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            # Show what we're fetching
+            if page == 1:
+                if fetch_all_pages:
+                    total_pages = data.get('total_pages', 1)
+                    date_range = f"{start_date or 'any'} to {end_date or 'any'}"
+                    print(f"  Fetching demands for date range: {date_range}")
+                    print(f"  Total: {data.get('total', 0)} demands across {total_pages} pages...")
+                else:
+                    total_pages = 1  # Only fetch first page when no date filter
+                    if limit:
+                        print(f"  Fetching {limit} demands (limit set)...")
+                    else:
+                        print(f"  Fetching first page: {len(data.get('data', []))} demands (out of {data.get('total', 0)} total)...")
+
+            # Parse qualification strings into arrays for solver
+            for demand in data['data']:
+                # Parse comma-separated qualification string into array
+                req_quals = demand.get('required_qualifications', '')
+                if req_quals and isinstance(req_quals, str):
+                    # Split by comma, strip whitespace, and normalize internal whitespace
+                    demand['required_qualifications'] = [
+                        ' '.join(q.strip().split())  # Normalize multiple spaces to single space
+                        for q in req_quals.split(',')
+                        if q.strip()
+                    ]
+                elif not req_quals:
+                    demand['required_qualifications'] = []
+
+            all_demands.extend(data['data'])
+            print(f"  Page {page}/{total_pages} fetched ({len(all_demands)} demands so far)")
+            page += 1
+
+        # If limit specified, slice results
+        if limit:
+            all_demands = all_demands[:limit]
+
+        # Return in same format as API
+        return {
+            'data': all_demands,
+            'total': len(all_demands),
+            'page': 1,
+            'per_page': len(all_demands)
+        }
+
+    def get_demand_by_id(self, demand_id: str) -> Dict:
+        """Fetch specific demand by ID"""
+        response = self.client.get(f"{self.base_url}/demands/{demand_id}")
+        response.raise_for_status()
+        demand = response.json()
+
+        # Parse qualification string into array and normalize whitespace
+        req_quals = demand.get('required_qualifications', '')
+        if req_quals and isinstance(req_quals, str):
+            demand['required_qualifications'] = [
+                ' '.join(q.strip().split())  # Normalize multiple spaces to single space
+                for q in req_quals.split(',')
+                if q.strip()
+            ]
+        elif not req_quals:
+            demand['required_qualifications'] = []
+
+        return demand
+
+    # Legacy method names for backward compatibility
+    def get_requests(self, limit: Optional[int] = None,
+                     status: Optional[str] = None) -> Dict:
+        """Legacy method - redirects to get_demands()"""
+        return self.get_demands(limit, status)
+
+    def get_request_by_id(self, request_id: str) -> Dict:
+        """Legacy method - redirects to get_demand_by_id()"""
+        return self.get_demand_by_id(request_id)
+
+    # ==================== Resources ====================
+
+    def get_resources(self, limit: Optional[int] = None,
+                      resource_type: Optional[str] = None,
+                      categories: Optional[List[str]] = None,
+                      team_id: Optional[int] = None,
+                      group_id: Optional[int] = None) -> Dict:
+        """
+        Fetch resources from database
+        Handles pagination automatically to fetch ALL resources
+
+        Args:
+            limit: Maximum number of resources to return
+            resource_type: Filter by resource type
+            categories: Filter by resource categories (returns resources with ANY of these categories).
+                       This is critical for solver optimization - only fetch resources that can
+                       potentially work on demands requiring specific categories.
+            team_id: Filter by team ID (server-side, single value)
+            group_id: Filter by group ID (server-side, single value)
+        """
+        params = {
+            'per_page': 200  # Fetch 200 items per page for efficiency
+        }
+        if resource_type:
+            params['type'] = resource_type
+        if categories:
+            # Pass as comma-separated string to backend
+            params['categories'] = ','.join(categories)
+        if team_id is not None:
+            params['team_id'] = team_id
+        if group_id is not None:
+            params['group_id'] = group_id
+
+        all_resources = []
+        page = 1
+        total_pages = None  # Will be set from first response
+
+        # Fetch all pages
+        while total_pages is None or page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/resources/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            # Show what we're fetching
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+                if categories:
+                    print(f"  Fetching resources for categories: {categories[:5]}{'...' if len(categories) > 5 else ''}")
+                    print(f"  Found {data.get('total', 0)} matching resources across {total_pages} pages...")
+                elif limit:
+                    print(f"  Fetching {limit} resources (limit set)...")
+                else:
+                    print(f"  Fetching all {data.get('total', 0)} resources across {total_pages} pages...")
+
+            # Normalize whitespace in resource qualifications
+            for resource in data['data']:
+                quals = resource.get('qualifications', [])
+                if quals and isinstance(quals, list):
+                    # Normalize multiple spaces to single space in each qualification
+                    resource['qualifications'] = [' '.join(q.split()) for q in quals]
+
+            all_resources.extend(data['data'])
+            print(f"  Page {page}/{total_pages} fetched ({len(all_resources)} resources so far)")
+            page += 1
+
+        # If limit specified, slice results
+        if limit:
+            all_resources = all_resources[:limit]
+
+        # Return in same format as API
+        return {
+            'data': all_resources,
+            'total': len(all_resources),
+            'page': 1,
+            'per_page': len(all_resources)
+        }
+
+    def get_resource_by_id(self, resource_id: str) -> Dict:
+        """Fetch specific resource by ID"""
+        response = self.client.get(f"{self.base_url}/resources/{resource_id}")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Teams & Groups ====================
+
+    def get_teams(self) -> List[Dict]:
+        """Fetch all teams. Returns list of dicts with team_id, team_name, etc."""
+        response = self.client.get(f"{self.base_url}/teams/")
+        response.raise_for_status()
+        return response.json()
+
+    def get_groups(self) -> List[Dict]:
+        """Fetch all groups. Returns list of dicts with group_id, group_name, etc."""
+        response = self.client.get(f"{self.base_url}/groups/")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Operation Points ====================
+
+    def get_operation_points(self, team_ids: List[int] = None) -> List[Dict]:
+        """
+        Fetch operation points, optionally filtered by team_ids.
+        Returns list of dicts with station_code, station_name, team_id, etc.
+        Paginates automatically.
+        """
+        params = {'per_page': 200}
+        all_points = []
+        # If single team_id, use server-side filter
+        if team_ids and len(team_ids) == 1:
+            params['team_id'] = team_ids[0]
+
+        page = 1
+        total_pages = None
+
+        while total_pages is None or page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/operation-points/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+
+            all_points.extend(data.get('data', []))
+            page += 1
+
+        # Client-side filter for multiple team_ids
+        if team_ids and len(team_ids) > 1:
+            team_set = set(team_ids)
+            all_points = [op for op in all_points if op.get('team_id') in team_set]
+
+        return all_points
+
+    # ==================== Locations ====================
+
+    def get_locations(self) -> Dict:
+        """
+        Fetch all locations from database.
+        Used for mapping location IDs to location codes.
+
+        Returns:
+            Dict with 'data' containing list of locations with:
+            - location_id: int
+            - location_code: str
+            - location_name: str
+            - ...
+        """
+        params = {'per_page': 200}
+        all_locations = []
+        page = 1
+        total_pages = None
+
+        while total_pages is None or page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/locations/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+                print(f"  Fetching {data.get('total', 0)} locations...")
+
+            all_locations.extend(data.get('data', []))
+            page += 1
+
+        return {
+            'data': all_locations,
+            'total': len(all_locations)
+        }
+
+    # ==================== Absences ====================
+
+    def get_absences(self, resource_id: Optional[str] = None) -> Dict:
+        """Fetch absences from database (LEGACY - use get_resource_blocks instead)"""
+        params = {}
+        if resource_id:
+            params['resource_id'] = resource_id
+
+        response = self.client.get(f"{self.base_url}/absences/", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Resource Blocks (Absences with resource_id) ====================
+
+    def get_resource_blocks(self, category: str = "all",
+                            resource_ids: Optional[List[int]] = None,
+                            start_date: Optional[str] = None,
+                            end_date: Optional[str] = None,
+                            exclude_calendar_types: Optional[List[str]] = None) -> Dict:
+        """
+        Fetch resource blocks (absences/service blocks) with resource_id resolved.
+        Uses the new /resource-blocks/ endpoint that maps family_name to resource_id.
+
+        Args:
+            category: "blocking" for absences, "service" for job assignments, "all" for both
+            resource_ids: Optional list of resource IDs to filter
+            start_date: Filter blocks from this date (YYYY-MM-DD)
+            end_date: Filter blocks to this date (YYYY-MM-DD)
+            exclude_calendar_types: Calendar types to EXCLUDE (replannable types).
+                                   Types NOT in this list will block resources.
+
+        Returns:
+            Dict with 'data' containing list of blocks with:
+            - block_id: int
+            - resource_id: int (resolved from family_name)
+            - family_name: str
+            - block_type: str (e.g., "Vacances", "RT Jour de repos")
+            - start_date: str
+            - end_date: str
+            - status: str
+            - notes: str
+        """
+        params = {
+            'per_page': 1000,  # Larger page size to reduce HTTP round trips
+            'category': category
+        }
+        if resource_ids:
+            params['resource_ids'] = ','.join(str(rid) for rid in resource_ids)
+        if start_date:
+            params['start_date'] = start_date
+        if end_date:
+            params['end_date'] = end_date
+        if exclude_calendar_types:
+            params['exclude_calendar_types'] = ','.join(exclude_calendar_types)
+
+        all_blocks = []
+        page = 1
+        total_pages = None
+
+        while total_pages is None or page <= total_pages:
+            params['page'] = page
+            response = self.client.get(f"{self.base_url}/resource-blocks/", params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if page == 1:
+                total_pages = data.get('total_pages', 1)
+                print(f"  Fetching {data.get('total', 0)} resource blocks ({category}) across {total_pages} pages...")
+
+            all_blocks.extend(data.get('data', []))
+            print(f"  Page {page}/{total_pages} fetched ({len(all_blocks)} blocks so far)")
+            page += 1
+
+        return {
+            'data': all_blocks,
+            'total': len(all_blocks),
+            'page': 1,
+            'per_page': len(all_blocks)
+        }
+
+    # ==================== Assignments ====================
+
+    def get_assignments(self, status: Optional[str] = None) -> Dict:
+        """Fetch existing assignments"""
+        params = {}
+        if status:
+            params['status'] = status
+
+        response = self.client.get(f"{self.base_url}/assignments/", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Legal Constraints ====================
+
+    def get_legal_constraint(self, constraint_name: str) -> Dict:
+        """Fetch legal constraint by name"""
+        params = {'constraint_name': constraint_name}
+        response = self.client.get(f"{self.base_url}/legal-constraints/", params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Find the specific constraint
+        for constraint in data:
+            if constraint['constraint_name'] == constraint_name:
+                return constraint
+
+        raise ValueError(f"Constraint {constraint_name} not found")
+
+    def get_all_legal_constraints(self) -> List[Dict]:
+        """Fetch all legal constraints"""
+        response = self.client.get(f"{self.base_url}/legal-constraints/")
+        response.raise_for_status()
+        return response.json()
+
+    # ==================== Company Policy Constraints ====================
+
+    def get_company_policy(self, policy_name: str,
+                          planning_mode: Optional[str] = None,
+                          user_id: Optional[str] = None) -> Dict:
+        """Fetch company policy constraint by name (DYNAMIC)"""
+        params = {}
+        if planning_mode:
+            params['planning_mode'] = planning_mode
+        if user_id and user_id != 'global':
+            params['user_id'] = user_id
+
+        response = self.client.get(f"{self.base_url}/company-policy-constraints/",
+                                  params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Find the specific policy
+        for policy in data:
+            if policy['policy_name'] == policy_name:
+                return policy
+
+        # Fallback: if user-specific returned nothing, retry with global
+        if user_id and user_id != 'global':
+            print(f"  [FALLBACK] No policies for user '{user_id}', falling back to global")
+            return self.get_company_policy(policy_name, planning_mode, user_id=None)
+
+        raise ValueError(f"Policy {policy_name} not found")
+
+    def get_all_company_policies(self, user_id: Optional[str] = None) -> List[Dict]:
+        """Fetch all company policies"""
+        params = {}
+        if user_id and user_id != 'global':
+            params['user_id'] = user_id
+        response = self.client.get(f"{self.base_url}/company-policy-constraints/", params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Fallback: if user-specific returned nothing, retry with global
+        if not data and user_id and user_id != 'global':
+            print(f"  [FALLBACK] No policies for user '{user_id}', falling back to global")
+            return self.get_all_company_policies(user_id=None)
+
+        return data
+
+    # ==================== Objective Weights ====================
+
+    def get_objective_weights(self, user_id: Optional[str] = None) -> List[Dict]:
+        """
+        Fetch all objective weights from backend.
+        Falls back to global if user-specific returns empty.
+
+        Args:
+            user_id: User context ID (defaults to 'global' on server)
+
+        Returns:
+            List of objective weight dicts with:
+            - objective_name: str
+            - weight_coefficient: float
+            - objective_category: str
+            - description: str
+            - active: bool
+        """
+        params = {}
+        if user_id and user_id != 'global':
+            params['user_id'] = user_id
+        response = self.client.get(f"{self.base_url}/objective-weights/", params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Fallback: if user-specific returned nothing, retry with global
+        if not data and user_id and user_id != 'global':
+            print(f"  [FALLBACK] No objective weights for user '{user_id}', falling back to global")
+            return self.get_objective_weights(user_id=None)
+
+        return data
+
+    def get_objective_weight(self, objective_name: str, user_id: Optional[str] = None) -> Dict:
+        """
+        Fetch specific objective weight by name.
+        Falls back to global if user-specific returns nothing.
+
+        Args:
+            objective_name: Name of the objective (e.g., 'maximize_coverage')
+            user_id: User context ID (defaults to 'global' on server)
+
+        Returns:
+            Objective weight dict
+        """
+        weights = self.get_objective_weights(user_id=user_id)
+        for w in weights:
+            if w['objective_name'] == objective_name:
+                return w
+        # get_objective_weights already falls back to global,
+        # so if we still can't find it, it truly doesn't exist
+        raise ValueError(f"Objective '{objective_name}' not found in backend")
+
+    # ==================== Utility Methods ====================
+
+    def fetch_constraint_values(self, legal_constraint_name: str,
+                               company_policy_name: str,
+                               planning_mode: Optional[str] = None,
+                               user_id: Optional[str] = None) -> tuple:
+        """
+        Fetch both legal and company constraint values
+        Returns: (legal_constraint, company_policy)
+        """
+        legal = self.get_legal_constraint(legal_constraint_name)
+        company = self.get_company_policy(company_policy_name, planning_mode, user_id=user_id)
+        return legal, company
+
+    def fetch_test_dataset(self, num_requests: int = 2,
+                          num_resources: int = 3) -> Dict:
+        """
+        Fetch a small test dataset for initial testing
+        Returns: Dict with requests, resources, absences
+
+        Note: API doesn't respect limit param, so we manually slice results
+        """
+        # Fetch all data and manually limit (API doesn't respect limit parameter)
+        requests_data = self.get_requests()
+        requests_data['data'] = requests_data['data'][:num_requests]
+        requests_data['total'] = len(requests_data['data'])
+
+        resources_data = self.get_resources()
+        resources_data['data'] = resources_data['data'][:num_resources]
+        resources_data['total'] = len(resources_data['data'])
+
+        # Fetch absences for selected resources
+        resource_ids = [r['resource_id'] for r in resources_data['data']]
+        all_absences = []
+        for resource_id in resource_ids:
+            absences = self.get_absences(resource_id=resource_id)
+            all_absences.extend(absences.get('data', []))
+
+        return {
+            'requests': requests_data,
+            'resources': resources_data,
+            'absences': {'data': all_absences, 'total': len(all_absences)}
+        }
+
+
+    # ==================== Planner Output ====================
+
+    def post_planner_output(self, plan_id: str, status: str, assignments: List[Dict],
+                           num_requests: int, num_resources: int, num_violations: int,
+                           solve_time_seconds: float, metadata: Dict = None,
+                           job_id: str = None,
+                           fetch_rt: bool = True, fetch_ct: bool = True) -> Dict:
+        """
+        POST solver results to planner_output table.
+
+        Args:
+            plan_id: Unique plan identifier (e.g., "PLAN-20250123-DEV-U123")
+            status: Solver status ("OPTIMAL", "FEASIBLE", "INFEASIBLE", "UNKNOWN")
+            assignments: List of assignment dicts with resource_id, demand_id, start, end, duration_hours
+            num_requests: Total number of requests in planning
+            num_resources: Total number of resources in planning
+            num_violations: Number of soft constraint violations
+            solve_time_seconds: Time taken to solve
+            metadata: Optional additional metadata
+            fetch_rt: If True, FE must fetch RT blocks from external DB (solver did not replan RT).
+                     If False, RT allocations are in planner_assignments with assignment_type=RT.
+            fetch_ct: Same semantics as fetch_rt, but for CT blocks.
+
+        Returns:
+            API response dict
+        """
+        payload = {
+            "plan_id": plan_id,
+            "status": status,
+            "assignments": assignments,
+            "num_requests": num_requests,
+            "num_resources": num_resources,
+            "num_violations": num_violations,
+            "solve_time_seconds": solve_time_seconds,
+            "user_id": self.user_id,
+            "env": self.env.value,
+            "fetch_rt": bool(fetch_rt),
+            "fetch_ct": bool(fetch_ct),
+        }
+        if job_id:
+            payload["job_id"] = job_id
+        if metadata:
+            payload["metadata"] = metadata
+
+        response = self.client.post(
+            f"{self.base_url}/planner-output/",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def post_planner_assignments_bulk(self, plan_id: str, job_id: str, assignments: List[Dict]) -> Dict:
+        """
+        Bulk insert normalized assignments to planner_assignments table.
+
+        Args:
+            plan_id: The plan ID
+            job_id: The solver job ID
+            assignments: List of assignment dicts. Each dict may contain:
+                - request_id: str or None (None for CT/RT rest-day allocations)
+                - bsa_id, resource_id, resource_name, resource_category
+                - team_id, team_name, group_id, group_name
+                - calendar_start, calendar_end, duration_hours
+                - is_night_shift: bool
+                - assignment_type: "DEMAND" (default) | "CT" | "RT"
+
+        Returns:
+            API response dict with inserted count
+        """
+        payload = {
+            "plan_id": plan_id,
+            "job_id": job_id,
+            "assignments": assignments,
+        }
+        response = self.client.post(
+            f"{self.base_url}/planner-output/assignments/bulk",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def post_planner_uncovered_demands_bulk(self, plan_id: str, job_id: str, uncovered_demands: List[Dict]) -> Dict:
+        """
+        Bulk insert uncovered demands to planner_uncovered_demands table.
+
+        Args:
+            plan_id: The plan ID
+            job_id: The solver job ID
+            uncovered_demands: List of uncovered demand dicts
+
+        Returns:
+            API response dict with inserted count
+        """
+        payload = {
+            "plan_id": plan_id,
+            "job_id": job_id,
+            "uncovered_demands": uncovered_demands,
+        }
+        response = self.client.post(
+            f"{self.base_url}/planner-output/uncovered-demands/bulk",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_planner_output(self, plan_id: str) -> Dict:
+        """
+        GET planner output by plan_id.
+        
+        Args:
+            plan_id: The plan ID to retrieve
+        
+        Returns:
+            Planner output record
+        """
+        response = self.client.get(
+            f"{self.base_url}/planner-output/",
+            params={"plan_id": plan_id}
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Singleton instance for convenience
+# Singleton instance for convenience
+_client_instance = None
+_client_env = None
+_client_user_id = None
+
+def get_client(env: Environment = None, user_id: Optional[str] = None) -> CFFApiClient:
+    """Get or create API client for specified environment"""
+    global _client_instance, _client_env, _client_user_id
+    
+    # Create new client if env/user_id changed or no instance
+    if (_client_instance is None or 
+        _client_env != env or 
+        _client_user_id != user_id):
+        _client_instance = CFFApiClient(env=env, user_id=user_id)
+        _client_env = env
+        _client_user_id = user_id
+    
+    return _client_instance

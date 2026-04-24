@@ -1,0 +1,11 @@
+I need you to assess my project, read the context = .claude/PROJECT_CONTEXT.md and execute sub agents "focused agents" to explore and summarize the codebase to you. I'm interested in you understanding the solver flow and the backend DBs, but most importantly the flow with partitions, constraints, objectives and analysers. 
+
+This is because I will implemente modifications in the solver flow to considere new "constraints" or modify current constraints.                                                                                            
+So please ensure you only visit these 2 folders where the project is:                                                                                                                                                                                                           
+solver_v2                                                                                                                                                                                                                                                                       
+mock_data_v2/database_application_v2                                                                                                                                                                                                                                            
+Important for the solver is the service script, the main file the objectives, constraints and the analysers folder, as well as the partitions flow.                                                                                                                              
+Make sure that you understand it, here is a swagger for you to check as well apart from the SQL DB schemas.  
+                                                                                                                                                                    
+http://localhost:8003/qa/ai/docs                                                                                                                                                                                                                                                
+http://localhost:8005/qa/planner/docs  

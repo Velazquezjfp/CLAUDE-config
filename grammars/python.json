@@ -1,7 +1,7 @@
 {
   "language": "python",
-  "version": "1.1",
-  "last_updated": "2025-01-27",
+  "version": "1.2",
+  "last_updated": "2025-01-09",
   "patterns": {
     "imports": [
       "^\\s*from\\s+([\\w.]+)\\s+import",
@@ -19,12 +19,42 @@
       "@app\\.route\\(['\"]([^'\"]+)['\"](?:.*methods\\s*=\\s*\\[([^\\]]+)\\])?",
       "@bp\\.route\\(['\"]([^'\"]+)['\"](?:.*methods\\s*=\\s*\\[([^\\]]+)\\])?",
       "@bp\\.(get|post|put|delete|patch|options|head)\\(['\"]([^'\"]+)['\"]",
-      "@router\\.(get|post|put|delete|patch|options)\\(['\"]([^'\"]+)['\"]",
-      "@app\\.(get|post|put|delete|patch)\\(['\"]([^'\"]+)['\"]",
+      "@router\\.(get|post|put|delete|patch|options|head)\\(['\"]([^'\"]+)['\"]",
+      "@router\\.websocket\\(['\"]([^'\"]+)['\"]",
+      "@app\\.(get|post|put|delete|patch|websocket)\\(['\"]([^'\"]+)['\"]",
       "@api_view\\(\\[([^\\]]+)\\]\\)",
       "class\\s+\\w+\\(.*APIView.*\\):",
       "app\\.register_blueprint\\(([^,]+)(?:,\\s*url_prefix=['\"]([^'\"]+)['\"])?",
       "Blueprint\\(['\"]([^'\"]+)['\"]"
+    ],
+    "fastapi_routers": [
+      "APIRouter\\(\\s*(?:prefix=['\"]([^'\"]+)['\"])?",
+      "app\\.include_router\\(([\\w_]+)(?:,\\s*prefix=['\"]([^'\"]+)['\"])?(?:,\\s*tags=\\[([^\\]]+)\\])?",
+      "include_router\\(([\\w_]+)"
+    ],
+    "pydantic_models": [
+      "class\\s+(\\w+)\\(BaseModel\\):",
+      "class\\s+(\\w+)\\(BaseModel,\\s*[^)]+\\):",
+      "class\\s+(\\w+)\\(BaseSettings\\):",
+      "(\\w+):\\s*[\\w\\[\\],\\s]+\\s*=\\s*Field\\(",
+      "(\\w+):\\s*Optional\\[[^\\]]+\\]\\s*=\\s*Field\\("
+    ],
+    "google_genai": [
+      "genai\\.configure\\(",
+      "genai\\.GenerativeModel\\(['\"]([^'\"]+)['\"]",
+      "model\\.generate_content\\(",
+      "model\\.generate_content_async\\(",
+      "GenerationConfig\\(",
+      "genai\\.upload_file\\(",
+      "genai\\.get_file\\("
+    ],
+    "async_patterns": [
+      "AsyncGenerator\\[",
+      "AsyncIterator\\[",
+      "@asynccontextmanager",
+      "async\\s+with\\s+",
+      "async\\s+for\\s+",
+      "await\\s+"
     ],
     "database_models": [
       "class\\s+(\\w+)\\(.*(?:Model|Base|Document).*\\):",

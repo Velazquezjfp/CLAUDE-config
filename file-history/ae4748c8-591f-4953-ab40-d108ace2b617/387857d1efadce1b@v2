@@ -1,0 +1,499 @@
+"""
+Free-Weekend Pre-Allocator (Fix #17-I, 2026-04-23)
+
+PURPOSE
+    Decide, BEFORE the partitioner solves anything, which weekend each resource
+    will have as its "free weekend" to satisfy LC-05's "1 free weekend per
+    5-week sliding window" legal requirement.
+
+WHY
+    Previously, LC-05 was enforced per-partition as a hard CP-SAT constraint.
+    When carryover from earlier partitions zeroed every anchor on the specific
+    weekend the solver needed, presolve returned INFEASIBLE for the entire
+    partition — dropping coverage for every resource in that partition, not
+    just the one with the LC-05 issue. (Observed: 6 of 12 partitions failing
+    under a 6-team probe.) Pre-allocating globally eliminates this failure
+    mode: each resource's free weekend is decided once with full visibility,
+    partitions never collide on LC-05, and a resource whose calendar makes
+    LC-05 physically impossible produces an auditable legal violation rather
+    than an opaque INFEASIBLE.
+
+POLICY
+    Conservative: no absence type is assumed to satisfy LC-05 (see config
+    ABSENCE_COUNTS_AS_FREE_WEEKEND). If a resource's weekend is blocked by
+    a sick leave or vacation, that's "unavailable to work" but NOT a legal
+    free weekend — the pre-allocator still has to designate one.
+
+ALGORITHM — Tier 2: greedy, globally-aware
+    For each resource (sorted by tightness — fewest candidate weekends first):
+      1. Satisfied-by-prior-state: skip if last_free_weekend covers the
+         first required position.
+      2. For each required free-weekend slot (every 5 weeks across the plan):
+         - Enumerate candidate weekends within 5 weeks of the slot
+         - Score each candidate by demand-disruption cost, accounting for
+           other resources already locked on earlier-processed weekends
+         - Lock the lowest-cost candidate
+      3. If no candidate feasible: raise a legal-violation record
+
+AUDIT TRAIL
+    Every decision, skip, and violation is logged into
+    PreallocatorResult.audit_log so the analyzer can surface it via
+    /solver/status.
+"""
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
+
+# LC-05 constants (overridden by constraint values if provided by caller)
+DEFAULT_WINDOW_WEEKS = 5
+DEFAULT_WEEKENDS_REQUIRED_PER_WINDOW = 1
+
+# Cost when a demand would lose its ONLY qualified resource by locking this weekend
+COST_UNCOVERABLE_DEMAND = 10_000
+# Cost factor for partially-covered demands: 100 / max(1, alternatives)
+COST_PARTIAL_COVERAGE_FACTOR = 100
+
+
+@dataclass
+class LockedWeekend:
+    sat: date
+    sun: date
+    cost: int
+    # Reason: "initial", "post-carryover", "scheduled-5w-later", etc.
+    reason: str = ""
+
+
+@dataclass
+class AuditEntry:
+    resource_id: Any
+    window_index: int
+    sat_date: Optional[date]
+    sun_date: Optional[date]
+    cost: Optional[int]
+    outcome: str                    # "LOCKED" | "SKIP_PRIOR_STATE" | "SKIP_ABSENCE_CREDITED" | "NO_FEASIBLE"
+    candidates_considered: int
+    note: str = ""
+
+
+@dataclass
+class LegalViolation:
+    constraint: str                 # always "LC_05" here
+    severity: str                   # "HARD"
+    resource_id: Any
+    resource_name: Optional[str]
+    window_start: date
+    window_end: date
+    violation: str                  # "NO_FEASIBLE_FREE_WEEKEND"
+    context: str
+
+
+@dataclass
+class PreallocatorResult:
+    locked_weekends: Dict[Any, List[LockedWeekend]] = field(default_factory=dict)
+    audit_log: List[AuditEntry] = field(default_factory=list)
+    legal_violations: List[LegalViolation] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "locked_weekends": {
+                rid: [{"sat": str(w.sat), "sun": str(w.sun), "cost": w.cost, "reason": w.reason}
+                      for w in ws]
+                for rid, ws in self.locked_weekends.items()
+            },
+            "audit_log": [
+                {
+                    "resource_id": a.resource_id,
+                    "window_index": a.window_index,
+                    "sat_date": str(a.sat_date) if a.sat_date else None,
+                    "sun_date": str(a.sun_date) if a.sun_date else None,
+                    "cost": a.cost,
+                    "outcome": a.outcome,
+                    "candidates_considered": a.candidates_considered,
+                    "note": a.note,
+                }
+                for a in self.audit_log
+            ],
+            "legal_violations": [
+                {
+                    "constraint": v.constraint,
+                    "severity": v.severity,
+                    "resource_id": v.resource_id,
+                    "resource_name": v.resource_name,
+                    "window_start": str(v.window_start),
+                    "window_end": str(v.window_end),
+                    "violation": v.violation,
+                    "context": v.context,
+                }
+                for v in self.legal_violations
+            ],
+        }
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_aware(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _parse_dt(s) -> Optional[datetime]:
+    if not s:
+        return None
+    if isinstance(s, datetime):
+        return _ensure_aware(s)
+    try:
+        dt = datetime.fromisoformat(str(s).replace("Z", "+00:00").replace(" ", "T"))
+        return _ensure_aware(dt)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _normalize_cats(val) -> Set[str]:
+    if not val:
+        return set()
+    if isinstance(val, str):
+        return {c.strip().lower() for c in val.split(",") if c.strip()}
+    if isinstance(val, list):
+        return {str(c).strip().lower() for c in val if c}
+    return set()
+
+
+def _enum_weekends(start: date, end: date) -> List[Tuple[date, date]]:
+    """Return list of (sat, sun) pairs where BOTH days fall in [start, end]."""
+    pairs: List[Tuple[date, date]] = []
+    # First Saturday on/after start
+    days_to_sat = (5 - start.weekday()) % 7
+    sat = start + timedelta(days=days_to_sat)
+    while sat <= end:
+        sun = sat + timedelta(days=1)
+        if sun <= end:
+            pairs.append((sat, sun))
+        sat = sat + timedelta(days=7)
+    return pairs
+
+
+def _dates_of_weekend(pair: Tuple[date, date]) -> Set[date]:
+    return {pair[0], pair[1]}
+
+
+def _resource_qualifies(resource: Dict, demand: Dict) -> bool:
+    """CP-02 check — category + qualifications match."""
+    req_cat = (demand.get("resource_category") or "").strip().lower()
+    r_cats = _normalize_cats(resource.get("resource_categories"))
+    if req_cat and req_cat not in r_cats:
+        return False
+    req_quals = _normalize_cats(demand.get("required_qualifications"))
+    r_quals = _normalize_cats(resource.get("qualifications"))
+    if req_quals and not req_quals.issubset(r_quals):
+        return False
+    return True
+
+
+def _is_absent_on(resource_id: Any, d: date,
+                  absences_by_resource: Dict[Any, List[Tuple[datetime, datetime, str]]]) -> Tuple[bool, Optional[str]]:
+    """Returns (blocked, block_type). block_type is non-None even when blocked
+    by a type marked as counting-as-rest — caller decides how to treat."""
+    day_start = datetime.combine(d, datetime.min.time(), tzinfo=timezone.utc)
+    day_end = day_start + timedelta(days=1)
+    for (abs_s, abs_e, abs_t) in absences_by_resource.get(resource_id, []):
+        if abs_s < day_end and day_start < abs_e:
+            return True, abs_t
+    return False, None
+
+
+# ---------------------------------------------------------------------------
+# Main entry
+# ---------------------------------------------------------------------------
+
+def preallocate_free_weekends(
+    resources: List[Dict],
+    demands: List[Dict],
+    absence_blocks: List[Dict],
+    full_plan_start: date,
+    full_plan_end: date,
+    incoming_state=None,
+    window_weeks: int = DEFAULT_WINDOW_WEEKS,
+    weekends_required_per_window: int = DEFAULT_WEEKENDS_REQUIRED_PER_WINDOW,
+    absence_counts_as_free_weekend: Optional[Dict[str, bool]] = None,
+) -> PreallocatorResult:
+    """Pre-allocate one free weekend per 5-week window per resource.
+
+    Args:
+        resources: list of resource dicts (team-filtered scope).
+        demands: list of demand dicts fetched for full_plan range.
+        absence_blocks: list of block dicts from /resource-blocks/ (blocking
+                        category). Each must have resource_id, block_type,
+                        start_date/start_datetime, end_date/end_datetime.
+        full_plan_start / full_plan_end: inclusive calendar dates.
+        incoming_state: optional PartitionState with per-resource
+                        `last_free_weekend` / `free_weekend_by_month`.
+        window_weeks: LC-05 window width (default 5).
+        weekends_required_per_window: per-window minimum (default 1).
+        absence_counts_as_free_weekend: dict from block_type -> bool. Missing
+                        key or value False means absence does NOT satisfy
+                        LC-05. Empty/None -> conservative default (no absence
+                        types count).
+    """
+    mapping = absence_counts_as_free_weekend or {}
+    result = PreallocatorResult()
+
+    # --- Index absences by resource for O(1) overlap checks ---
+    abs_by_res: Dict[Any, List[Tuple[datetime, datetime, str]]] = {}
+    for b in absence_blocks:
+        rid = b.get("resource_id")
+        if rid is None:
+            continue
+        # Normalize to int when possible (matches data_processor convention)
+        try:
+            rid = int(rid)
+        except (ValueError, TypeError):
+            pass
+        b_s = _parse_dt(b.get("start_datetime") or b.get("start_date"))
+        b_e = _parse_dt(b.get("end_datetime") or b.get("end_date"))
+        if not (b_s and b_e):
+            continue
+        btype = (b.get("block_type") or b.get("type") or "").strip()
+        abs_by_res.setdefault(rid, []).append((b_s, b_e, btype))
+
+    # --- Index demands by (resource_qualifies, date) ---
+    # For performance, precompute demand.date and qualified_resources per demand.
+    demands_with_meta: List[Tuple[Dict, date, List[Any]]] = []
+    for d in demands:
+        ds = _parse_dt(d.get("shift_start_time"))
+        if not ds:
+            continue
+        d_date = ds.date()
+        qual_ids = [r["resource_id"] for r in resources if _resource_qualifies(r, d)]
+        demands_with_meta.append((d, d_date, qual_ids))
+
+    # --- Build target free-weekend slots per resource ---
+    # Greedy: earliest free weekend that meets requirement, then +window_weeks.
+    all_weekends = _enum_weekends(full_plan_start, full_plan_end)
+
+    if not all_weekends:
+        logger.warning("[PREALLOC] No weekends in plan range; skipping.")
+        return result
+
+    # Sort resources by "tightness" (fewer candidate weekends = pick first)
+    # Heuristic: count weekends entirely free of demand-days where r is qualified.
+    def _candidate_count(r) -> int:
+        rid = r["resource_id"]
+        cnt = 0
+        for (sat, sun) in all_weekends:
+            wknd = {sat, sun}
+            touching = sum(
+                1 for (_d, d_date, qual_ids) in demands_with_meta
+                if d_date in wknd and rid in qual_ids
+            )
+            if touching == 0:
+                cnt += 1
+        return cnt
+    # Skip tightness calc if there are many resources (expensive); use resource_id as fallback
+    try:
+        resources_sorted = sorted(resources, key=_candidate_count)
+    except Exception:
+        resources_sorted = list(resources)
+
+    # Track which weekends are already locked PER WEEKEND (affects cost for
+    # later resources if they compete for the same demand's coverage).
+    locked_per_weekend: Dict[Tuple[date, date], int] = {}
+
+    resource_states = getattr(incoming_state, 'resource_states', {}) if incoming_state else {}
+
+    for r in resources_sorted:
+        rid = r["resource_id"]
+        r_name = f"{r.get('last_name','')} {r.get('first_name','')}".strip() or None
+
+        # Compute the first required free-weekend deadline
+        rs = resource_states.get(rid) or (resource_states.get(int(rid)) if isinstance(rid, str) else None)
+        prior_last_fw: Optional[date] = getattr(rs, "last_free_weekend", None) if rs else None
+
+        # Walk forward in 5-week steps
+        target_deadline = full_plan_start
+        if prior_last_fw is not None:
+            # The prior free weekend covers the first window if it's within
+            # window_weeks of plan_start.
+            cover_until = prior_last_fw + timedelta(weeks=window_weeks)
+            if cover_until >= full_plan_start:
+                target_deadline = prior_last_fw + timedelta(weeks=window_weeks)
+            # Log the skip
+            result.audit_log.append(AuditEntry(
+                resource_id=rid, window_index=0, sat_date=prior_last_fw,
+                sun_date=prior_last_fw + timedelta(days=1), cost=None,
+                outcome="SKIP_PRIOR_STATE", candidates_considered=0,
+                note=f"last_free_weekend={prior_last_fw} from incoming state covers initial window",
+            ))
+
+        window_idx = 1
+        while target_deadline <= full_plan_end:
+            # Candidate weekends = weekends starting at target_deadline,
+            # running until target_deadline + window_weeks (inclusive window span).
+            window_end = min(target_deadline + timedelta(weeks=window_weeks), full_plan_end)
+            candidates = [(s, e) for (s, e) in all_weekends
+                          if target_deadline <= s <= window_end]
+
+            if not candidates:
+                # No weekend fits in this window — legal violation
+                result.legal_violations.append(LegalViolation(
+                    constraint="LC_05", severity="HARD",
+                    resource_id=rid, resource_name=r_name,
+                    window_start=target_deadline, window_end=window_end,
+                    violation="NO_FEASIBLE_FREE_WEEKEND",
+                    context="No weekend with both Sat and Sun inside plan range within this window.",
+                ))
+                result.audit_log.append(AuditEntry(
+                    resource_id=rid, window_index=window_idx, sat_date=None, sun_date=None,
+                    cost=None, outcome="NO_FEASIBLE", candidates_considered=0,
+                    note=f"window [{target_deadline}, {window_end}] has no candidate weekends",
+                ))
+                # Advance deadline; can't cascade further.
+                target_deadline = target_deadline + timedelta(weeks=window_weeks)
+                window_idx += 1
+                continue
+
+            # Check auto-satisfy via absence (both days blocked by a type that
+            # counts_as_free_weekend).
+            auto_sat_cand: Optional[Tuple[date, date, str]] = None
+            for (sat, sun) in candidates:
+                blocked_sat, type_sat = _is_absent_on(rid, sat, abs_by_res)
+                blocked_sun, type_sun = _is_absent_on(rid, sun, abs_by_res)
+                if blocked_sat and blocked_sun:
+                    sat_ok = mapping.get(type_sat or "", False) is True
+                    sun_ok = mapping.get(type_sun or "", False) is True
+                    if sat_ok and sun_ok:
+                        auto_sat_cand = (sat, sun, f"sat:{type_sat}, sun:{type_sun}")
+                        break
+                    else:
+                        # Log that an absence-blocked weekend was NOT credited
+                        result.audit_log.append(AuditEntry(
+                            resource_id=rid, window_index=window_idx,
+                            sat_date=sat, sun_date=sun, cost=None,
+                            outcome="ABSENCE_NOT_CREDITED",
+                            candidates_considered=0,
+                            note=(f"weekend fully blocked by absences "
+                                  f"(sat:{type_sat}, sun:{type_sun}) — "
+                                  f"types not in ABSENCE_COUNTS_AS_FREE_WEEKEND"),
+                        ))
+
+            if auto_sat_cand:
+                sat, sun, why = auto_sat_cand
+                result.audit_log.append(AuditEntry(
+                    resource_id=rid, window_index=window_idx,
+                    sat_date=sat, sun_date=sun, cost=0,
+                    outcome="SKIP_ABSENCE_CREDITED",
+                    candidates_considered=len(candidates),
+                    note=f"weekend auto-satisfied by absence ({why})",
+                ))
+                target_deadline = sun + timedelta(weeks=window_weeks) - timedelta(days=1)
+                window_idx += 1
+                continue
+
+            # Score each candidate
+            best: Optional[Tuple[int, Tuple[date, date]]] = None
+            for (sat, sun) in candidates:
+                wknd_dates = {sat, sun}
+                cost = 0
+                blocked_any_by_absence = False
+                for d in wknd_dates:
+                    b, _ = _is_absent_on(rid, d, abs_by_res)
+                    if b:
+                        blocked_any_by_absence = True
+                # A weekend where the resource is ALREADY absent on some days
+                # is effectively cheaper to lock (resource wasn't going to cover
+                # those demands anyway). Still valid as a "free weekend" choice
+                # as long as LC-05 is formally satisfied by the lock.
+                for (_d, d_date, qual_ids) in demands_with_meta:
+                    if d_date not in wknd_dates:
+                        continue
+                    if rid not in qual_ids:
+                        continue
+                    # If resource is absent that day, locking doesn't increase
+                    # the disruption — the demand couldn't be covered anyway.
+                    is_abs, _ = _is_absent_on(rid, d_date, abs_by_res)
+                    if is_abs:
+                        continue
+                    # Count alternatives (other qualified resources who are NOT
+                    # already locked on this weekend).
+                    alternatives = 0
+                    for qr in qual_ids:
+                        if qr == rid:
+                            continue
+                        # Check if qr is locked on this weekend already
+                        locked_weekends_qr = {
+                            (lw.sat, lw.sun) for lw in result.locked_weekends.get(qr, [])
+                        }
+                        if (sat, sun) in locked_weekends_qr:
+                            continue
+                        # Check if qr is absent on this day
+                        qr_abs, _ = _is_absent_on(qr, d_date, abs_by_res)
+                        if qr_abs:
+                            continue
+                        alternatives += 1
+                    if alternatives == 0:
+                        cost += COST_UNCOVERABLE_DEMAND
+                    else:
+                        cost += COST_PARTIAL_COVERAGE_FACTOR // max(1, alternatives)
+                if best is None or cost < best[0]:
+                    best = (cost, (sat, sun))
+
+            if best is None:
+                # Shouldn't happen (candidates was non-empty), but safety net
+                result.legal_violations.append(LegalViolation(
+                    constraint="LC_05", severity="HARD",
+                    resource_id=rid, resource_name=r_name,
+                    window_start=target_deadline, window_end=window_end,
+                    violation="NO_FEASIBLE_FREE_WEEKEND",
+                    context="Scoring produced no best candidate (unexpected)",
+                ))
+                target_deadline = target_deadline + timedelta(weeks=window_weeks)
+                window_idx += 1
+                continue
+
+            cost, (sat, sun) = best
+            lw = LockedWeekend(sat=sat, sun=sun, cost=cost,
+                               reason=f"window_{window_idx}")
+            result.locked_weekends.setdefault(rid, []).append(lw)
+            locked_per_weekend[(sat, sun)] = locked_per_weekend.get((sat, sun), 0) + 1
+            result.audit_log.append(AuditEntry(
+                resource_id=rid, window_index=window_idx,
+                sat_date=sat, sun_date=sun, cost=cost,
+                outcome="LOCKED", candidates_considered=len(candidates),
+                note=f"chose from {len(candidates)} candidates",
+            ))
+
+            # Advance deadline: the locked Sat+Sun count toward LC-05 for
+            # `window_weeks` weeks; next required deadline is `window_weeks`
+            # after the locked Sunday.
+            target_deadline = sun + timedelta(weeks=window_weeks) - timedelta(days=1)
+            window_idx += 1
+
+    # --- Summary log ---
+    n_locked = sum(len(v) for v in result.locked_weekends.values())
+    n_skipped_prior = sum(1 for a in result.audit_log if a.outcome == "SKIP_PRIOR_STATE")
+    n_abs_credited = sum(1 for a in result.audit_log if a.outcome == "SKIP_ABSENCE_CREDITED")
+    n_abs_not_credited = sum(1 for a in result.audit_log if a.outcome == "ABSENCE_NOT_CREDITED")
+    n_violations = len(result.legal_violations)
+    logger.info(
+        f"[PREALLOC] LC-05 pre-allocation complete: "
+        f"resources={len(resources)}, locked_weekends={n_locked}, "
+        f"prior_state_skips={n_skipped_prior}, "
+        f"absence_credited_skips={n_abs_credited}, "
+        f"absence_noted_not_credited={n_abs_not_credited}, "
+        f"legal_violations={n_violations}"
+    )
+    if n_abs_not_credited:
+        logger.info(
+            f"[PREALLOC] Note: {n_abs_not_credited} absence-blocked weekends "
+            f"were NOT credited toward LC-05 because the block_type is not "
+            f"in config.ABSENCE_COUNTS_AS_FREE_WEEKEND (currently empty)."
+        )
+
+    return result

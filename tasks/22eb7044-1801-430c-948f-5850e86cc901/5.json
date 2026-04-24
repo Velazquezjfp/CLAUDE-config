@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "Run pytest & iterate until green",
+  "description": "pytest docs/tests/S001-D-001/ -v; fix failures in implementation (not tests) until all pass",
+  "activeForm": "Running tests",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

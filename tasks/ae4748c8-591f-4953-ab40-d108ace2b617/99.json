@@ -1,0 +1,9 @@
+{
+  "id": "99",
+  "subject": "Fix #17-L — Disable LC-06 Constraints 4/5 when pre-allocation active",
+  "description": "DONE. Disabling LC-06 Constraints 4/5 when pre-allocation is active broke the infeasibility cascade. Validated: 12/12 partitions FEASIBLE, coverage jumped from 769 to 1339 DEMAND.",
+  "activeForm": "Disabling LC-06 Constraints 4/5 when pre-alloc active",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

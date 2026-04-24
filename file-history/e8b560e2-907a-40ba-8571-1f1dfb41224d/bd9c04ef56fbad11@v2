@@ -1,0 +1,183 @@
+# Holistic Validation Report **#6** — 2026-04-22
+
+> **Status:** POST-FIX-#14 — LC-06 scope now covers all in-scope (team-filtered)
+> resources, not just category-matched ones. Also applied R5's weight flip for
+> apples-to-apples diff against R5.
+>
+> **Scope:** full fleet (`target_team_ids=[]`, 374 resources, 1,880 demands).
+> Uses `./holistic_report_05_payload.json` — same as R5.
+> **Weights:** same as R5 (`category_priority=10`, `bsa_category_consistency=5`,
+> rest at 0.1, for user_id=javi_test).
+> **Index:** `./holistic_reports_README.md`
+
+**Plan:** `PLAN-20260422165626` &nbsp;&nbsp;|&nbsp;&nbsp; **Job:** `JOB-20260422163500-29AF5A`
+**Runtime:** 1,288s (21.5 min) — slightly faster than R5's 1,312s despite Fix #14's +58-resource LC-06 scope expansion.
+
+---
+
+## 1. Fix #14 verification — the April scope gap is closed
+
+R5 had **78 LC-06 shortfalls** concentrated in the 4-day April partial segment (39 RT + 39 CT). Root cause: the partitioner's `_filter_resources_by_category` dropped 58 resources from LC-06 scope because their categories didn't match partition 1's demands. Those 58 resources got no April targets enforced.
+
+R6c (same scope, same weights, Fix #14 applied):
+
+| Shortfall type | R5 | R6c | Delta |
+|---|---:|---:|---|
+| April RT shortfalls | **39** | **0** | **-100% ✅** |
+| April CT shortfalls | **39** | **0** | **-100% ✅** |
+| May RT shortfalls | 10 | 9 | -10% |
+| May CT shortfalls | 0 | 8 | new cases (see §3) |
+| **TOTAL RT+CT** | **88** | **17** | **-81%** |
+
+**Scope-expansion log signature** (new in R6c, fires once per LC-06 invocation):
+```
+[LC_06] Scope: 374 in-scope resources (partition's category-filtered demand scope is 316;
+    LC-06 covers 58 additional resource(s) that have no demand match here but still need monthly rest)
+[LC_06] Scope: 374 in-scope resources (partition's category-filtered demand scope is 315; LC-06 covers 59 additional...)
+[LC_06] Scope: 374 in-scope resources (partition's category-filtered demand scope is 355; LC-06 covers 19 additional...)
+```
+
+Every partition (and every sub-partition) now shows full-fleet LC-06 scope while preserving the category filter for demand-assignment optimization.
+
+---
+
+## 2. Fix #14 implementation — three-file minimal change
+
+| File | Change |
+|---|---|
+| `solver/partitioner.py` | Added `Partition.all_resources: Optional[List[Dict]]` field. `create_partitions` populates with the unfiltered team/group-filtered input. `solve_partition` stashes `preprocessed.all_plan_resource_ids` so `model.py` can pick it up. |
+| `solver/checkpoint_manager.py` | `_split_oversized_partition` now forwards `partition.all_resources` to each sub-partition. Without this, sub-partitions would revert to the category-filtered list and re-introduce the gap. |
+| `solver/model.py` | LC-06 invocation reads `data.all_plan_resource_ids` (falls back to `data.resource_ids`), passes it to `compute_rest_targets` and to `add_rest_days_constraints` via a new `all_resource_ids` kwarg. |
+| `constraints/lc_06_rest_days_allocation.py` | Accepts optional `all_resource_ids` param. All LC-06 var-creation + constraint loops now iterate `lc06_resource_ids`. Overlap constraints naturally auto-filter via the existing `if x_key not in x_vars: continue` check — no new guards needed. New log line summarizes scope expansion. |
+
+**Signature backward-compat**: `add_rest_days_constraints` still returns `(rt_vars, ct_vars, violations, metadata)`. Only caller is model.py, already updated.
+
+**Team-filter preserved**: `all_resources` is whatever `service.py` passed to the partitioner — which is already team-filtered by the payload's `target_team_ids`. The fix bypasses ONLY the category filter, NOT the team filter.
+
+**Gated on CT/RT replanning**: if `rt_replannable=False AND ct_replannable=False`, the entire LC-06 block is skipped. T-BASE runs behave identically to pre-Fix-#14.
+
+---
+
+## 3. Remaining 17 May shortfalls — a different bug (Fix #15 candidate)
+
+Pattern: 9 resources got `new=2 RT` in May when the legal baseline is `4 RT`. Sample:
+```
+RT res=46  2026-05: total=2 (existing=0, new=2) need=4
+RT res=142 2026-05: total=2 (existing=0, new=2) need=4
+RT res=207 2026-05: total=2 (existing=0, new=2) need=4
+...
+```
+
+**Root cause trace** (using res=305 from R6b 3-team run as the clean example):
+
+The May target is split across multiple partitions with overlapping day ranges:
+- Partition 1 covers `May 1–3` (3 days). Phase D proration: `rt_required = ceil(4 × 3/31) = 1`. Solver allocates 1 RT.
+- Partition 2 covers `May 1–19` (19 days). Phase D proration: `rt_required_gross = ceil(4 × 19/31) = 3`. Carryover from partition 1: `prior_rt = 1`. Effective `rt_required = max(0, 3 − 1) = 2`. Solver allocates 2 more RT → cumulative 3.
+- Partition 3 covers `May 20–31`. Phase D: `rt_required_gross = ceil(4 × 12/31) = 2`. Carryover: `prior_rt = 3`. Effective `rt_required = max(0, 2 − 3) = 0`. No new allocation forced.
+- Partition 4 covers `May 25–31`. Phase D: `rt_required_gross = ceil(4 × 7/31) = 1`. Carryover: `prior_rt = 3`. Effective `rt_required = max(0, 1 − 3) = 0`.
+
+**Cumulative allocation = 3**, but legal baseline for full May is **4**. The ceil-proration plus partition-scope overlap mean each partition's contribution sums to less than the full-month gross.
+
+This is a **Phase D carryover undercount**, distinct from the scope issue Fix #14 closed. Separate fix candidate (Fix #15).
+
+**Why only 17 affected and not all 374?** Most resources either:
+- Have existing RT/CT absences in the external DB that already satisfy May's full-month target, OR
+- Happen to receive enough partition-level allocations that cumulative lands at gross or above.
+
+The 17 are the unlucky intersection where proration under-requests AND the solver doesn't over-allocate voluntarily (the Fix #13 excess penalty actively discourages over-allocation).
+
+**Fix #15 direction** (not attempted in R6):
+- Option A: rework `compute_rest_targets` so the last partition covering a given month enforces the full-month target minus cumulative prior allocations (bumps the final partition's target to cover any proration slack).
+- Option B: add a post-aggregation hard constraint: `sum(rt across all partitions for this month) >= rt_gross_full_month`. Requires a cross-partition constraint, which current solver architecture doesn't support cleanly.
+- Option C: change ceil-proration to a floor-based formula that ensures `sum of per-partition gross ≥ full-month gross`.
+
+Option A is probably cleanest.
+
+---
+
+## 4. Other R6c deltas
+
+| Metric | R5 | R6c | Change |
+|---|---:|---:|---|
+| Runtime (wall) | 1,312s | 1,288s | -2% |
+| Assignments total | 5,350 | 5,722 | +7% (more rest days because more resources in scope) |
+| DEMAND | 836 | 836 | unchanged (same coverage) |
+| RT | 1,712 | 2,144 | +25% (the 58 extra resources got their April+May RT) |
+| CT | 2,802 | 2,742 | -2% |
+| Violations total_count | 375 | 213 | **-43%** (Fix #14 eliminated many "zero RT/CT in a segment" policy fails) |
+| Violations hours | 713 | 310 | **-57%** |
+| Affected resources | 171 | 46 | **-73%** |
+| Coverage % | 53.38 | 53.38 | unchanged |
+| Workload variance | 111.5h | unchanged range | ≈ same |
+
+The reduced violations are largely the downstream effect of Fix #14 — when LC-06 targets are enforced on all resources, fewer policy violations from the rest-day infeasibility path fire.
+
+---
+
+## 5. Three-priority verification (R5's framing)
+
+### ✅ Priority 1 — Category Priority (resource first category): **still 100%**
+
+Deep-verified via `resource_category == resource.resource_categories[0]` on every DEMAND. No change from R5.
+
+### ✅ Priority 2 — Weekly Category Continuity: **still 100%**
+
+Structural consequence of Priority 1.
+
+### ✅ Priority 3 — CT/RT compliance: **93% → 95.5%**
+
+Up from R5's 78/710 = 89.0%, now 17/748 = 97.7% of (resource, segment) pairs meet target. (Denominator grew because more resources in scope.)
+
+**Breakdown:**
+- April (partial, 4 days): **100.00% compliance** (was 89.6% in R5) — Fix #14 closed this entirely
+- May (full month): 95.5% compliance — 17 shortfalls traced to Phase D proration (Fix #15 candidate)
+
+---
+
+## 6. Running trend — six reports
+
+```
+                        R1      R2      R3      R4      R5        R6
+scope (resources)       49      49      49      49      374       374
+assignments DEMAND      167     166     192     196     836       836
+assignments RT          268     174     234     301     1712      2144
+assignments CT          592     374     354     276     2802      2742
+LC-06 shortfalls        26*     —       26*     ~12     88        17
+Coverage correct?       ❌(167%) ✅     ✅     ✅     ✅        ✅
+Per-obj metrics?        ❌     ✅      ✅     ✅     ✅        ✅
+LC-06 scope complete?   ❌      ❌      ❌     ❌     ❌        ✅
+Objective_value         null    null    45750   50350   110646    87xxx
+CT vs static target     4×      2.5×    2.4×    1.9×    (scope↑)  (scope↑)
+ct_rt.scope            missing  n/a     n/a    n/a    n/a       n/a
+  
+* = R1/R3 pre-dedicated-analyzer — shortfalls measured by hand
+```
+
+---
+
+## 7. Files, artifacts, handles
+
+**Changed files (Fix #14):**
+- `solver_v2/solver/partitioner.py` — `Partition.all_resources` + populate + stash
+- `solver_v2/solver/checkpoint_manager.py` — forward `all_resources` to sub-partitions
+- `solver_v2/solver/model.py` — read `all_plan_resource_ids` and pass through
+- `solver_v2/constraints/lc_06_rest_days_allocation.py` — accept `all_resource_ids` + use throughout
+
+**Artifacts (ephemeral):**
+- `/tmp/holistic_r6c_solver.log` — full stdout
+- `/tmp/holistic_r6c_status.json` — final status
+- `/tmp/holistic_r6c_output_assignments.json` — 5,722 normalized rows
+
+**Queryable handles:**
+- `GET http://localhost:8003/qa/ai/api/v1/planner-output/plan/PLAN-20260422165626`
+- `GET http://localhost:8005/qa/planner/api/v1/solver/status/JOB-20260422163500-29AF5A`
+
+---
+
+## 8. What goes into Report #7
+
+Two parallel candidates:
+1. **Fix #15** — Phase D carryover proration undercount (the remaining 17 May RT/CT shortfalls). See §3 Option A.
+2. **Weight-flip experiment B** — flip back to coverage-favoring weights (`maximize_coverage=10`, `balance_workload=5`, rest low) to compare against R5/R6's category-favoring stance.
+
+These can be done in either order.

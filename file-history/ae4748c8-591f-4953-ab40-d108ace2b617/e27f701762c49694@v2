@@ -1,0 +1,273 @@
+# CFF Development Practices
+
+> Reference this file whenever making DB schema changes, adding new
+> backend endpoints, or touching the deploy pipeline. Keeps future changes
+> aligned with the idempotent, non-destructive-by-default workflow
+> established through the R1-R8 fix chain.
+
+---
+
+## 1. Golden rules
+
+1. **Never require a volume wipe to pick up a DB schema change.** Use
+   `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `INSERT ... ON CONFLICT
+   DO NOTHING` patterns. Re-running the migration on an already-migrated
+   DB must be a no-op (just a `NOTICE`, never an error).
+2. **One migration = one file.** Don't stuff multiple unrelated changes
+   into a single `.sql`. Easier to diff, easier to revert, easier to
+   trace in git blame.
+3. **The deploy script preserves data by default.** `./local_deploy.sh
+   -qa` does NOT drop volumes. Only `./local_deploy.sh -qa --wipe` is
+   destructive. Never add a new step that implicitly wipes.
+4. **Every schema change goes into the dockerfile AND the deploy
+   script.** Both paths must work: fresh-init (via
+   `docker-entrypoint-initdb.d`) and existing-volume (via the deploy
+   script's `apply_migrations` function).
+
+---
+
+## 2. Anatomy of a DB schema change
+
+### 2.1 Create a new migration SQL file
+
+Location: `mock_data_v2/database_application_v2/database/`
+
+Naming convention: `schema_<table>_add_<short-description>.sql` (for ADDs)
+or `schema_<table>_<description>.sql` (for more general changes).
+
+Examples from the repo:
+- `schema_planner_output_add_job_id.sql`
+- `schema_solver_jobs_add_plan_range.sql`
+- `schema_solver_jobs_add_fetch_flags.sql`
+- `schema_planner_assignments_add_category_priority.sql`
+
+Template:
+```sql
+-- Fix #NN (YYYY-MM-DD) — short description of what and why.
+-- Idempotent via IF NOT EXISTS / ON CONFLICT. Safe to re-run.
+
+ALTER TABLE <table>
+    ADD COLUMN IF NOT EXISTS <col> <type> [DEFAULT <value>] [NOT NULL];
+
+COMMENT ON COLUMN <table>.<col> IS 'what this column means + when to read it';
+
+CREATE INDEX IF NOT EXISTS idx_<table>_<col> ON <table>(<col>);
+```
+
+### 2.2 Wire into the postgres Dockerfile (fresh-install path)
+
+Edit `mock_data_v2/database_application_v2/docker/Dockerfile.postgres`.
+Insert a `COPY` line in the appropriate numbered position — before
+`init-db.sh` (which is always last in alphabetical order).
+
+```dockerfile
+COPY ../database/schema_<your_new_file>.sql /docker-entrypoint-initdb.d/NN-schema-<your-name>.sql
+```
+
+Renumber `init-db.sh` to stay last if needed:
+```dockerfile
+COPY ../database/init-db.sh /docker-entrypoint-initdb.d/<last-number>-init-db.sh
+RUN chmod +x /docker-entrypoint-initdb.d/<last-number>-init-db.sh
+```
+
+### 2.3 Wire into `local_deploy.sh` (existing-volume path)
+
+Edit `mock_data_v2/database_application_v2/local_deploy.sh`, inside the
+`apply_migrations()` function. Append to the `MIGRATIONS` array:
+
+```bash
+local MIGRATIONS=(
+    "./database/schema_replannable_demand_types.sql"                   # Fix #7
+    "./database/schema_solver_jobs_add_fetch_flags.sql"                # Fix #16
+    "./database/schema_planner_assignments_add_category_priority.sql"  # Fix #16
+    "./database/schema_<your_new_file>.sql"                            # Fix #NN
+)
+```
+
+The deploy script applies them in array order using
+`docker exec -i <pg_container> sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < <sql>`.
+
+Order matters if migrations have dependencies (e.g., adding a column
+that's referenced by a later ALTER). When in doubt, put dependency
+chains in alphanumeric order and verify locally.
+
+### 2.4 Verify on QA before UAT/PROD
+
+```bash
+cd mock_data_v2/database_application_v2
+
+# Apply to QA via the script
+./local_deploy.sh -qa
+
+# Confirm the column/index/etc. exists
+docker exec cff_postgres_qa psql -U cff_app_user -d cff_planning \
+    -c "\d <table>"
+
+# Re-run the deploy script — should be a NO-OP
+./local_deploy.sh -qa
+# Expect: `NOTICE: column "<col>" of relation "<table>" already exists, skipping`
+```
+
+The re-run being a no-op is the acceptance criterion. If the migration
+fails on re-run, it's not idempotent — fix before moving on.
+
+---
+
+## 3. Anatomy of a backend router change
+
+When the schema change requires a new column to surface in an endpoint:
+
+### 3.1 Update SELECT statements
+
+Edit `mock_data_v2/database_application_v2/api/routers/<router>.py`.
+
+**Always update the LIST endpoint AND the single-item endpoint.** It's
+common to miss one and produce inconsistent responses.
+
+```python
+query = text("""
+    SELECT
+        existing_col_a, existing_col_b,
+        <new_col>,          -- Fix #NN
+        more_existing_cols
+    FROM <table>
+    WHERE ...
+""")
+```
+
+### 3.2 Update INSERT / UPDATE paths
+
+For INSERT: add the column to the INSERT column list and the VALUES
+clause. Pass the new value in the params dict.
+
+For UPDATE: conditional-append pattern (only update when the new value
+is supplied):
+```python
+if new_col_value is not None:
+    update_fields.append("<new_col> = :<new_col>")
+    params["<new_col>"] = new_col_value
+```
+
+This prevents stale payloads from overwriting existing values with None.
+
+### 3.3 Default values for pre-existing rows
+
+Rows that existed before the column was added will have either `NULL`
+(if no DEFAULT) or the DEFAULT value. Document which is expected in the
+deployment notes and the migration SQL comment.
+
+Example: `solver_jobs.fetch_rt` has `DEFAULT TRUE`. Rows that existed
+before Fix #16 show `true`. New rows get the actual payload-derived
+value. FE should tolerate both without special-casing.
+
+---
+
+## 4. Anatomy of a solver-side code change
+
+When the new column is populated by the solver:
+
+### 4.1 Assignment enrichment
+
+Add the new field to the assignment dict at the point where it's built.
+For LC-06 rest-day rows, there are TWO places:
+- `solver/model.py::_extract_solution` — DEMAND assignments
+- `solver/model.py::_extract_rest_day_rows` — RT / CT rows
+
+Don't forget the second one — easy to miss. See Fix #16 for the
+`category_priority` pattern.
+
+### 4.2 Save-path plumbing
+
+The assignment dict flows through:
+1. `solver/model.py` (builds the dict)
+2. `api/service.py::_save_results_sync` — normalizes for bulk save
+3. `api/client.py::post_planner_assignments_bulk` — POST to backend
+4. Backend `routers/planner_assignments.py::bulk_insert_assignments` — writes to DB
+
+Every hop that explicitly lists columns needs the new field added. Use
+`.get('new_field')` (safe-fallback to None) rather than `['new_field']`
+so older callers don't crash.
+
+### 4.3 Status / webhook payloads
+
+For fields derivable at trigger time (like `fetch_rt`, `fetch_ct`):
+- Compute on `SolverJob.__init__` from `self.request`
+- Expose in `JobStatusResponse` (the response model)
+- Include in the `metadata` dict of webhook payloads so the backend's
+  `solver_jobs` table gets them on first INSERT
+
+---
+
+## 5. Things to avoid
+
+### 5.1 Destructive defaults
+
+Never make a deploy command drop data unless explicitly flagged. The
+old `local_deploy.sh` did `down -v` + `clean_pgdata` unconditionally
+— this caused data loss on every deploy. Fix #pre-16 corrected this by
+making `--wipe` an opt-in flag.
+
+### 5.2 Non-idempotent migrations
+
+Bare `ALTER TABLE ... ADD COLUMN` (without `IF NOT EXISTS`) fails on
+re-run. Always include the guard.
+
+Likewise, `INSERT INTO <seed>` without `ON CONFLICT DO NOTHING` or
+`WHERE NOT EXISTS` will duplicate rows on re-run.
+
+### 5.3 Schema drift between fresh and existing deployments
+
+If you add a new column to a table in the schema file (`schema.sql`) but
+forget the corresponding `ALTER ... IF NOT EXISTS` migration, fresh
+deploys get the column but existing volumes don't. This is the single
+most common cause of "it works on my machine" on this project.
+
+**Rule**: every column in a base schema file must have an equivalent
+idempotent migration file that covers existing volumes.
+
+### 5.4 Forgetting the `local_deploy.sh` MIGRATIONS array
+
+It's easy to drop a new `.sql` file into `database/` and wire it into
+the Dockerfile without also adding it to the deploy script's
+`MIGRATIONS` array. Fresh installs pick it up; existing volumes don't.
+Always update both.
+
+---
+
+## 6. Reference — key files
+
+| Concern | File |
+|---|---|
+| Base schema | `mock_data_v2/database_application_v2/database/schema.sql` |
+| Per-table schema files | `mock_data_v2/database_application_v2/database/schema_<table>*.sql` |
+| Seed data | `mock_data_v2/database_application_v2/database/*_seed_data.sql`, `*_seed.sql` |
+| Postgres Dockerfile | `mock_data_v2/database_application_v2/docker/Dockerfile.postgres` |
+| Deploy script | `mock_data_v2/database_application_v2/local_deploy.sh` |
+| API routers | `mock_data_v2/database_application_v2/api/routers/*.py` |
+| Solver model | `solver_v2/solver/model.py` |
+| Solver save path | `solver_v2/api/service.py::_save_results_sync` |
+| Solver client | `solver_v2/api/client.py` |
+| Solver status API | `solver_v2/api/service.py::get_job_status` |
+| Deployment recipe | `solver_v2/planner_dev/deployment_notes-<date>.md` |
+| Fix-chain index | `solver_v2/planner_dev/holistic_reports_README.md` |
+| State snapshot | `solver_v2/planner_dev/state_of_play-<date>.md` |
+
+---
+
+## 7. Quick checklist for any DB change
+
+- [ ] Wrote a new `schema_*_<description>.sql` file using `IF NOT EXISTS` / `ON CONFLICT DO NOTHING`
+- [ ] Added `COPY` line in `docker/Dockerfile.postgres` (renumbered `init-db.sh` if needed)
+- [ ] Added path to `MIGRATIONS` array in `local_deploy.sh::apply_migrations()`
+- [ ] Applied to QA via `./local_deploy.sh -qa` — verified column exists
+- [ ] Re-ran `./local_deploy.sh -qa` — confirmed NOTICE-only, no errors
+- [ ] Updated any backend router SELECTs / INSERTs that need the new column
+- [ ] Updated solver-side dict builders if solver populates the column
+- [ ] Documented the change in `solver_v2/planner_dev/holistic_reports_README.md` fix queue
+- [ ] Documented deploy steps in `solver_v2/planner_dev/deployment_notes-<date>.md`
+
+---
+
+Maintained organically. Add new practice notes here when you encounter
+a workflow question that wasn't covered, so the next person (or future
+you) doesn't have to figure it out twice.

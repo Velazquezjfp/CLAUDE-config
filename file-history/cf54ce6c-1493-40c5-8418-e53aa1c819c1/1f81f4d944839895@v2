@@ -1,0 +1,301 @@
+# CT/RT Test Suite — Methodology
+
+**Date authored:** 2026-04-17
+**Scope:** validate Phases A–K of the CT/RT hard-constraint implementation.
+**Authoritative sources:**
+- Implementation changelog: `../planner_dev/changelog-ct-rt-hard-constraint-2026-04-17.md`
+- Test matrix (payloads, verification queries): `../planner_dev/test_cases_ct_rt_hard_constraint-2026-04-17.md`
+- Orchestration plan: `~/.claude/plans/ancient-churning-summit.md`
+
+This document is **static** — authored once in Round 0 and referenced by
+every subsequent round. Per-test results live in `CT_RT_TEST_STATE.md`.
+
+---
+
+## Why an orchestration methodology (not ad-hoc runs)
+
+Executing the full test matrix requires ~9h realistic / ~31h worst-case
+wall-clock spread across multiple sessions. Without a methodology:
+
+- Tests contaminate each other via shared `/tmp/payload.json`.
+- Solver logs intermingle — no clear per-test attribution.
+- The main conversation context fills up with verbose solver output.
+- Re-running a round after a session ends wastes effort.
+
+This methodology isolates each test, preserves per-test reports in a
+state doc, and gates rounds so a regression is caught before wasting a
+2h solve on the next test.
+
+---
+
+## System under test
+
+| Component | Where | Purpose |
+|---|---|---|
+| Solver API (trigger, jobs, websocket) | `http://localhost:8005/qa/planner/api/v1/solver/` | Accept POST triggers, expose job status, stream progress. |
+| cff_api (reads) | `http://localhost:8003/qa/ai/api/v1/` | Planner output, planner assignments, external DB assignments. |
+| cff_api Swagger | `http://localhost:8003/qa/ai/docs` | Interactive API explorer. |
+| Solver container | `cff-solver-qa` (ID `ce40c0972fc7`) | Executes CP-SAT solves. Logs carry `job_id` on every line. |
+| cff_api container | `cff_api_qa` (ID `c2174a7a0a8c`) | Serves reads. Has `psql`-less image — use asyncpg via python3. |
+| Internal DB | `postgres-qa` at `cff_planning` | Stores `planner_output`, `planner_assignments`. |
+| External DB | `150.241.245.65:5434` DB `cff` | Source of truth for demands, resources, RT/CT absences. |
+
+**Solver concurrency:** `MAX_CONCURRENT_JOBS = 1` in `solver_v2/config.py:81`.
+Multiple POSTs queue on an asyncio semaphore. We do NOT change this for
+testing — it mirrors prod and simplifies isolation.
+
+---
+
+## Pre-flight checklist (once per session, main session only)
+
+1. Confirm containers are healthy and QA profile:
+   ```bash
+   docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Status}}' \
+     | grep -E 'solver-qa|cff_api_qa'
+   ```
+   Expect both `Up ... (healthy)`.
+
+2. Confirm Phase B+C schema migrations applied (one-time task per DB
+   volume — if postgres-qa was rebuilt with a fresh volume, re-run):
+   ```bash
+   docker exec c2174a7a0a8c python3 -c "
+   import asyncpg, asyncio, os
+   async def main():
+       dsn = f\"postgres://{os.environ['INTERNAL_DB_USER']}:{os.environ['INTERNAL_DB_PASSWORD']}@{os.environ['INTERNAL_DB_HOST']}:{os.environ['INTERNAL_DB_PORT']}/{os.environ['INTERNAL_DB_NAME']}\"
+       conn = await asyncpg.connect(dsn)
+       rows = await conn.fetch('''SELECT table_name, column_name, is_nullable FROM information_schema.columns
+            WHERE table_name IN ('planner_output','planner_assignments')
+              AND column_name IN ('fetch_rt','fetch_ct','assignment_type','request_id')
+            ORDER BY table_name, column_name''')
+       for r in rows: print(r['table_name'], r['column_name'], r['is_nullable'])
+       await conn.close()
+   asyncio.run(main())
+   "
+   ```
+   Expect 4 rows: `fetch_rt`, `fetch_ct`, `assignment_type` (not null),
+   `request_id` (nullable YES).
+
+   If missing, apply via the same asyncpg path:
+   ```sql
+   ALTER TABLE planner_output
+     ADD COLUMN IF NOT EXISTS fetch_rt BOOLEAN NOT NULL DEFAULT TRUE,
+     ADD COLUMN IF NOT EXISTS fetch_ct BOOLEAN NOT NULL DEFAULT TRUE;
+   ALTER TABLE planner_assignments
+     ALTER COLUMN request_id DROP NOT NULL,
+     ADD COLUMN IF NOT EXISTS assignment_type VARCHAR(20) NOT NULL DEFAULT 'DEMAND';
+   CREATE INDEX IF NOT EXISTS idx_pa_assignment_type
+     ON planner_assignments(assignment_type);
+   ```
+
+3. Discover exact RT/CT calendar_type strings (uses python since `jq`
+   isn't on the host):
+   ```bash
+   curl -s "http://localhost:8003/qa/ai/api/v1/assignments/?per_page=200" \
+     | python3 -c "import sys,json; d=json.load(sys.stdin); \
+         print(sorted(set(r['calendar_type'] for r in d['data'] if r.get('calendar_type'))))"
+   ```
+   Must contain `'RT Jour de repos'` and `'CT Jour de compensation'` exactly.
+
+4. Update `CT_RT_TEST_STATE.md` pre-flight section with checkmarks +
+   container IDs.
+
+---
+
+## Agent dispatch pattern — single-payload test
+
+Used for: TC-01, TC-02, TC-03, TC-04, TC-05, TC-06, TC-07, TC-10, N-2, N-3.
+
+**Agent type:** `focused-task-executor` (delegated via Agent tool).
+
+**Why a sub-agent per test:**
+- Isolates context (each agent gets only the test it needs).
+- Main session never sees raw solver logs or verification JSON.
+- Agent returns a ≤400-word structured verdict that is easy to append
+  to `CT_RT_TEST_STATE.md`.
+
+**Prompt skeleton** (main session fills in the placeholders):
+
+```
+Task: execute <TC_ID> — <short title from test-cases doc>.
+
+Goal: <one-sentence purpose, from the test-matrix row>.
+
+Fixed endpoints (do not change):
+  TRIGGER_URL  = http://localhost:8005/qa/planner/api/v1/solver/trigger
+  JOB_URL      = http://localhost:8005/qa/planner/api/v1/solver/jobs/{job_id}
+  READS_URL    = http://localhost:8003/qa/ai/api/v1
+  SOLVER_CTR   = ce40c0972fc7   # cff-solver-qa
+  CFF_API_CTR  = c2174a7a0a8c   # cff_api_qa
+
+Per-test inputs:
+  PAYLOAD_FILE = /tmp/payload-<TC_ID>.json
+  PAYLOAD_JSON = <verbatim JSON from test-cases doc>
+  EXPECTED     = <bullet list from test-cases doc>
+  TIME_BUDGET  = <per-round table; 2.5h for full-month, 1h for T-SHORT>
+  VERIFICATION = <subset of V-1..V-8 relevant to this test>
+
+Procedure:
+  1. Write PAYLOAD_JSON to PAYLOAD_FILE.
+  2. Record submission timestamp: SUBMIT_TS=$(date -u +%s).
+  3. POST PAYLOAD_FILE to TRIGGER_URL with curl. Parse response, record
+     job_id.
+  4. Poll JOB_URL every 30s until status in {COMPLETE, FAILED}. Hard
+     cap: TIME_BUDGET. If exceeded, return TIMEOUT.
+  5. Extract plan_id from the final job response.
+  6. Run each V-<id> in VERIFICATION, using the exact curl commands in
+     the test-cases doc (reads go to READS_URL, NOT the trigger port).
+  7. Grep the solver log window:
+       docker logs $SOLVER_CTR --since "@$SUBMIT_TS" 2>&1 | grep $job_id
+  8. Cross-check each expected log signature (test-cases doc §Solver-log
+     signatures). Note which are present/missing.
+
+Return (≤400 words, ASCII only):
+  VERDICT      : PASS | FAIL | TIMEOUT
+  plan_id      : PLAN-...
+  job_id       : JOB-...
+  distribution : { "DEMAND": N, "RT": R, "CT": C }  # from V-2
+  flags        : fetch_rt=..., fetch_ct=...          # from V-1
+  log_sigs     : [list of signatures confirmed present]
+  missing_sigs : [list of expected signatures NOT found]
+  first_error  : <closest log line matching "ERROR" / "Traceback" or None>
+  phase_hint   : <changelog phase most likely responsible if FAIL>
+
+Constraints:
+  - Do NOT edit any files outside /tmp.
+  - Do NOT rebuild containers.
+  - Do NOT modify MAX_CONCURRENT_JOBS.
+  - Do NOT write to CT_RT_TEST_STATE.md — the main session owns that.
+  - If polling exceeds TIME_BUDGET, still return a structured report
+    (VERDICT=TIMEOUT, whatever you have).
+```
+
+---
+
+## Agent dispatch pattern — composite test (TC-08, TC-09)
+
+Same shell as single-payload, but procedure runs **two triggers
+sequentially**:
+
+1. Build `/tmp/payload-<TC_ID>-a.json` (first payload).
+2. Trigger → poll → record `plan_id_a`.
+3. Build `/tmp/payload-<TC_ID>-b.json` (second payload).
+4. Trigger → poll → record `plan_id_b`.
+5. Verify per the test-cases doc comparison criteria (e.g. TC-09:
+   distribution should differ in `RT`/`CT` counts between the two).
+
+Return includes BOTH `plan_id`s + a comparison table + combined verdict.
+
+---
+
+## Composite rationale: why NOT run two separate agents
+
+The solver serializes jobs (semaphore = 1), so two separate agents
+submitting back-to-back would work, BUT:
+
+- The comparison logic lives between the two triggers. Splitting it
+  across two agents requires shared state (plan IDs, timestamps) that
+  would have to flow through the main session — adds a hop and breaks
+  the "one agent = one verdict" model.
+- Composite tests are validating temporal behavior (carryover,
+  transitions). They are semantically one test, not two.
+
+---
+
+## Isolation rules (invariants)
+
+| Shared resource | Isolation mechanism |
+|---|---|
+| Solver job queue | Semaphore serializes — agents naturally queue. |
+| Payload staging file | Each agent uses `/tmp/payload-<TC_ID>.json` (composite uses `-a/-b` suffixes). |
+| `planner_output` rows | Keyed by auto-generated `plan_id` (`PLAN-<ts>`). |
+| `planner_assignments` rows | Keyed by `plan_id`. |
+| Checkpoints | `{job_id}_partition_*.json` — job_id globally unique. |
+| Docker logs | Every line carries `job_id`. Agents grep with `--since @$SUBMIT_TS`. |
+| State tracker doc | ONLY the main session writes it. Agents return structured reports; main session appends rows. |
+
+**No write path** exists where two agents collide. Read verification
+queries use `plan_id` filters.
+
+---
+
+## Round gating criteria
+
+| Round | Pass criterion for advancing | If failed |
+|---|---|---|
+| 0 | Pre-flight checklist fully green. | Stop, fix environment, retry Round 0. |
+| 1 | Both TC-01 and TC-02 PASS. | Halt suite — baseline or activation broken. Triage via changelog Phase K (LC-08 gate) or Phase E (LC-06). |
+| 2 | ≥3 of 4 tests pass (TC-03..05, TC-10). | Halt for triage; failing test identifies the broken orthogonal path. |
+| 3 | ≥3 of 4 tests pass (TC-06..09). | Halt for triage. |
+| 4 | All three (N-2, N-3, N-5) pass. | Small stakes — document and continue. |
+| 5 | State tracker + validation report written. | N/A (reporting only). |
+
+A "halt" is a **main-session** decision — the user signs off before
+continuing.
+
+---
+
+## Rollback procedure (if a round exposes a regression)
+
+See the "Rollback" section of the implementation changelog for the
+exact file-by-file revert order. Summary:
+
+1. Revert `solver/model.py` LC-08 gate + rest-day row extraction.
+2. Revert `constraints/lc_06_rest_days_allocation.py` (remove file).
+3. Revert `constraints/lc_05_weekend_frequency.py` return signature.
+4. Revert `api/service.py` flag derivation + `_save_results_sync`
+   extended params.
+5. Keep schema changes — they are forward-compatible.
+
+Do NOT roll back schema migrations mid-suite. They have safe defaults
+(`fetch_rt=TRUE`, `fetch_ct=TRUE`, `assignment_type='DEMAND'`) that
+preserve legacy behavior.
+
+---
+
+## Handy commands reference
+
+```bash
+# Container lookup (in case IDs drift)
+docker ps --format 'table {{.ID}}\t{{.Names}}' | grep -E 'qa'
+
+# Trigger
+curl -s -X POST "http://localhost:8005/qa/planner/api/v1/solver/trigger" \
+  -H "Content-Type: application/json" -d @/tmp/payload-TCxx.json
+
+# Poll job
+curl -s "http://localhost:8005/qa/planner/api/v1/solver/jobs/JOB-..." \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status'), d.get('plan_id'))"
+
+# V-1: flags
+curl -s "http://localhost:8003/qa/ai/api/v1/planner-output/plan/PLAN-..." \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); r=d[0] if isinstance(d,list) else d; print({'fetch_rt':r.get('fetch_rt'),'fetch_ct':r.get('fetch_ct'),'status':r.get('status')})"
+
+# V-2: assignment_type distribution
+curl -s "http://localhost:8003/qa/ai/api/v1/planner-output/assignments/?plan_id=PLAN-...&per_page=2000" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); from collections import Counter; print(dict(Counter(a['assignment_type'] for a in d['data'])))"
+
+# Log grep (since a timestamp)
+docker logs ce40c0972fc7 --since "@${SUBMIT_TS}" 2>&1 | grep JOB-...
+```
+
+---
+
+## Session handoff
+
+When a session ends mid-suite:
+
+1. Commit nothing in the test state doc until agent returns.
+2. The tracker `CT_RT_TEST_STATE.md` reflects the latest completed
+   round.
+3. Next session reads `CT_RT_TEST_STATE.md` → identifies next
+   `PENDING` row → resumes from that round.
+4. No agent restarts required — agents are stateless dispatches.
+
+---
+
+## Out of scope for this suite
+
+- Load testing beyond the test-cases doc scope.
+- Frontend integration testing (separate effort once backend is green).
+- Priority-2 anchor refinement (listed as a known limitation in the
+  test-cases doc).

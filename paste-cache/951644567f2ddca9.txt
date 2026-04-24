@@ -1,0 +1,45 @@
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git push
+To bitbucket.org:bosenetdev/database-service.git
+ ! [rejected]        master -> master (fetch first)
+error: failed to push some refs to 'bitbucket.org:bosenetdev/database-service.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git fetch
+remote: Enumerating objects: 67, done.
+remote: Counting objects: 100% (64/64), done.
+remote: Compressing objects: 100% (47/47), done.
+remote: Total 47 (delta 30), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (47/47), 42.20 KiB | 939.00 KiB/s, done.
+From bitbucket.org:bosenetdev/database-service
+   f3d122f..ee1211b  master                   -> origin/master
+ * [new branch]      feature/integration-test -> origin/feature/integration-test
+   3e1bd96..b3cb057  qa                       -> origin/qa
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$  git log --oneline HEAD..origin/master
+ee1211b (origin/master) Merged in qa (pull request #27)
+434bc20 Add stability KPI calculations and endpoints for post-planning analysis
+a9dd6ab Update vacation days calculations and adjust maximum vacation days per FTE
+251eaf4 Add date range parameters to get_unplanned_days_detail endpoint
+e3bf074 Add absence days handling to KPI calculations and adjust date ranges
+c8fd3d0 Merged in qa (pull request #26)
+5a6251d Refactor code structure for improved readability and maintainability
+c59dd65 added test for uncovered demands
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git log --oneline origin/master..HEAD
+467e513 (HEAD -> master) Adding new columns for better tracking and for category priority requirement
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git diff HEAD...origin/master --stat
+ api/kpi.py                                          |   22 +--
+ api/kpi_post.py                                     | 1036 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ docker-compose.qa.yml                               |    1 +
+ tests/automated_kpi_tests/test_uncovered_demands.py |  505 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_kpi_post_logic.py                        | 1159 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 2686 insertions(+), 37 deletions(-)
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git log --oneline origin/master -- deploy.sh
+7c3af76 adding deploy local file and fixing deployment file
+8f32eb6 adding uat into server
+c81c215 added more deployment information #2
+def83c8 added more deployment information
+155299b adding deployment script
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$ git diff HEAD...origin/master -- deploy.sh
+javiervel@MSI:~/clients/CFF/mock_data_v2/database_application_v2$

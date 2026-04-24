@@ -1,7 +1,0 @@
-.claude
-.env*
-.venv/
-impact-env/
-__pycache__/
-*.pyc
-*.Zone.Identifier

@@ -1,0 +1,9 @@
+{
+  "id": "98",
+  "subject": "Fix #17-K — Instrument per-resource LC-06 conflict detection",
+  "description": "Diagnostic instrumentation successfully pinpointed root cause: 249 (r, d) cells on 2026-05-09/10 with Constraint 4 forcing rt+ct>=1 AND all 5 anchors zeroed. That direct evidence drove Fix #17-L.",
+  "activeForm": "Adding LC-06 conflict-detection instrumentation",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

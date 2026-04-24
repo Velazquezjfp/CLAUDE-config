@@ -1,0 +1,612 @@
+"""
+Main Solution Analyzer Orchestrator
+Coordinates all constraint and objective analyzers to generate comprehensive analysis
+"""
+import sys
+from datetime import datetime
+sys.path.append('..')
+
+from analysis.constraint_analyzers.hc_01_analyzer import HC_01_Analyzer
+from analysis.constraint_analyzers.hc_01_contract_type_analyzer import HC_01_ContractTypeAnalyzer
+from analysis.constraint_analyzers.lc_01_analyzer import LC_01_Analyzer
+from analysis.constraint_analyzers.lc_02_analyzer import LC_02_Analyzer
+from analysis.constraint_analyzers.lc_03_analyzer import LC_03_Analyzer
+from analysis.constraint_analyzers.lc_04_analyzer import LC_04_Analyzer
+from analysis.constraint_analyzers.cp_02_analyzer import CP_02_Analyzer
+# New P0 analyzers (Phase 2B)
+from analysis.constraint_analyzers.lc_04_min_rest_analyzer import LC_04_MinRestAnalyzer
+from analysis.constraint_analyzers.lc_05_weekend_analyzer import LC_05_WeekendAnalyzer
+from analysis.constraint_analyzers.lc_06_consecutive_nights_analyzer import LC_06_ConsecutiveNightsAnalyzer
+from analysis.constraint_analyzers.lc_07_monthly_nights_analyzer import LC_07_MonthlyNightsAnalyzer
+from analysis.constraint_analyzers.lc_08_monthly_rest_analyzer import LC_08_MonthlyRestAnalyzer
+from analysis.constraint_analyzers.hc_04_locked_analyzer import HC_04_LockedAnalyzer
+from analysis.constraint_analyzers.hc_ir_er_analyzer import HC_IR_ER_Analyzer
+from analysis.constraint_analyzers.hc_05_function_doubling_analyzer import HC_05_FunctionDoublingAnalyzer
+from analysis.constraint_analyzers.oc_01_analyzer import OC_01_Analyzer
+# DISABLED: from analysis.constraint_analyzers.cp_02_external_percentage_analyzer import CP_02_ExternalPercentageAnalyzer
+# Objective analyzers (all 9 objectives)
+from analysis.objective_analyzers.coverage_analyzer import CoverageAnalyzer
+from analysis.objective_analyzers.workload_analyzer import WorkloadAnalyzer
+from analysis.objective_analyzers.legal_violations_analyzer import LegalViolationsAnalyzer
+from analysis.objective_analyzers.policy_violations_analyzer import PolicyViolationsAnalyzer
+from analysis.objective_analyzers.overtime_cost_analyzer import OvertimeCostAnalyzer
+from analysis.objective_analyzers.total_cost_analyzer import TotalCostAnalyzer
+from analysis.objective_analyzers.travel_cost_analyzer import TravelCostAnalyzer
+from analysis.objective_analyzers.idle_time_analyzer import IdleTimeAnalyzer
+from analysis.objective_analyzers.team_continuity_analyzer import TeamContinuityAnalyzer
+from analysis.objective_analyzers.function_continuity_analyzer import FunctionContinuityAnalyzer
+from analysis.objective_analyzers.shift_continuity_analyzer import ShiftContinuityAnalyzer
+from analysis.objective_analyzers.main_competencies_analyzer import MainCompetenciesAnalyzer
+from analysis.objective_analyzers.group_continuity_analyzer import GroupContinuityAnalyzer
+from analysis.objective_analyzers.category_priority_analyzer import CategoryPriorityAnalyzer
+from analysis.objective_analyzers.bsa_category_consistency_analyzer import BsaCategoryConsistencyAnalyzer
+from config import ENABLED_CONSTRAINTS
+
+
+class SolutionAnalyzer:
+    """
+    Main orchestrator for post-solve analysis
+
+    Coordinates all constraint and objective analyzers to provide:
+    - Detailed violation analysis
+    - Objective performance metrics
+    - Gap analysis
+    - Actionable recommendations
+    """
+
+    def __init__(self, solution, data, constraints):
+        """
+        Initialize analyzer with solution data
+
+        Args:
+            solution: Solver solution with assignments and violation_metadata
+            data: PreprocessedData object with requests/resources
+            constraints: ConstraintValues object with limits
+        """
+        self.solution = solution
+        self.data = data
+        self.constraints = constraints
+
+        # Initialize constraint analyzers
+        self.constraint_analyzers = {
+            # Existing analyzers
+            'HC_01_absence_blocking': HC_01_Analyzer(),
+            'HC_01_contract_type': HC_01_ContractTypeAnalyzer(),
+            'LC_01_max_weekly_hours': LC_01_Analyzer(),
+            'LC_02_max_daily_hours_14h_span': LC_02_Analyzer(),
+            'LC_03_max_absolute_daily_hours': LC_03_Analyzer(),
+            'LC_04_max_continuous_work': LC_04_Analyzer(),
+            'CP_02_qualification_matching': CP_02_Analyzer(),
+            # New P0 analyzers (Phase 2B)
+            'LC_04_min_rest_between_shifts': LC_04_MinRestAnalyzer(),
+            'LC_05_weekend_frequency': LC_05_WeekendAnalyzer(),
+            'LC_06_consecutive_nights': LC_06_ConsecutiveNightsAnalyzer(),
+            'LC_07_monthly_nights': LC_07_MonthlyNightsAnalyzer(),
+            'LC_08_monthly_rest': LC_08_MonthlyRestAnalyzer(),
+            'HC_04_locked_planning': HC_04_LockedAnalyzer(),
+            'HC_IR_ER_matching': HC_IR_ER_Analyzer(),
+            'HC_05_function_doubling': HC_05_FunctionDoublingAnalyzer(),
+            # Operational constraints (TIME-FRAME SENSITIVE)
+            'OC_01_min_category_activity': OC_01_Analyzer(),
+            # DISABLED: 'CP_02_external_percentage': CP_02_ExternalPercentageAnalyzer(),
+        }
+
+        # Initialize objective analyzers (all 9 objectives - always active)
+        self.objective_analyzers = {
+            'maximize_coverage': CoverageAnalyzer(),
+            'balance_workload': WorkloadAnalyzer(),
+            'minimize_legal_violations': LegalViolationsAnalyzer(),
+            'minimize_policy_violations': PolicyViolationsAnalyzer(),
+            'minimize_overtime_cost': OvertimeCostAnalyzer(),
+            'minimize_total_cost': TotalCostAnalyzer(),
+            'minimize_travel_cost': TravelCostAnalyzer(),
+            'minimize_idle_time': IdleTimeAnalyzer(),
+            'maximize_team_continuity': TeamContinuityAnalyzer(),
+            'maintain_function_continuity': FunctionContinuityAnalyzer(),
+            'maintain_shift_continuity': ShiftContinuityAnalyzer(),
+            'main_competencies_priority': MainCompetenciesAnalyzer(),
+            'group_continuity': GroupContinuityAnalyzer(),
+            'category_priority': CategoryPriorityAnalyzer(),
+            'bsa_category_consistency': BsaCategoryConsistencyAnalyzer(),
+        }
+
+    def analyze(self):
+        """
+        Generate comprehensive analysis report
+
+        Returns:
+            Dict with complete analysis including:
+            - metadata (status, solve time, etc.)
+            - constraint_violations (detailed per constraint)
+            - objective_performance (achievement rates, gaps)
+            - recommendations (actionable insights)
+            - summary (executive overview)
+        """
+        report = {
+            'metadata': self._generate_metadata(),
+            'constraint_violations': self._analyze_constraints(),
+            'objective_performance': self._analyze_objectives(),
+            'summary': {}  # Will be generated after other sections
+        }
+
+        # Generate summary based on analysis results
+        report['summary'] = self._generate_summary(report)
+
+        return report
+
+    def _generate_metadata(self):
+        """Generate report metadata"""
+        from ortools.sat.python import cp_model
+
+        status_names = {
+            4: "OPTIMAL",
+            2: "FEASIBLE",
+            3: "INFEASIBLE",
+            0: "UNKNOWN"
+        }
+
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(self.solution, 'solution_assignments', getattr(self.solution, 'assignments', []))
+
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'status': status_names.get(self.solution.status, "UNKNOWN"),
+            'status_code': self.solution.status,
+            'objective_value': getattr(self.solution, 'objective_value', None),
+            'solve_time_seconds': getattr(self.solution, 'solve_time', None),
+            'total_assignments': len(assignments),
+            'total_requests': len(self.data.request_ids),
+            'total_resources': len(self.data.resource_ids),
+            'enabled_constraints': ENABLED_CONSTRAINTS,
+            'enabled_objectives': list(self.objective_analyzers.keys())
+        }
+
+    def _analyze_constraints(self):
+        """
+        Analyze all enabled constraints
+
+        Returns:
+            Dict mapping constraint_name -> analysis results
+        """
+        results = {}
+
+        for constraint_name in ENABLED_CONSTRAINTS:
+            if constraint_name in self.constraint_analyzers:
+                analyzer = self.constraint_analyzers[constraint_name]
+
+                # Get violation metadata from solution
+                violation_metadata = getattr(self.solution, 'violation_metadata', [])
+
+                results[constraint_name] = analyzer.analyze_violations(
+                    self.solution,
+                    self.data,
+                    self.constraints,
+                    violation_metadata
+                )
+
+        return results
+
+    def _analyze_objectives(self):
+        """
+        Analyze all objectives (always active - weights control impact)
+
+        Returns:
+            Dict mapping objective_name -> performance analysis
+        """
+        results = {}
+
+        # All objectives are always analyzed (weights control their impact)
+        for objective_name, analyzer in self.objective_analyzers.items():
+            try:
+                results[objective_name] = analyzer.analyze_performance(
+                    self.solution,
+                    self.data,
+                    self.constraints
+                )
+            except Exception as e:
+                # Log error but continue with other objectives
+                print(f"  Warning: {objective_name} analysis failed: {e}")
+                results[objective_name] = {
+                    "objective_id": objective_name,
+                    "error": str(e),
+                    "achievement_rate": 0,
+                    "performance_category": "ERROR"
+                }
+
+        return results
+
+    def _generate_summary(self, report):
+        """
+        Generate executive summary
+
+        Args:
+            report: Full analysis report
+
+        Returns:
+            Dict with key metrics and overall assessment
+        """
+        # Coverage metrics
+        coverage_rate = 0
+        if 'maximize_coverage' in report['objective_performance']:
+            coverage_rate = report['objective_performance']['maximize_coverage']['achievement_rate']
+
+        # Workload balance metrics
+        workload_variance = 0
+        workload_rate = 0
+        if 'balance_workload' in report['objective_performance']:
+            workload_metrics = report['objective_performance']['balance_workload']
+            workload_rate = workload_metrics['achievement_rate']
+            workload_variance = workload_metrics['metrics'].get('variance', 0)
+
+        # Violation metrics
+        total_violations = sum(
+            result.get('total_violations', 0)
+            for result in report['constraint_violations'].values()
+        )
+
+        total_violation_amount = sum(
+            result.get('total_violation_amount', 0)
+            for result in report['constraint_violations'].values()
+        )
+
+        # Constraint-specific metrics
+        affected_resources = set()
+        for result in report['constraint_violations'].values():
+            if 'detailed_violations' in result:
+                for detail in result['detailed_violations']:
+                    affected_resources.add(detail['resource_id'])
+
+        # Overall status assessment
+        status = self._classify_overall_status(
+            coverage_rate,
+            workload_rate,
+            total_violations,
+            total_violation_amount
+        )
+
+        # Use coverage metrics from the CoverageAnalyzer (respects team filtering)
+        coverage_metrics = {}
+        if 'maximize_coverage' in report['objective_performance']:
+            cm = report['objective_performance']['maximize_coverage']['metrics']
+            coverage_metrics = {
+                'rate': round(coverage_rate, 2),
+                'category': self._classify_rate(coverage_rate),
+                'requests_covered': cm['covered_requests'],
+                'requests_total': cm['total_requests'],
+                'requests_uncovered': cm['uncovered_requests'],
+            }
+            # Include overall stats when team-filtered
+            if 'team_targeted_requests' in cm:
+                coverage_metrics['team_targeted_requests'] = cm['team_targeted_requests']
+                coverage_metrics['overall_total_requests'] = cm['overall_total_requests']
+        else:
+            coverage_metrics = {
+                'rate': 0,
+                'category': self._classify_rate(0),
+                'requests_covered': report['metadata']['total_assignments'],
+                'requests_total': report['metadata']['total_requests'],
+                'requests_uncovered': report['metadata']['total_requests'] - report['metadata']['total_assignments'],
+            }
+
+        return {
+            'overall_status': status,
+            'coverage': coverage_metrics,
+            'workload_balance': {
+                'rate': round(workload_rate, 2),
+                'category': self._classify_rate(workload_rate),
+                'variance_hours': round(workload_variance, 2)
+            },
+            'violations': {
+                'total_count': total_violations,
+                'total_amount_hours': round(total_violation_amount, 2),
+                'affected_resources': len(affected_resources),
+                'severity': self._classify_violation_severity(total_violations, total_violation_amount)
+            },
+            'key_insights': self._generate_key_insights(report),
+            'top_recommendations': self._generate_top_recommendations(report)
+        }
+
+    def _classify_overall_status(self, coverage_rate, workload_rate, total_viols, total_viol_amount):
+        """Classify overall solution status"""
+        if coverage_rate >= 95 and workload_rate >= 90 and total_viol_amount < 50:
+            return "EXCELLENT"
+        elif coverage_rate >= 80 and workload_rate >= 70 and total_viol_amount < 150:
+            return "GOOD"
+        elif coverage_rate >= 60 or workload_rate >= 50:
+            return "ACCEPTABLE"
+        else:
+            return "NEEDS IMPROVEMENT"
+
+    def _classify_rate(self, rate):
+        """Classify achievement rate"""
+        if rate >= 95:
+            return "EXCELLENT"
+        elif rate >= 80:
+            return "GOOD"
+        elif rate >= 60:
+            return "FAIR"
+        else:
+            return "POOR"
+
+    def _classify_violation_severity(self, count, amount):
+        """Classify violation severity"""
+        if count == 0 and amount == 0:
+            return "NONE"
+        elif count < 20 and amount < 30:
+            return "LOW"
+        elif count < 50 and amount < 100:
+            return "MEDIUM"
+        else:
+            return "HIGH"
+
+    def _generate_key_insights(self, report):
+        """
+        Generate consolidated key insights as simple strings.
+        Aggregates related findings instead of listing each separately.
+
+        Returns list of strings (FE-compatible format).
+        """
+        insights = []
+
+        # Get key metrics
+        uncovered = 0
+        cat_gaps = 0
+        qual_gaps = 0
+        idle_resources = 0
+
+        if 'maximize_coverage' in report['objective_performance']:
+            uncovered = report['objective_performance']['maximize_coverage']['metrics'].get('uncovered_requests', 0)
+
+        if 'balance_workload' in report['objective_performance']:
+            idle_resources = report['objective_performance']['balance_workload']['metrics'].get('idle_resources', 0)
+
+        if 'CP_02_qualification_matching' in report['constraint_violations']:
+            cp02 = report['constraint_violations']['CP_02_qualification_matching']
+            cat_gaps = cp02.get('category_gaps', {}).get('total_gaps', 0)
+            qual_gaps = cp02.get('qualification_gaps', {}).get('total_gaps', 0)
+
+        # 1. Consolidated coverage insight (combines multiple root causes)
+        if uncovered > 0:
+            capacity_gaps = uncovered - cat_gaps - qual_gaps
+            parts = []
+            if cat_gaps > 0:
+                parts.append(f"{cat_gaps} by missing categories")
+            if qual_gaps > 0:
+                parts.append(f"{qual_gaps} by missing qualifications")
+            if capacity_gaps > 0:
+                parts.append(f"{capacity_gaps} by capacity/constraint limits")
+
+            if parts:
+                insights.append(f"{uncovered} requests uncovered: {', '.join(parts)}")
+            else:
+                insights.append(f"{uncovered} requests uncovered - check qualification gaps and capacity constraints")
+
+        # 2. Consolidated idle resources insight (link to root cause)
+        if idle_resources > 0:
+            if cat_gaps > 0 or qual_gaps > 0:
+                insights.append(f"{idle_resources} resources idle - qualification mismatch with uncovered requests (solving skill gaps will address this)")
+            else:
+                insights.append(f"{idle_resources} resources idle - potential capacity underutilization")
+
+        # 3. Geographic imbalance (aggregate locations)
+        if 'minimize_travel_cost' in report['objective_performance']:
+            travel = report['objective_performance']['minimize_travel_cost']
+            location_gaps = []
+            for gap in travel.get('gaps', []):
+                if gap.get('gap_type') == 'LOCATION_IMBALANCE':
+                    # Extract location info from recommendations
+                    for rec in gap.get('recommendations', []):
+                        if 'Add resources to location' in str(rec):
+                            location_gaps.append(rec)
+
+            if location_gaps:
+                # Parse locations from recommendations
+                locations = []
+                for rec in location_gaps[:3]:  # Top 3
+                    # Extract location code and demand from recommendation text
+                    if isinstance(rec, str) and 'demand:' in rec:
+                        try:
+                            loc = rec.split('location ')[1].split(' (')[0]
+                            demand = rec.split('demand: ')[1].split(',')[0]
+                            locations.append(f"{loc} ({demand})")
+                        except:
+                            pass
+                if locations:
+                    insights.append(f"Geographic imbalance: {', '.join(locations)} have demand but no local resources")
+
+        # 4. Constraint violations (only if any)
+        total_violations = sum(
+            result.get('total_violations', 0)
+            for result in report['constraint_violations'].values()
+        )
+        if total_violations > 0:
+            total_amount = sum(
+                result.get('total_violation_amount', 0)
+                for result in report['constraint_violations'].values()
+            )
+            insights.append(f"{total_violations} constraint violations ({total_amount:.1f}h over limits)")
+
+        return insights[:5]  # Limit to 5 most important
+
+    def _generate_top_recommendations(self, report):
+        """
+        Generate aggregated, prioritized recommendations.
+        Groups by root cause, removes duplicates, suppresses generic advice.
+
+        Returns list of recommendation objects (FE-compatible format).
+        """
+        recommendations = []
+
+        # =====================================================================
+        # 1. SKILL GAPS - Aggregate all missing categories into one recommendation
+        # =====================================================================
+        if 'CP_02_qualification_matching' in report['constraint_violations']:
+            cp02 = report['constraint_violations']['CP_02_qualification_matching']
+
+            # Aggregate category gaps
+            category_details = []
+            total_category_blocked = 0
+            if cp02.get('recommendations'):
+                for rec in cp02['recommendations']:
+                    if rec.get('type') == 'CATEGORY_EXPANSION':
+                        # Extract category name and count
+                        action = rec.get('action', '')
+                        impact = rec.get('impact', '')
+                        affected = rec.get('affected_requests', [])
+
+                        # Parse category from action
+                        if "category '" in action:
+                            try:
+                                cat_name = action.split("category '")[1].split("'")[0]
+                                blocked_count = len(affected)
+                                total_category_blocked += blocked_count
+                                category_details.append({
+                                    'category': cat_name,
+                                    'blocked': blocked_count,
+                                    'requests': affected
+                                })
+                            except:
+                                pass
+
+            if category_details:
+                # Sort by impact (most blocked first)
+                category_details.sort(key=lambda x: x['blocked'], reverse=True)
+                recommendations.append({
+                    'type': 'SKILL_GAPS',
+                    'priority': 'HIGH',
+                    'action': 'Add missing resource categories (hire or cross-train)',
+                    'impact': f"Unlocks {total_category_blocked} requests",
+                    'details': category_details[:5]  # Top 5 categories
+                })
+
+            # Aggregate training opportunities (quick wins)
+            training_details = []
+            for rec in cp02.get('recommendations', []):
+                if rec.get('type') == 'TRAINING':
+                    action = rec.get('action', '')
+                    impact = rec.get('expected_impact', '')
+                    # Parse resource and skill
+                    if 'Train ' in action and ' on ' in action:
+                        try:
+                            parts = action.split('Train ')[1]
+                            resource_id = parts.split(' on ')[0]
+                            skill = parts.split(' on ')[1].strip("[]'")
+                            # Parse request from impact
+                            request_id = None
+                            if 'coverage of ' in impact:
+                                request_id = impact.split('coverage of ')[1]
+                            training_details.append({
+                                'resource': resource_id,
+                                'train_on': skill,
+                                'unlocks_request': request_id
+                            })
+                        except:
+                            pass
+
+            if training_details:
+                recommendations.append({
+                    'type': 'QUICK_WIN',
+                    'priority': 'HIGH',
+                    'action': f"Train {len(training_details)} resource(s) on missing qualifications",
+                    'impact': f"Unlocks {len(training_details)} request(s) immediately",
+                    'details': training_details[:3]  # Top 3
+                })
+
+        # =====================================================================
+        # 2. LOCATION IMBALANCE - Aggregate all location gaps
+        # =====================================================================
+        if 'minimize_travel_cost' in report['objective_performance']:
+            travel = report['objective_performance']['minimize_travel_cost']
+            location_details = []
+
+            for gap in travel.get('gaps', []):
+                if gap.get('gap_type') == 'LOCATION_IMBALANCE':
+                    for rec in gap.get('recommendations', []):
+                        if isinstance(rec, str) and 'Add resources to location' in rec:
+                            try:
+                                loc = rec.split('location ')[1].split(' (')[0]
+                                demand_str = rec.split('demand: ')[1].split(',')[0]
+                                supply_str = rec.split('supply: ')[1].split(')')[0]
+                                location_details.append({
+                                    'location': loc,
+                                    'demand': int(demand_str),
+                                    'supply': int(supply_str)
+                                })
+                            except:
+                                pass
+
+            if location_details:
+                total_demand = sum(l['demand'] for l in location_details)
+                location_details.sort(key=lambda x: x['demand'], reverse=True)
+                recommendations.append({
+                    'type': 'LOCATION_IMBALANCE',
+                    'priority': 'HIGH',
+                    'action': 'Add resources to underserved locations',
+                    'impact': f"Unlocks up to {total_demand} requests",
+                    'details': location_details[:5]
+                })
+
+        # =====================================================================
+        # 3. WORKLOAD BALANCE - Single consolidated recommendation
+        # =====================================================================
+        if 'balance_workload' in report['objective_performance']:
+            wl = report['objective_performance']['balance_workload']
+            idle_count = wl['metrics'].get('idle_resources', 0)
+            overload_hours = 0
+
+            for gap in wl.get('gaps', []):
+                if gap.get('gap_type') == 'WORKLOAD_OVERLOAD':
+                    # Extract hours from description
+                    desc = gap.get('impact', '')
+                    if 'excess workload:' in desc.lower():
+                        try:
+                            overload_hours = float(desc.split(':')[1].replace('h', '').strip())
+                        except:
+                            pass
+
+            if overload_hours > 0 or idle_count > 0:
+                # Only add if skill gaps recommendation exists, note that solving skills will help
+                has_skill_gaps = any(r.get('type') == 'SKILL_GAPS' for r in recommendations)
+                if has_skill_gaps and idle_count > 0:
+                    recommendations.append({
+                        'type': 'WORKLOAD_NOTE',
+                        'priority': 'LOW',
+                        'action': f'{idle_count} idle resources will become utilized once skill gaps (above) are resolved',
+                        'impact': 'No separate action needed'
+                    })
+                elif overload_hours > 0:
+                    recommendations.append({
+                        'type': 'WORKLOAD_BALANCE',
+                        'priority': 'MEDIUM',
+                        'action': f'Redistribute {overload_hours:.0f}h from overloaded to underutilized resources',
+                        'impact': 'Improves workload balance'
+                    })
+
+        # =====================================================================
+        # 4. TEAM CONTINUITY - Single consolidated recommendation
+        # =====================================================================
+        if 'maximize_team_continuity' in report['objective_performance']:
+            team = report['objective_performance']['maximize_team_continuity']
+            fragmented_groups = []
+
+            for gap in team.get('gaps', []):
+                if gap.get('gap_type') in ['NO_CONTINUITY', 'HIGH_FRAGMENTATION']:
+                    for rec in gap.get('recommendations', []):
+                        if isinstance(rec, str) and 'Group ' in rec and 'different resources' in rec:
+                            fragmented_groups.append(rec)
+
+            if fragmented_groups:
+                recommendations.append({
+                    'type': 'CONTINUITY',
+                    'priority': 'LOW',
+                    'action': 'Increase team_continuity objective weight > 2.0',
+                    'impact': f'Reduces fragmentation in {len(fragmented_groups)} group(s)'
+                })
+
+        # =====================================================================
+        # Sort by priority and return
+        # =====================================================================
+        priority_order = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2}
+        recommendations.sort(key=lambda x: priority_order.get(x.get('priority', 'LOW'), 2))
+
+        return recommendations

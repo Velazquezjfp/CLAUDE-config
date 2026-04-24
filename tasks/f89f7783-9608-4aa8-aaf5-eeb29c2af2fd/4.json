@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "Run and pass tests",
+  "description": "pytest docs/tests/S001-D-001/ -v — iterate until green.",
+  "activeForm": "Running tests",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

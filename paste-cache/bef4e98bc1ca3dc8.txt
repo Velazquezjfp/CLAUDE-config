@@ -1,0 +1,10 @@
+docker exec -i cff_postgres_dev psql -U cff_app_user -d cff_planning <<'SQL'                                                                                              
+  ALTER TABLE planner_output                                                                                                                                                
+      ADD COLUMN IF NOT EXISTS fetch_rt BOOLEAN NOT NULL DEFAULT TRUE,
+      ADD COLUMN IF NOT EXISTS fetch_ct BOOLEAN NOT NULL DEFAULT TRUE;                                                                                                      
+                                                                                                                                                                            
+  COMMENT ON COLUMN planner_output.fetch_rt IS                                                                                                                              
+    'If TRUE, FE must fetch RT blocks from external DB (solver did not replan RT). If FALSE, RT allocations are in planner_assignments with assignment_type=RT.';           
+  COMMENT ON COLUMN planner_output.fetch_ct IS                                                                                                                              
+    'If TRUE, FE must fetch CT blocks from external DB (solver did not replan CT). If FALSE, CT allocations are in planner_assignments with assignment_type=CT.';           
+  SQL                                       

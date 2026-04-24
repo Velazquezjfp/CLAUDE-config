@@ -1,0 +1,300 @@
+"""
+LC_08: Minimum Rest Days per Calendar Month - OPTIMIZED VERSION (v2)
+Complexity: O(R × M × D_avg) instead of O(R × M × D × N)
+
+============================================================================
+TIME-FRAME SENSITIVE CONSTRAINT (CALENDAR MONTHS)
+============================================================================
+This constraint uses CALENDAR MONTHS (1st to 28th/30th/31st) for rest tracking.
+
+Partitioning Considerations:
+- Groups by YYYY-MM calendar month boundaries
+- Partial months at planning start/end: Naturally handled (applies to days present)
+- Planning crossing month boundary: Each month is evaluated separately
+
+For quarterly/monthly partitioning:
+- Monthly partitions: Constraint aligns naturally with partition boundaries
+- Quarterly partitions: Each month within quarter evaluated independently
+- Carryover: Not needed - each calendar month is self-contained
+============================================================================
+
+A resource must have minimum 6 rest days per calendar month (4 RT + 2 CT).
+A "rest day" is defined as a calendar day where the resource has zero assignments.
+Uses CALENDAR months (not rolling windows) - more efficient than rolling constraints.
+
+Based on: ../../mock_data_v2/CONSTRAINTS_DOCUMENTATION_v2.md lines 198-218
+Layer 1: Legal constraint
+
+OPTIMIZATION: Pre-group requests by day, skip days without valid assignments
+"""
+from ortools.sat.python import cp_model
+from datetime import datetime, timezone
+
+
+def _parse_dt(dt_string: str) -> datetime:
+    """Parse ISO datetime string, ensure timezone-aware (UTC)."""
+    dt = datetime.fromisoformat(dt_string)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+from collections import defaultdict
+import sys
+sys.path.append('..')
+
+
+def add_monthly_rest_constraints(model: cp_model.CpModel,
+                                  x_vars: dict,
+                                  data,
+                                  constraints) -> tuple:
+    """
+    Add minimum rest days per calendar month constraints using optimized approach.
+
+    Complexity: O(R × M × D_avg) where D_avg is average requests per day
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        Tuple of (violations, metadata)
+    """
+    MIN_REST_DAYS = constraints.get_legal_value('min_rest_days_per_month')
+
+    print(f"\n[LC_08_v2] Adding OPTIMIZED minimum rest days constraints...")
+    print(f"  Algorithm: Pre-grouped requests O(R×M×D_avg)")
+    print(f"  Min rest days: {MIN_REST_DAYS} per calendar month")
+    print(f"  Rest day definition: calendar day with zero assignments")
+
+    violations = []
+    metadata = []
+
+    # Step 1: Pre-group requests by date (KEY OPTIMIZATION)
+    requests_by_date = _group_requests_by_date(data)
+
+    # Step 2: Group dates by calendar month
+    dates = sorted(requests_by_date.keys())
+    if not dates:
+        print(f"  ⚠️ No dates with requests found")
+        return violations, metadata
+
+    months = _group_dates_by_month(dates)
+
+    print(f"  Planning period: {len(dates)} days with requests")
+    print(f"  Calendar months: {len(months)}")
+    for month_key in sorted(months.keys()):
+        print(f"    {month_key}: {len(months[month_key])} days")
+
+    # Step 3: Pre-filter resources that could potentially violate
+    # (have enough assignable days to exceed work day limit)
+    resources_at_risk = _identify_at_risk_resources(
+        data, months, requests_by_date, x_vars, MIN_REST_DAYS
+    )
+
+    print(f"  Resources at risk: {len(resources_at_risk)}")
+
+    if not resources_at_risk:
+        print(f"  ✓ No resources can violate constraint - skipping")
+        return violations, metadata
+
+    # Step 4: Add constraints for at-risk resources
+    vars_created = 0
+    constraints_added = 0
+
+    for resource_id in resources_at_risk:
+        v, c = _add_rest_constraint_for_resource(
+            model, resource_id, months, requests_by_date,
+            data, x_vars, MIN_REST_DAYS
+        )
+        vars_created += v
+        constraints_added += c
+
+    print(f"  Variables created: {vars_created}")
+    print(f"  Constraints added: {constraints_added}")
+    print(f"  Resources constrained: {len(resources_at_risk)}")
+
+    return violations, metadata
+
+
+def _group_requests_by_date(data) -> dict:
+    """
+    Group request IDs by their date.
+    Returns: {date: [request_ids]}
+    """
+    requests_by_date = defaultdict(list)
+
+    for request in data.requests:
+        req_id = request['id']
+        start_dt = _parse_dt(request['shift_start_time'])
+        date = start_dt.date()
+        requests_by_date[date].append(req_id)
+
+    return dict(requests_by_date)
+
+
+def _group_dates_by_month(dates: list) -> dict:
+    """
+    Group dates by calendar month.
+    Returns: {YYYY-MM: [dates]}
+    """
+    months = defaultdict(list)
+    for date in dates:
+        month_key = date.strftime('%Y-%m')
+        months[month_key].append(date)
+    return dict(months)
+
+
+def _identify_at_risk_resources(data, months, requests_by_date, x_vars, min_rest) -> list:
+    """
+    Identify resources that could potentially violate the rest day constraint.
+    A resource is at risk if it has more assignable days than allowed in any month.
+    """
+    at_risk = []
+
+    for resource_id in data.resource_ids:
+        for month_key, month_dates in months.items():
+            # Count days where this resource has at least one valid assignment
+            assignable_days = 0
+            for date in month_dates:
+                req_ids = requests_by_date.get(date, [])
+                has_valid = any(
+                    (resource_id, req_id) in x_vars
+                    for req_id in req_ids
+                )
+                if has_valid:
+                    assignable_days += 1
+
+            # If assignable days exceed max allowed work days, resource is at risk
+            max_work_days = len(month_dates) - min_rest
+            if assignable_days > max_work_days:
+                if resource_id not in at_risk:
+                    at_risk.append(resource_id)
+                break  # Found one violating month, no need to check others
+
+    return at_risk
+
+
+def _add_rest_constraint_for_resource(model, resource_id, months,
+                                       requests_by_date, data, x_vars,
+                                       min_rest) -> tuple:
+    """
+    Add rest day constraint for a single resource using efficient formulation.
+
+    Logic:
+    - For each month, count work days (days with at least one assignment)
+    - work_days <= days_in_month - min_rest
+
+    Returns: (vars_created, constraints_added)
+    """
+    vars_created = 0
+    constraints_added = 0
+
+    for month_key, month_dates in months.items():
+        num_days = len(month_dates)
+        max_work_days = num_days - min_rest
+
+        if max_work_days < 0:
+            # Month too short (should not happen with real data)
+            continue
+
+        # Create work day indicators only for days with valid assignments
+        work_day_vars = []
+
+        for date in month_dates:
+            req_ids = requests_by_date.get(date, [])
+
+            # Get assignment variables for this resource on this date
+            assignment_vars = [
+                x_vars[(resource_id, req_id)]
+                for req_id in req_ids
+                if (resource_id, req_id) in x_vars
+            ]
+
+            if not assignment_vars:
+                # No valid assignments possible on this date - guaranteed rest day
+                continue
+
+            # Create work day indicator: 1 if ANY assignment on this date
+            is_work_day = model.NewBoolVar(f'work_{resource_id}_{date}')
+            vars_created += 1
+
+            # is_work_day = 1 iff sum(assignments) >= 1
+            # Using AddMaxEquality is more efficient than conditional constraints
+            model.AddMaxEquality(is_work_day, assignment_vars)
+
+            work_day_vars.append(is_work_day)
+
+        if not work_day_vars:
+            # No possible work days this month - automatically compliant
+            continue
+
+        # HARD CONSTRAINT: work_days <= max_work_days
+        # This ensures rest_days = total_days - work_days >= min_rest
+        model.Add(sum(work_day_vars) <= max_work_days)
+        constraints_added += 1
+
+    return vars_created, constraints_added
+
+
+def get_monthly_rest_metrics(data, x_solution: dict = None) -> dict:
+    """
+    Generate detailed monthly rest day metrics for analysis.
+
+    Args:
+        data: PreprocessedData object
+        x_solution: Optional dict of {(resource_id, request_id): 0 or 1}
+
+    Returns:
+        Dict with detailed monthly rest metrics
+    """
+    requests_by_date = _group_requests_by_date(data)
+    dates = sorted(requests_by_date.keys())
+    months = _group_dates_by_month(dates)
+
+    metrics = {
+        'calendar_months': len(months),
+        'min_rest_days_required': 6,
+        'resources_with_insufficient_rest': [],
+        'rest_days_by_resource_month': {}
+    }
+
+    if x_solution:
+        for resource_id in data.resource_ids:
+            for month_key, month_dates in months.items():
+                work_days = 0
+                rest_days = 0
+
+                for date in month_dates:
+                    req_ids = requests_by_date.get(date, [])
+
+                    # Check if resource has any assignment on this date
+                    has_assignment = any(
+                        x_solution.get((resource_id, req_id), 0) == 1
+                        for req_id in req_ids
+                        if (resource_id, req_id) in x_solution
+                    )
+
+                    if has_assignment:
+                        work_days += 1
+                    else:
+                        rest_days += 1
+
+                key = f"{resource_id}_{month_key}"
+                metrics['rest_days_by_resource_month'][key] = {
+                    'resource_id': resource_id,
+                    'month': month_key,
+                    'rest_days': rest_days,
+                    'work_days': work_days,
+                    'total_days': len(month_dates)
+                }
+
+                if rest_days < 6:
+                    metrics['resources_with_insufficient_rest'].append({
+                        'resource_id': resource_id,
+                        'month': month_key,
+                        'rest_days': rest_days,
+                        'shortfall': 6 - rest_days
+                    })
+
+    return metrics

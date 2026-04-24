@@ -1,0 +1,11 @@
+[
+  { "id": "m1", "name": "Oatmeal with Berries", "kcal": 320, "tags": ["breakfast", "vegetarian"] },
+  { "id": "m2", "name": "Avocado Toast", "kcal": 410, "tags": ["breakfast", "vegetarian"] },
+  { "id": "m3", "name": "Greek Yogurt & Granola", "kcal": 280, "tags": ["breakfast"] },
+  { "id": "m4", "name": "Chicken Caesar Salad", "kcal": 520, "tags": ["lunch"] },
+  { "id": "m5", "name": "Quinoa Buddha Bowl", "kcal": 480, "tags": ["lunch", "vegan"] },
+  { "id": "m6", "name": "Turkey Wrap", "kcal": 540, "tags": ["lunch"] },
+  { "id": "m7", "name": "Grilled Salmon & Veggies", "kcal": 610, "tags": ["dinner"] },
+  { "id": "m8", "name": "Spaghetti Bolognese", "kcal": 720, "tags": ["dinner"] },
+  { "id": "m9", "name": "Veggie Stir Fry", "kcal": 450, "tags": ["dinner", "vegan"] }
+]

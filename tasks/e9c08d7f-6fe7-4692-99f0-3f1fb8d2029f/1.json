@@ -1,0 +1,9 @@
+{
+  "id": "1",
+  "subject": "Verify code-graph freshness",
+  "description": "Set graph path and check statistics; ensure no collisions with files being created",
+  "activeForm": "Checking code-graph",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

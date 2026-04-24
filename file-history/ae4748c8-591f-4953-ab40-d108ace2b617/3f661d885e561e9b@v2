@@ -1,0 +1,333 @@
+"""
+LC_06: Rest-Day Allocation Analyzer
+
+Surfaces post-solve RT/CT satisfaction for the LC_06 rest-day allocation
+constraint. Complements the LC_08 monthly_rest analyzer's Phase J
+`ct_rt_compliance_alerts` path which is a *pre-solve* source-data check.
+
+Legal baseline (BAR CCT):
+  - 4 Jour de repos (RT) per calendar month
+  - 2 Jour de compensation (CT) per calendar month
+  - 6 combined (RT + CT) per calendar month
+Targets are ceil-prorated for partial months via
+`preprocessing.rest_targets.compute_rest_targets()` — the same helper used
+by LC_06 at solve time.
+
+Counting rule: a resource's rest quota in a segment is satisfied by both
+pre-existing RT/CT absences (data.resource_absences) AND any new RT/CT
+allocations the solver produced (solution.solution_assignments filtered to
+assignment_type in {'RT', 'CT'}).
+"""
+from .base_analyzer import ConstraintAnalyzer
+from collections import defaultdict
+from datetime import datetime, timezone, timedelta
+import sys
+sys.path.append('../..')
+from config import RT_CALENDAR_TYPE, CT_CALENDAR_TYPE
+
+
+def _parse_dt(dt_string):
+    """Parse ISO datetime string; tolerate None/already-datetime."""
+    if dt_string is None:
+        return None
+    if isinstance(dt_string, datetime):
+        return dt_string
+    try:
+        dt = datetime.fromisoformat(str(dt_string).replace('Z', '+00:00'))
+    except Exception:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+class LC_06_RestDaysAnalyzer(ConstraintAnalyzer):
+    """Analyzer for LC_06 rest-day allocation (4 RT + 2 CT + 6 combined per month)."""
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='LC_06',
+            constraint_name='rest_days_allocation'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Post-solve check: for each resource × calendar-month segment in the
+        planning range, compare (existing RT/CT absences + new solver RT/CT
+        allocations) against the prorated target. Emit a violation record for
+        each shortfall.
+
+        Returns the standard ConstraintAnalyzer shape expected by the
+        solution_analyzer aggregator.
+        """
+        empty_result = {
+            "constraint_id": "LC_06",
+            "constraint_name": "rest_days_allocation",
+            "total_violations": 0,
+            "total_violation_amount": 0.0,
+            "affected_resources": 0,
+            "severity_breakdown": {"LOW": 0, "MEDIUM": 0, "HIGH": 0},
+            "detailed_violations": [],
+            "message": "Analyzer not applicable (missing planning range or resources)",
+        }
+
+        try:
+            planning_start = getattr(data, 'planning_start', None)
+            planning_end = getattr(data, 'planning_end', None)
+            resource_ids = list(getattr(data, 'resource_ids', []) or [])
+            if not planning_start or not planning_end or not resource_ids:
+                return empty_result
+
+            start_date = planning_start.date() if hasattr(planning_start, 'date') else planning_start
+            end_date = planning_end.date() if hasattr(planning_end, 'date') else planning_end
+
+            # Per-resource × segment prorated targets.
+            from preprocessing.rest_targets import compute_rest_targets
+            targets = compute_rest_targets(start_date, end_date, resource_ids, None)
+
+            # Count pre-existing RT/CT absences in-range (Phase-J style).
+            rt_lc = RT_CALENDAR_TYPE.strip().lower()
+            ct_lc = CT_CALENDAR_TYPE.strip().lower()
+            existing_rt = defaultdict(lambda: defaultdict(int))
+            existing_ct = defaultdict(lambda: defaultdict(int))
+            for res_id, absences in (getattr(data, 'resource_absences', {}) or {}).items():
+                for ab in absences:
+                    atype = (ab.get('type') or '').strip().lower()
+                    if atype not in (rt_lc, ct_lc):
+                        continue
+                    ab_start = ab.get('start')
+                    ab_end = ab.get('end')
+                    if not ab_start or not ab_end:
+                        continue
+                    block_start = ab_start.date() if hasattr(ab_start, 'date') else ab_start
+                    block_end = ab_end.date() if hasattr(ab_end, 'date') else ab_end
+                    if block_end < start_date or block_start > end_date:
+                        continue
+                    cur = max(block_start, start_date)
+                    stop = min(block_end, end_date)
+                    while cur <= stop:
+                        month_key = f"{cur.year:04d}-{cur.month:02d}"
+                        if atype == rt_lc:
+                            existing_rt[res_id][month_key] += 1
+                        else:
+                            existing_ct[res_id][month_key] += 1
+                        cur = cur + timedelta(days=1)
+
+            # Count new RT/CT allocations from the solver output.
+            new_rt = defaultdict(lambda: defaultdict(int))
+            new_ct = defaultdict(lambda: defaultdict(int))
+            assignments = getattr(solution, 'solution_assignments',
+                                  getattr(solution, 'assignments', []))
+            for a in assignments:
+                atype = (a.get('assignment_type') or '').upper()
+                if atype not in ('RT', 'CT'):
+                    continue
+                rid = a.get('resource_id')
+                if rid is None:
+                    continue
+                try:
+                    rid_int = int(rid)
+                except (TypeError, ValueError):
+                    rid_int = rid
+                st = _parse_dt(a.get('calendar_start') or a.get('start'))
+                if st is None:
+                    continue
+                month_key = f"{st.year:04d}-{st.month:02d}"
+                if atype == 'RT':
+                    new_rt[rid_int][month_key] += 1
+                else:
+                    new_ct[rid_int][month_key] += 1
+
+            # Compare per (resource, segment). The rest_targets helper keys by
+            # whatever resource_id form the preprocessor used; try a few forms.
+            violations_by_resource = {}
+            total_violation_amount = 0.0
+            for res_id in resource_ids:
+                rt_targets = targets.get(res_id) or targets.get(str(res_id)) or targets.get(
+                    int(res_id) if isinstance(res_id, str) and res_id.isdigit() else res_id
+                ) or {}
+                if not rt_targets:
+                    continue
+                try:
+                    rid_int = int(res_id)
+                except (TypeError, ValueError):
+                    rid_int = res_id
+
+                for segment, t in rt_targets.items():
+                    rt_tot = existing_rt[rid_int].get(segment, 0) + new_rt[rid_int].get(segment, 0)
+                    ct_tot = existing_ct[rid_int].get(segment, 0) + new_ct[rid_int].get(segment, 0)
+                    combined_tot = rt_tot + ct_tot
+
+                    rt_short = max(0, t.rt_required - rt_tot)
+                    ct_short = max(0, t.ct_required - ct_tot)
+                    comb_short = max(0, t.combined_required - combined_tot)
+                    if rt_short == 0 and ct_short == 0 and comb_short == 0:
+                        continue
+
+                    violation_amount = rt_short + ct_short + comb_short
+                    total_violation_amount += violation_amount
+                    severity = self._classify_severity(
+                        rt_short=rt_short, ct_short=ct_short, comb_short=comb_short,
+                        rt_req=t.rt_required, ct_req=t.ct_required,
+                        comb_req=t.combined_required,
+                    )
+
+                    fix_suggestions = self._generate_fix_suggestions(
+                        segment=segment, is_full_month=t.is_full_month,
+                        rt_short=rt_short, ct_short=ct_short, comb_short=comb_short,
+                        rt_replannable=bool(getattr(data, 'rt_replannable', False)),
+                        ct_replannable=bool(getattr(data, 'ct_replannable', False)),
+                    )
+
+                    rec = {
+                        'context': {
+                            'segment': segment,
+                            'is_full_month': t.is_full_month,
+                            'segment_days': (
+                                (min(t.segment_end, end_date) - max(t.segment_start, start_date)).days + 1
+                                if hasattr(t, 'segment_start') and hasattr(t, 'segment_end') else None
+                            ),
+                        },
+                        'legal_limit': {
+                            'rt': t.rt_required, 'ct': t.ct_required,
+                            'combined': t.combined_required,
+                        },
+                        'company_limit': {
+                            'rt': t.rt_required, 'ct': t.ct_required,
+                            'combined': t.combined_required,
+                        },
+                        'actual_value': {
+                            'rt': rt_tot, 'ct': ct_tot, 'combined': combined_tot,
+                            'rt_existing': existing_rt[rid_int].get(segment, 0),
+                            'rt_new': new_rt[rid_int].get(segment, 0),
+                            'ct_existing': existing_ct[rid_int].get(segment, 0),
+                            'ct_new': new_ct[rid_int].get(segment, 0),
+                        },
+                        'violation_amount': violation_amount,
+                        'severity': severity,
+                        'affected_assignments': [],  # LC-06 has no per-demand link
+                        'how_to_fix': fix_suggestions,
+                    }
+                    violations_by_resource.setdefault(rid_int, []).append(rec)
+
+            severity_breakdown = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+            for recs in violations_by_resource.values():
+                for v in recs:
+                    severity_breakdown[v['severity']] = severity_breakdown.get(v['severity'], 0) + 1
+
+            detailed = [
+                {
+                    'resource_id': rid,
+                    'total_violations': len(recs),
+                    'total_violation_amount': sum(v['violation_amount'] for v in recs),
+                    'violations': recs,
+                }
+                for rid, recs in violations_by_resource.items()
+            ]
+
+            return {
+                "constraint_id": "LC_06",
+                "constraint_name": "rest_days_allocation",
+                "total_violations": sum(len(v) for v in violations_by_resource.values()),
+                "total_violation_amount": int(total_violation_amount),
+                "affected_resources": len(violations_by_resource),
+                "severity_breakdown": severity_breakdown,
+                "detailed_violations": detailed,
+            }
+        except Exception as exc:
+            return {
+                "constraint_id": "LC_06",
+                "constraint_name": "rest_days_allocation",
+                "total_violations": 0,
+                "total_violation_amount": 0.0,
+                "affected_resources": 0,
+                "severity_breakdown": {"LOW": 0, "MEDIUM": 0, "HIGH": 0},
+                "detailed_violations": [],
+                "message": f"Analyzer error (non-fatal): {exc}",
+            }
+
+    def _classify_severity(self, rt_short, ct_short, comb_short,
+                           rt_req, ct_req, comb_req):
+        """Classify shortfall by how deep it is relative to the largest target."""
+        worst_pct = 0.0
+        if rt_req > 0:
+            worst_pct = max(worst_pct, rt_short / rt_req * 100)
+        if ct_req > 0:
+            worst_pct = max(worst_pct, ct_short / ct_req * 100)
+        if comb_req > 0:
+            worst_pct = max(worst_pct, comb_short / comb_req * 100)
+        if worst_pct >= 50:
+            return "HIGH"
+        if worst_pct >= 25:
+            return "MEDIUM"
+        return "LOW"
+
+    def _generate_fix_suggestions(self, segment, is_full_month,
+                                  rt_short, ct_short, comb_short,
+                                  rt_replannable, ct_replannable):
+        fixes = []
+        if rt_short > 0:
+            if rt_replannable:
+                fixes.append(
+                    f"Solver fell short by {rt_short} RT in {segment}. "
+                    "LC-06 was enabled but the solver could not place enough "
+                    "RT without breaking another hard constraint. Check "
+                    "LC_04/LC_05/LC_01 violation density in this segment."
+                )
+            else:
+                fixes.append(
+                    f"Missing {rt_short} RT in {segment}. Either add "
+                    f"'{RT_CALENDAR_TYPE}' to replannable_demand_type so the "
+                    "solver can allocate new RT, or ensure the source data "
+                    "has enough RT absences for this resource-month."
+                )
+        if ct_short > 0:
+            if ct_replannable:
+                fixes.append(
+                    f"Solver fell short by {ct_short} CT in {segment}. "
+                    "See RT note above — same root causes typically apply to CT."
+                )
+            else:
+                fixes.append(
+                    f"Missing {ct_short} CT in {segment}. Either add "
+                    f"'{CT_CALENDAR_TYPE}' to replannable_demand_type, or "
+                    "provide more CT absences upstream."
+                )
+        if comb_short > 0 and rt_short == 0 and ct_short == 0:
+            # Only the combined threshold is failing — rare but possible when
+            # the two per-type targets are both met individually by overlapping
+            # rows that don't count cleanly. Surface it but don't duplicate.
+            fixes.append(
+                f"Combined rest-day shortfall of {comb_short} in {segment}. "
+                "Check per-type counts — usually indicates double-counted rows."
+            )
+        if not is_full_month:
+            fixes.append(
+                f"{segment} is a partial month; targets are ceil-prorated. "
+                "Expected: rt={rt_req}, ct={ct_req}, combined={comb_req}."
+                .format(rt_req=rt_short, ct_req=ct_short, comb_req=comb_short)
+            )
+        return fixes
+
+    def check_would_violate(self, simulated_assignment, existing_assignments, data, constraints):
+        """Not implemented — training-impact analysis is not meaningful here
+        because LC-06 enforces a per-month minimum, not a per-assignment limit.
+        """
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "violation_amount": 0.0,
+            "reason": "LC_06 rest-days is a monthly aggregate constraint; "
+                      "per-assignment simulation not applicable.",
+            "details": {},
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """LC_06 is a hard constraint — weight adjustment is not applicable."""
+        return {
+            "constraint_id": "LC_06",
+            "current_weight": None,
+            "suggested_adjustments": [],
+            "note": "LC_06 rest-day allocation is enforced as a hard constraint; "
+                    "weight adjustment does not apply.",
+        }

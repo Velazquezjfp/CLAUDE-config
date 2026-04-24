@@ -1,0 +1,342 @@
+"""
+LC_08: Minimum Rest Days per Calendar Month Analyzer
+Analyzes violations of monthly rest day requirements
+Legal requirement: 6 rest days per calendar month
+Rest day = calendar day with zero assignments
+"""
+from .base_analyzer import ConstraintAnalyzer
+from datetime import datetime, timezone
+from collections import defaultdict
+import sys
+sys.path.append('../..')
+from config import SCALING_FACTOR
+
+
+def _parse_dt(dt_string: str) -> datetime:
+    """Parse ISO datetime string, ensure timezone-aware (UTC)."""
+    dt = datetime.fromisoformat(dt_string)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+class LC_08_MonthlyRestAnalyzer(ConstraintAnalyzer):
+    """Analyzer for LC_08 (minimum rest days per calendar month)"""
+
+    def __init__(self):
+        super().__init__(
+            constraint_id='LC_08',
+            constraint_name='monthly_rest'
+        )
+
+    def analyze_violations(self, solution, data, constraints, violation_metadata):
+        """
+        Analyze monthly rest day violations.
+
+        Returns detailed breakdown of violations by resource and calendar month
+        """
+        # Filter metadata for this constraint
+        my_violations = [
+            v for v in violation_metadata
+            if v['constraint_id'] == 'LC_08'
+        ]
+
+        if not my_violations:
+            return {
+                "constraint_id": "LC_08",
+                "constraint_name": "monthly_rest",
+                "total_violations": 0,
+                "total_violation_amount": 0.0,
+                "affected_resources": 0,
+                "severity_breakdown": {"LOW": 0, "MEDIUM": 0, "HIGH": 0},
+                "detailed_violations": [],
+                "message": "No violations detected"
+            }
+
+        # Group by resource
+        violations_by_resource = {}
+        total_violation_amount = 0.0
+
+        for viol_meta in my_violations:
+            resource_id = viol_meta['resource_id']
+            month = viol_meta['month']
+            day_indices = viol_meta['day_indices']
+            min_rest_days = viol_meta['min_rest_days']
+
+            # Calculate actual rest days for this resource in this month
+            actual_rest_days = self._calculate_actual_rest_days(
+                solution, data, resource_id, day_indices
+            )
+
+            # Check for actual violation
+            if actual_rest_days >= min_rest_days:
+                continue  # No violation
+
+            violation_amount = min_rest_days - actual_rest_days
+            total_violation_amount += violation_amount
+
+            if resource_id not in violations_by_resource:
+                violations_by_resource[resource_id] = []
+
+            severity = self._classify_rest_severity(
+                actual_rest_days,
+                min_rest_days
+            )
+
+            # Get assignments in this month
+            work_days, assignments_in_month = self._get_work_days_and_assignments(
+                solution, data, resource_id, day_indices
+            )
+
+            violations_by_resource[resource_id].append({
+                'context': {
+                    'month': month,
+                    'days_in_month': viol_meta['days_in_month'],
+                    'max_work_days': viol_meta['max_work_days']
+                },
+                'legal_limit': min_rest_days,
+                'company_limit': min_rest_days,  # Same for this constraint
+                'actual_value': actual_rest_days,
+                'violation_amount': violation_amount,
+                'severity': severity,
+                'work_days': work_days,
+                'affected_assignments': assignments_in_month,
+                'how_to_fix': self._generate_fix_suggestions(
+                    month, actual_rest_days, min_rest_days, work_days
+                )
+            })
+
+        # Build severity breakdown
+        severity_breakdown = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+        for resource_viols in violations_by_resource.values():
+            for v in resource_viols:
+                severity_breakdown[v['severity']] += 1
+
+        # Format detailed violations
+        detailed_violations = [
+            {
+                'resource_id': resource_id,
+                'total_violations': len(viols),
+                'total_violation_amount': sum(v['violation_amount'] for v in viols),
+                'violations': viols
+            }
+            for resource_id, viols in violations_by_resource.items()
+        ]
+
+        return {
+            "constraint_id": "LC_08",
+            "constraint_name": "monthly_rest",
+            "total_violations": sum(len(v) for v in violations_by_resource.values()),
+            "total_violation_amount": int(total_violation_amount),
+            "affected_resources": len(violations_by_resource),
+            "severity_breakdown": severity_breakdown,
+            "detailed_violations": detailed_violations
+        }
+
+    def check_would_violate(self, simulated_assignment, existing_assignments,
+                           data, constraints):
+        """
+        Check if adding this assignment would reduce rest days below minimum.
+        """
+        MIN_REST_DAYS = constraints.get_legal_value('min_rest_days_per_month')
+
+        # Find which month this assignment falls in
+        sim_start = _parse_dt(simulated_assignment['start'])
+        month_key = sim_start.strftime('%Y-%m')
+
+        # Find all days in this month
+        days_by_month = self._group_days_by_month(data.days)
+        if month_key not in days_by_month:
+            return {
+                "would_violate": False,
+                "violation_type": "none",
+                "violation_amount": 0,
+                "reason": "Assignment outside planning period"
+            }
+
+        day_indices = days_by_month[month_key]
+        total_days = len(day_indices)
+
+        # Count current work days (days with existing assignments)
+        work_days = set()
+        for existing in existing_assignments:
+            exist_start = _parse_dt(existing['start'])
+            # Check if assignment falls in this month
+            for day_idx in day_indices:
+                if day_idx < len(data.days):
+                    day = data.days[day_idx]
+                    if day['start'] <= exist_start < day['end']:
+                        work_days.add(day_idx)
+                        break
+
+        # Add the simulated assignment's day
+        sim_day_idx = None
+        for day_idx in day_indices:
+            if day_idx < len(data.days):
+                day = data.days[day_idx]
+                if day['start'] <= sim_start < day['end']:
+                    sim_day_idx = day_idx
+                    work_days.add(day_idx)
+                    break
+
+        if sim_day_idx is None:
+            return {
+                "would_violate": False,
+                "violation_type": "none",
+                "violation_amount": 0,
+                "reason": "Assignment day not found in month"
+            }
+
+        # Calculate rest days
+        total_work_days = len(work_days)
+        rest_days = total_days - total_work_days
+
+        # Check violation
+        if rest_days < MIN_REST_DAYS:
+            shortage = MIN_REST_DAYS - rest_days
+            return {
+                "would_violate": True,
+                "violation_type": "legal",
+                "violation_amount": shortage,
+                "reason": f"Would reduce rest days to {rest_days} (< {MIN_REST_DAYS} required) in {month_key}",
+                "details": {
+                    "month": month_key,
+                    "total_days": total_days,
+                    "work_days": total_work_days,
+                    "rest_days": rest_days,
+                    "required_rest_days": MIN_REST_DAYS
+                }
+            }
+
+        return {
+            "would_violate": False,
+            "violation_type": "none",
+            "violation_amount": 0,
+            "reason": f"Within limits: {rest_days} rest days (>= {MIN_REST_DAYS} required)"
+        }
+
+    def suggest_weight_adjustment(self, violations):
+        """Suggest weight adjustments"""
+        total_viols = violations.get('total_violations', 0)
+        total_amount = violations.get('total_violation_amount', 0)
+
+        if total_viols == 0:
+            return {
+                "constraint_id": "LC_08",
+                "current_weight": "HARD",
+                "suggested_adjustments": []
+            }
+
+        # This is a HARD constraint, so suggestions are about fixing violations
+        suggestions = []
+
+        if total_viols > 0:
+            suggestions.append({
+                "action": "reduce_workload",
+                "expected_impact": f"Reduce assignments to ensure {total_viols} resources get minimum rest days",
+                "trade_offs": "May reduce coverage and require additional resources"
+            })
+
+        if total_amount > 10:
+            suggestions.append({
+                "action": "redistribute_assignments",
+                "expected_impact": "Spread assignments across more resources to balance workload",
+                "trade_offs": "Requires careful coordination and may increase operational complexity"
+            })
+
+        if total_viols < 3 and total_amount < 5:
+            suggestions.append({
+                "action": "accept_and_document",
+                "expected_impact": "Document exceptions for legal review",
+                "trade_offs": "Must ensure compliance with labor regulations"
+            })
+
+        return {
+            "constraint_id": "LC_08",
+            "current_weight": "HARD",
+            "suggested_adjustments": suggestions
+        }
+
+    def _calculate_actual_rest_days(self, solution, data, resource_id, day_indices):
+        """Calculate actual rest days (days with zero assignments) in the given month"""
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        # Build set of days where resource has assignments
+        work_days = set()
+        for assignment in assignments:
+            if assignment['resource_id'] == resource_id:
+                req_id = assignment['demand_id']
+                # Check each day in the month
+                for day_idx in day_indices:
+                    if data.get_task_hours_in_day(req_id, day_idx) > 0:
+                        work_days.add(day_idx)
+
+        # Rest days = total days - work days
+        rest_days = len(day_indices) - len(work_days)
+        return rest_days
+
+    def _get_work_days_and_assignments(self, solution, data, resource_id, day_indices):
+        """Get number of work days and list of assignments in this month"""
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        work_days = set()
+        assignments_in_month = []
+
+        for assignment in assignments:
+            if assignment['resource_id'] == resource_id:
+                req_id = assignment['demand_id']
+                # Check if this assignment has hours in this month
+                has_hours_in_month = False
+                for day_idx in day_indices:
+                    if data.get_task_hours_in_day(req_id, day_idx) > 0:
+                        has_hours_in_month = True
+                        work_days.add(day_idx)
+
+                if has_hours_in_month:
+                    assignments_in_month.append(req_id)
+
+        return len(work_days), assignments_in_month
+
+    def _classify_rest_severity(self, actual_rest_days, min_rest_days):
+        """Classify severity based on how far below minimum rest days"""
+        shortage = min_rest_days - actual_rest_days
+
+        if actual_rest_days < 4:
+            return "HIGH"  # Less than 4 rest days is very serious
+        elif actual_rest_days < 5:
+            return "MEDIUM"  # 4 rest days (2 days short)
+        else:
+            return "LOW"  # 5 rest days (1 day short)
+
+    def _generate_fix_suggestions(self, month, actual_rest_days, min_rest_days, work_days):
+        """Generate specific fix suggestions"""
+        suggestions = []
+        shortage = min_rest_days - actual_rest_days
+
+        # Suggestion 1: Remove assignments to create rest days
+        suggestions.append(
+            f"Remove {shortage} day(s) of assignments in {month} to reach minimum {min_rest_days} rest days"
+        )
+
+        # Suggestion 2: Reassign to other resources
+        suggestions.append(
+            f"Reassign {shortage} day(s) of work from {month} to other resources with capacity"
+        )
+
+        # Suggestion 3: Accept if close to limit
+        if shortage == 1:
+            suggestions.append(
+                f"Consider accepting 1-day shortage if operationally necessary (requires legal review)"
+            )
+
+        return suggestions
+
+    def _group_days_by_month(self, days):
+        """Group day indices by calendar month (YYYY-MM)"""
+        days_by_month = defaultdict(list)
+
+        for day_idx, day_dt in enumerate(days):
+            month_key = day_dt['start'].strftime('%Y-%m')
+            days_by_month[month_key].append(day_idx)
+
+        return dict(days_by_month)

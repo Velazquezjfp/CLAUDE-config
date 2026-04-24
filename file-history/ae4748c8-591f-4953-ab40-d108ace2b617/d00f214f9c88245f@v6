@@ -1,0 +1,1015 @@
+"""
+Solver Partitioner for Large Datasets
+
+Splits large planning problems into time-based partitions and solves them
+sequentially with constraint state carryover.
+
+TASK-062: Implement Partitioning Strategy
+
+Key Design Decisions:
+- Only TIME-BASED partitioning (resources can work cross-team/cross-region)
+- Minimum partition size: 6 weeks (to satisfy LC-05 and LC-07)
+- State carryover between partitions for rolling constraints
+"""
+import sys
+import os
+from datetime import datetime, date, timedelta
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+import logging
+
+# Add solver_v2 to path
+SOLVER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if SOLVER_DIR not in sys.path:
+    sys.path.insert(0, SOLVER_DIR)
+
+from solver.partition_state import (
+    PartitionState, extract_state_from_solution, create_period_context_from_state
+)
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# STATE INJECTION FOR PARTITIONED SOLVING
+# =============================================================================
+
+def create_period_context_for_partition(
+    partition: 'Partition',
+    incoming_state: Optional[PartitionState] = None
+) -> dict:
+    """
+    Create OC-01 PeriodContext data for a partition.
+
+    This function creates the period context needed for OC-01 to correctly
+    prorate annual targets and account for prior activity.
+
+    Args:
+        partition: The partition being solved
+        incoming_state: State from previous partition(s), if any
+
+    Returns:
+        Dict that can be passed to PeriodContext constructor
+    """
+    from datetime import datetime
+
+    period_start = datetime.combine(partition.start_date, datetime.min.time())
+    period_end = datetime.combine(partition.end_date, datetime.min.time())
+
+    days_in_partition = (partition.end_date - partition.start_date).days + 1
+    annual_fraction = days_in_partition / 365.0
+
+    # Get prior activity from incoming state
+    prior_activity = {}
+    if incoming_state:
+        prior_activity = incoming_state.get_prior_activity_dict()
+
+    return {
+        'period_start': period_start,
+        'period_end': period_end,
+        'annual_fraction': annual_fraction,
+        'prior_activity': prior_activity
+    }
+
+
+def inject_rolling_window_constraints(
+    model,
+    x_vars: dict,
+    data,
+    incoming_state: PartitionState,
+    partition_start: date
+) -> int:
+    """
+    Inject initial state constraints for rolling window constraints.
+
+    This adds constraints at the start of a partition to ensure continuity
+    with the previous partition's state.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables
+        data: Preprocessed data
+        incoming_state: State from previous partition
+        partition_start: Start date of current partition
+
+    Returns:
+        Number of constraints added
+    """
+    from ortools.sat.python import cp_model
+    from config import SCALING_FACTOR
+
+    constraints_added = 0
+
+    # For each resource with state from previous partition
+    for res_id, res_state in incoming_state.resource_states.items():
+        # LC-01: Inject prior hours into first 6 days
+        # The cumulative sum approach in lc_01_weekly_hours_v2.py handles this
+        # by starting the cumulative sum with prior values
+        # For now, we can add a note that manual adjustment may be needed
+        # or we can create "virtual" prior hour variables
+
+        # LC-04: Inject last_shift_end time constraint
+        # This needs to prevent shifts that would violate min rest with prior shift
+        if res_state.last_shift_end:
+            # Find requests in first day that would conflict
+            from datetime import timedelta
+            min_gap_hours = 11  # Default min rest
+
+            for request in data.requests:
+                req_id = request.get('id')
+                if (res_id, req_id) not in x_vars:
+                    continue
+
+                start_str = request.get('shift_start_time', '')
+                if start_str:
+                    try:
+                        if start_str.endswith('Z'):
+                            start_str = start_str.replace('Z', '+00:00')
+                        from datetime import datetime, timezone as _tz
+                        req_start = datetime.fromisoformat(start_str)
+                        if req_start.tzinfo is None:
+                            req_start = req_start.replace(tzinfo=_tz.utc)
+                        prior_end = res_state.last_shift_end
+                        if prior_end.tzinfo is None:
+                            prior_end = prior_end.replace(tzinfo=_tz.utc)
+
+                        # Check if this request would violate rest constraint
+                        gap_hours = (req_start - prior_end).total_seconds() / 3600
+                        if gap_hours < min_gap_hours:
+                            # Block this assignment
+                            model.Add(x_vars[(res_id, req_id)] == 0)
+                            constraints_added += 1
+                            logger.debug(
+                                f"Blocked {req_id} for {res_id}: "
+                                f"only {gap_hours:.1f}h after prior shift"
+                            )
+                    except (ValueError, TypeError):
+                        pass
+
+        # LC-06: Inject consecutive night count
+        # If entering with N consecutive nights, need to track carefully
+        # This is handled in the constraint itself via counter initialization
+        # But we could add a note or hard constraint here
+
+    logger.info(f"Injected {constraints_added} rolling window constraints from prior state")
+    return constraints_added
+
+
+@dataclass
+class PartitionConfig:
+    """Configuration for partitioning strategy."""
+
+    # Partition size in days (default: 6 weeks = 42 days)
+    partition_days: int = 42
+
+    # Maximum demands per partition before auto-partitioning
+    max_demands_per_partition: int = 200
+
+    # Time limit per partition (seconds)
+    time_limit_per_partition: int = 300
+
+    # Overlap days for rolling constraints (added to each partition)
+    overlap_days: int = 0  # We use state carryover instead of overlap
+
+    # Calendar alignment options
+    align_to_calendar_months: bool = False  # If True, partition on month boundaries
+    align_to_calendar_weeks: bool = False   # If True, partition on Monday boundaries
+
+    # Sub-partitioning for large months (hybrid approach)
+    max_days_per_partition: int = 45  # If month > this, sub-partition
+    min_days_per_partition: int = 7   # Don't create partitions smaller than this
+
+
+@dataclass
+class Partition:
+    """A single partition of the planning problem."""
+    index: int
+    start_date: date
+    end_date: date
+    demands: List[Dict[str, Any]]
+    resources: List[Dict[str, Any]]          # Category-filtered (for x[r,d] demand vars)
+    absences: List[Dict[str, Any]]
+    incoming_state: Optional[PartitionState] = None
+    # 2026-04-22 Fix #14: the FULL input resource list the partitioner
+    # received (already team/group-filtered by service.py, but BEFORE the
+    # per-partition category filter). LC-06 uses this to enforce monthly
+    # rest-day minimums on EVERY in-scope resource, not just those whose
+    # categories match the partition's demands. Without it, category-filtered
+    # resources silently dropped their LC-06 target → 39 April shortfalls
+    # observed in Report #5. Team/group scoping is preserved — this only
+    # bypasses the internal category filter for LC-06 rest-day vars.
+    all_resources: Optional[List[Dict[str, Any]]] = None
+    # 2026-04-22 Fix #15: the FULL plan range across ALL partitions.
+    # Phase D uses this for cumulative proration so the LAST partition
+    # covering each month sees the full-month target. Without it,
+    # ceil-prorated per-partition targets can undercount when partitions
+    # overlap or cover partial months (observed 17 May shortfalls in R6c).
+    full_plan_start: Optional[date] = None
+    full_plan_end: Optional[date] = None
+
+
+@dataclass
+class PartitionResult:
+    """Result from solving a single partition."""
+    partition_index: int
+    status: str  # OPTIMAL, FEASIBLE, INFEASIBLE, TIMEOUT, ERROR
+    solve_time_seconds: float
+    assignments: List[Dict[str, Any]]
+    outgoing_state: Optional[PartitionState] = None
+    error_message: Optional[str] = None
+    # 2026-04-22: final CP-SAT objective cost for this partition (None when
+    # the partition errored or is INFEASIBLE). Aggregated in merge_results
+    # so planner_output.objective_value isn't null under partitioned runs.
+    objective_value: Optional[float] = None
+
+
+class SolverPartitioner:
+    """
+    Partitions large planning problems by time and solves sequentially.
+
+    Usage:
+        partitioner = SolverPartitioner(config)
+        partitions = partitioner.create_partitions(demands, resources, absences)
+        results = partitioner.solve_all(partitions, constraint_values, objective_weights)
+        merged = partitioner.merge_results(results)
+    """
+
+    def __init__(self, config: Optional[PartitionConfig] = None):
+        self.config = config or PartitionConfig()
+
+    def should_partition(self, demands: List[Dict[str, Any]]) -> bool:
+        """
+        Determine if the problem should be partitioned.
+
+        Returns True if:
+        - Demand count exceeds max_demands_per_partition
+        - Time span exceeds partition_days
+        """
+        if len(demands) > self.config.max_demands_per_partition:
+            return True
+
+        # Check time span
+        if not demands:
+            return False
+
+        dates = []
+        for d in demands:
+            start_str = d.get('shift_start_time') or d.get('start_datetime')
+            if start_str:
+                try:
+                    if isinstance(start_str, str):
+                        dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+                    else:
+                        dt = start_str
+                    dates.append(dt.date())
+                except (ValueError, TypeError):
+                    pass
+
+        if len(dates) < 2:
+            return False
+
+        min_date, max_date = min(dates), max(dates)
+        span_days = (max_date - min_date).days
+
+        return span_days > self.config.partition_days
+
+    def create_partitions(
+        self,
+        demands: List[Dict[str, Any]],
+        resources: List[Dict[str, Any]],
+        absences: List[Dict[str, Any]]
+    ) -> List[Partition]:
+        """
+        Create time-based partitions from the input data.
+
+        Supports multiple partitioning strategies:
+        1. Calendar month alignment (align_to_calendar_months=True)
+        2. Week boundary alignment (align_to_calendar_weeks=True)
+        3. Fixed-day partitions (default)
+
+        All resources are included in each partition (cross-team/cross-region).
+        Absences are filtered to those relevant for each partition.
+        """
+        if not demands:
+            return []
+
+        # Parse demand dates
+        demand_dates = []
+        for d in demands:
+            start_str = d.get('shift_start_time') or d.get('start_datetime')
+            if start_str:
+                try:
+                    if isinstance(start_str, str):
+                        dt = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+                    else:
+                        dt = start_str
+                    demand_dates.append((d, dt.date()))
+                except (ValueError, TypeError):
+                    pass
+
+        if not demand_dates:
+            return []
+
+        # Sort by date
+        demand_dates.sort(key=lambda x: x[1])
+        min_date = demand_dates[0][1]
+        max_date = demand_dates[-1][1]
+        total_days = (max_date - min_date).days + 1
+
+        # Choose partitioning strategy
+        if self.config.align_to_calendar_months:
+            partition_boundaries = self._create_calendar_month_boundaries(min_date, max_date, demand_dates)
+            logger.info(f"Using CALENDAR MONTH partitioning for {len(demands)} demands over {total_days} days")
+        elif self.config.align_to_calendar_weeks:
+            partition_boundaries = self._create_calendar_week_boundaries(min_date, max_date)
+            logger.info(f"Using CALENDAR WEEK partitioning for {len(demands)} demands over {total_days} days")
+        else:
+            partition_boundaries = self._create_fixed_day_boundaries(min_date, max_date, len(demands))
+            logger.info(f"Using FIXED-DAY partitioning for {len(demands)} demands over {total_days} days")
+
+        # Create partitions from boundaries
+        partitions = []
+        for i, (part_start, part_end) in enumerate(partition_boundaries):
+            # Filter demands for this partition
+            part_demands = [
+                d for d, dt in demand_dates
+                if part_start <= dt <= part_end
+            ]
+
+            # Filter resources by categories needed in this partition
+            # This is a KEY OPTIMIZATION - only include resources that can potentially
+            # work on the demands in this partition
+            part_resources = self._filter_resources_by_category(part_demands, resources)
+
+            # Filter absences for this partition (include overlapping)
+            part_absences = self._filter_absences(absences, part_start, part_end)
+
+            partition = Partition(
+                index=i,
+                start_date=part_start,
+                end_date=part_end,
+                demands=part_demands,
+                resources=part_resources,     # Category-filtered (for x[r,d] demand vars)
+                absences=part_absences,
+                all_resources=resources,      # Fix #14: full input (already team/group-filtered upstream)
+                full_plan_start=min_date,     # Fix #15: full plan range for cumulative proration
+                full_plan_end=max_date,
+            )
+            partitions.append(partition)
+
+            logger.info(f"  Partition {i}: {part_start} to {part_end}, {len(part_demands)} demands, {len(part_resources)} resources for demands (from {len(resources)} in-scope; LC-06 covers all {len(resources)})")
+
+        return partitions
+
+    def _create_calendar_month_boundaries(
+        self,
+        min_date: date,
+        max_date: date,
+        demand_dates: List[Tuple[Dict, date]] = None
+    ) -> List[Tuple[date, date]]:
+        """
+        Create partition boundaries aligned to calendar months.
+
+        Sub-partitions a month if:
+        1. It exceeds max_days_per_partition (days), OR
+        2. It exceeds max_demands_per_partition (demand count)
+
+        Args:
+            min_date: Start date of planning period
+            max_date: End date of planning period
+            demand_dates: List of (demand_dict, date) tuples for demand-aware partitioning
+        """
+        from calendar import monthrange
+
+        boundaries = []
+        current = date(min_date.year, min_date.month, 1)
+
+        while current <= max_date:
+            # Month boundaries
+            month_start = max(current, min_date)
+            _, last_day = monthrange(current.year, current.month)
+            month_end = min(date(current.year, current.month, last_day), max_date)
+
+            days_in_month = (month_end - month_start).days + 1
+
+            # Count demands in this month
+            demands_in_month = 0
+            if demand_dates:
+                demands_in_month = sum(1 for _, dt in demand_dates if month_start <= dt <= month_end)
+
+            # Determine if sub-partitioning is needed
+            need_subpartition = False
+            num_parts = 1
+
+            # Check days threshold
+            if days_in_month > self.config.max_days_per_partition:
+                need_subpartition = True
+                num_parts = max(num_parts, (days_in_month + self.config.max_days_per_partition - 1) // self.config.max_days_per_partition)
+
+            # Check demands threshold (new!)
+            if demands_in_month > self.config.max_demands_per_partition:
+                need_subpartition = True
+                demand_parts = (demands_in_month + self.config.max_demands_per_partition - 1) // self.config.max_demands_per_partition
+                num_parts = max(num_parts, demand_parts)
+                logger.info(f"  Month {current.strftime('%Y-%m')}: {demands_in_month} demands exceeds threshold {self.config.max_demands_per_partition}, splitting into {demand_parts} parts")
+
+            # Sub-partition if needed
+            if need_subpartition and num_parts > 1:
+                if demands_in_month > self.config.max_demands_per_partition:
+                    # Demand-aware splitting: cut at demand count boundaries
+                    # instead of equal-day splits to avoid unbalanced last partition
+                    sorted_month_dates = sorted(
+                        [dt for _, dt in demand_dates if month_start <= dt <= month_end]
+                    )
+                    chunk_size = self.config.max_demands_per_partition
+                    prev_end = None
+
+                    for chunk_idx in range(0, len(sorted_month_dates), chunk_size):
+                        chunk = sorted_month_dates[chunk_idx:chunk_idx + chunk_size]
+                        if not chunk:
+                            break
+                        part_start = prev_end + timedelta(days=1) if prev_end else month_start
+                        part_end = chunk[-1]
+                        # Ensure we don't go past month_end
+                        part_end = min(part_end, month_end)
+                        # For the last chunk, extend to month_end
+                        if chunk_idx + chunk_size >= len(sorted_month_dates):
+                            part_end = month_end
+                        # Skip invalid boundaries (start > end can happen when
+                        # previous chunk's last demand is on month_end)
+                        if part_start > part_end:
+                            break
+                        boundaries.append((part_start, part_end))
+                        prev_end = part_end
+                else:
+                    # Days-only threshold: equal-day split (no demand data needed)
+                    part_size = days_in_month // num_parts
+                    for i in range(num_parts):
+                        part_start = month_start + timedelta(days=i * part_size)
+                        if i == num_parts - 1:
+                            part_end = month_end
+                        else:
+                            part_end = month_start + timedelta(days=(i + 1) * part_size - 1)
+                        boundaries.append((part_start, part_end))
+            else:
+                boundaries.append((month_start, month_end))
+
+            # Move to next month
+            if current.month == 12:
+                current = date(current.year + 1, 1, 1)
+            else:
+                current = date(current.year, current.month + 1, 1)
+
+        return boundaries
+
+    def _create_calendar_week_boundaries(
+        self,
+        min_date: date,
+        max_date: date
+    ) -> List[Tuple[date, date]]:
+        """
+        Create partition boundaries aligned to calendar weeks (Monday-Sunday).
+        """
+        boundaries = []
+
+        # Find first Monday on or before min_date
+        days_since_monday = min_date.weekday()
+        week_start = min_date - timedelta(days=days_since_monday)
+
+        while week_start <= max_date:
+            part_start = max(week_start, min_date)
+            part_end = min(week_start + timedelta(days=6), max_date)
+
+            # Only add if partition is meaningful (>= min_days_per_partition)
+            if (part_end - part_start).days + 1 >= self.config.min_days_per_partition:
+                boundaries.append((part_start, part_end))
+
+            week_start += timedelta(days=7)
+
+        return boundaries
+
+    def _create_fixed_day_boundaries(
+        self,
+        min_date: date,
+        max_date: date,
+        demand_count: int
+    ) -> List[Tuple[date, date]]:
+        """
+        Create partition boundaries with fixed day intervals.
+
+        This is the original partitioning strategy.
+        """
+        total_days = (max_date - min_date).days + 1
+        num_partitions = max(1, (total_days + self.config.partition_days - 1) // self.config.partition_days)
+
+        # Also consider demand count
+        count_based_partitions = max(1, (demand_count + self.config.max_demands_per_partition - 1) //
+                                     self.config.max_demands_per_partition)
+
+        num_partitions = max(num_partitions, count_based_partitions)
+        partition_days = max(1, total_days // num_partitions)
+
+        boundaries = []
+        for i in range(num_partitions):
+            part_start = min_date + timedelta(days=i * partition_days)
+            if i == num_partitions - 1:
+                part_end = max_date
+            else:
+                part_end = min_date + timedelta(days=(i + 1) * partition_days - 1)
+            boundaries.append((part_start, part_end))
+
+        return boundaries
+
+    def _filter_resources_by_category(
+        self,
+        demands: List[Dict[str, Any]],
+        resources: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Filter resources to only include those with categories matching the demands.
+
+        This is a KEY OPTIMIZATION for large-scale planning. Instead of including all
+        374 resources in every partition, we only include resources that can potentially
+        work on the demands in that partition based on category matching.
+
+        For example, if a partition's demands only need categories ["CVM", "TFF"],
+        we only include resources that have at least one of those categories.
+
+        Args:
+            demands: List of demands in this partition
+            resources: Full list of all resources
+
+        Returns:
+            Filtered list of resources that have at least one matching category
+        """
+        # Extract unique categories needed by demands
+        needed_categories = set()
+        for demand in demands:
+            category = demand.get('resource_category', '')
+            if category:
+                # Normalize: lowercase, collapse whitespace
+                normalized = ' '.join(str(category).lower().split())
+                if normalized:
+                    needed_categories.add(normalized)
+
+        if not needed_categories:
+            # No category requirements - include all resources
+            logger.info(f"    No category requirements found, including all {len(resources)} resources")
+            return resources
+
+        # Filter resources that have at least one matching category
+        filtered = []
+        for resource in resources:
+            resource_cats = resource.get('resource_categories', [])
+            if not resource_cats:
+                continue
+
+            # Normalize resource categories
+            if isinstance(resource_cats, str):
+                resource_cats = [c.strip() for c in resource_cats.split(',')]
+
+            normalized_res_cats = {' '.join(str(c).lower().split()) for c in resource_cats if c}
+
+            # Check if any category matches
+            if needed_categories & normalized_res_cats:
+                filtered.append(resource)
+
+        if not filtered:
+            # Safety: if no resources match (shouldn't happen), return all
+            logger.warning(f"    No resources match required categories {needed_categories}! Including all resources.")
+            return resources
+
+        logger.info(f"    Categories needed: {needed_categories}")
+        logger.info(f"    Resources reduced: {len(resources)} → {len(filtered)} ({100 - len(filtered)*100//len(resources)}% reduction)")
+
+        return filtered
+
+    def _filter_absences(
+        self,
+        absences: List[Dict[str, Any]],
+        start_date: date,
+        end_date: date
+    ) -> List[Dict[str, Any]]:
+        """Filter absences that overlap with the partition period.
+
+        Includes 1 extra day beyond end_date to catch blocking blocks
+        for overnight shifts that start on end_date but end the next day.
+        """
+        from datetime import timedelta
+        extended_end = end_date + timedelta(days=1)
+        result = []
+        for absence in absences:
+            abs_start_str = absence.get('start_date')
+            abs_end_str = absence.get('end_date')
+
+            if not abs_start_str or not abs_end_str:
+                continue
+
+            try:
+                abs_start = self._parse_absence_date(abs_start_str)
+                abs_end = self._parse_absence_date(abs_end_str)
+
+                if abs_start is None or abs_end is None:
+                    continue
+
+                # Check overlap (extended by 1 day for overnight shifts)
+                if abs_start <= extended_end and abs_end >= start_date:
+                    result.append(absence)
+            except (ValueError, TypeError):
+                pass
+
+        return result
+
+    @staticmethod
+    def _parse_absence_date(value) -> date:
+        """Parse a date from either a date string or a datetime string.
+
+        API returns datetime strings like '2026-01-01 00:00:00+00'.
+        date.fromisoformat() only accepts 'YYYY-MM-DD', so we extract
+        the date portion from datetime strings.
+        """
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            # Extract date portion (first 10 chars: YYYY-MM-DD)
+            return date.fromisoformat(value[:10])
+        return None
+
+    def solve_partition(
+        self,
+        partition: Partition,
+        constraint_values,
+        objective_weights,
+        incoming_state: Optional[PartitionState] = None,
+        rt_replannable: bool = False,
+        ct_replannable: bool = False,
+    ) -> PartitionResult:
+        """
+        Solve a single partition.
+
+        Args:
+            partition: The partition to solve
+            constraint_values: ConstraintValues object
+            objective_weights: ObjectiveWeights object
+            incoming_state: State from previous partition (for constraint carryover)
+            rt_replannable: Phase A flag propagated from trigger payload. When True,
+                LC-06 rest-day allocation (RT) is activated on this partition and
+                LC-08 v2 is gated off. Forwarded by solve_with_checkpointing from
+                the top-level preprocessed_data.
+            ct_replannable: Same for CT.
+
+        Returns:
+            PartitionResult with assignments and outgoing state
+        """
+        import time
+        from preprocessing.data_processor import preprocess_data
+        from solver.model import create_and_solve_model
+        from ortools.sat.python import cp_model as cp
+
+        logger.info(f"Solving partition {partition.index}: {len(partition.demands)} demands")
+
+        start_time = time.time()
+
+        try:
+            # Prepare data in expected format
+            demands_data = {'data': partition.demands}
+            resources_data = {'data': partition.resources}
+            absences_data = {'data': partition.absences}
+
+            # Preprocess
+            preprocessed = preprocess_data(demands_data, resources_data, absences_data)
+            # Propagate Phase-A flags onto the per-partition preprocessed object so
+            # LC-06 / LC-08-v2 gate see them. The top-level preprocessed_data in
+            # service.py has these set, but preprocess_data() here builds a fresh
+            # object that would otherwise default to False.
+            preprocessed.rt_replannable = rt_replannable
+            preprocessed.ct_replannable = ct_replannable
+            # Fix #14: stash the full plan-range resource IDs (team/group-filtered
+            # but NOT category-filtered) so LC-06 can enforce rest-day minimums
+            # on every resource in scope, not just those whose categories match
+            # this partition's demands.
+            if partition.all_resources is not None:
+                preprocessed.all_plan_resource_ids = [
+                    r['resource_id'] for r in partition.all_resources
+                ]
+            else:
+                preprocessed.all_plan_resource_ids = list(preprocessed.resource_ids)
+            # Fix #15: stash full plan range so Phase D uses cumulative proration
+            # (the LAST partition covering a month sees the full monthly target).
+            preprocessed.full_plan_start = partition.full_plan_start
+            preprocessed.full_plan_end = partition.full_plan_end
+
+            # Create period context for OC-01 (time-frame sensitive constraint)
+            period_context = None
+            if incoming_state or partition.index > 0:
+                period_context_data = create_period_context_for_partition(
+                    partition, incoming_state
+                )
+                logger.info(
+                    f"  OC-01 period context: fraction={period_context_data['annual_fraction']:.3f}, "
+                    f"prior_resources={len(period_context_data['prior_activity'])}"
+                )
+
+            # Solve with period context
+            model = create_and_solve_model(
+                preprocessed,
+                constraint_values,
+                objective_weights,
+                time_limit=self.config.time_limit_per_partition,
+                period_context=period_context_data if incoming_state else None,
+                incoming_state=incoming_state
+            )
+
+            solve_time = time.time() - start_time
+
+            # Map status
+            status_map = {
+                cp.OPTIMAL: "OPTIMAL",
+                cp.FEASIBLE: "FEASIBLE",
+                cp.INFEASIBLE: "INFEASIBLE",
+                cp.MODEL_INVALID: "MODEL_INVALID",
+                cp.UNKNOWN: "TIMEOUT"
+            }
+            status = status_map.get(model.status, 'UNKNOWN')
+
+            # Extract assignments
+            assignments = model.solution_assignments if hasattr(model, 'solution_assignments') else []
+
+            # Extract CP-SAT objective cost for this partition. Only valid when
+            # the underlying solver reached a feasible/optimal solution.
+            obj_val = None
+            if status in ("OPTIMAL", "FEASIBLE") and hasattr(model, 'solver'):
+                try:
+                    obj_val = float(model.solver.ObjectiveValue())
+                except Exception as _exc:
+                    logger.warning(f"[partitioner] Could not read ObjectiveValue() for partition {partition.index}: {_exc}")
+
+            # Extract outgoing state for next partition
+            outgoing_state = extract_state_from_solution(
+                assignments,
+                partition.resources,
+                partition.end_date,
+                incoming_state,
+                partition_start=partition.start_date
+            )
+
+            return PartitionResult(
+                partition_index=partition.index,
+                status=status,
+                solve_time_seconds=solve_time,
+                assignments=assignments,
+                outgoing_state=outgoing_state,
+                objective_value=obj_val,
+            )
+
+        except Exception as e:
+            logger.error(f"Partition {partition.index} failed: {e}")
+            import traceback
+            traceback.print_exc()
+
+            return PartitionResult(
+                partition_index=partition.index,
+                status="ERROR",
+                solve_time_seconds=time.time() - start_time,
+                assignments=[],
+                error_message=str(e)
+            )
+
+    def solve_all(
+        self,
+        partitions: List[Partition],
+        constraint_values,
+        objective_weights,
+        progress_callback=None
+    ) -> List[PartitionResult]:
+        """
+        Solve all partitions sequentially with state carryover.
+
+        Args:
+            partitions: List of partitions to solve
+            constraint_values: ConstraintValues object
+            objective_weights: ObjectiveWeights object
+            progress_callback: Optional callback(partition_index, total, status)
+
+        Returns:
+            List of PartitionResult
+        """
+        results = []
+        current_state = None
+
+        for i, partition in enumerate(partitions):
+            if progress_callback:
+                progress_callback(i, len(partitions), "solving")
+
+            result = self.solve_partition(
+                partition,
+                constraint_values,
+                objective_weights,
+                incoming_state=current_state
+            )
+            results.append(result)
+
+            # Update state for next partition
+            if result.outgoing_state:
+                current_state = result.outgoing_state
+
+            logger.info(f"Partition {i} complete: {result.status} in {result.solve_time_seconds:.1f}s")
+
+            if progress_callback:
+                progress_callback(i, len(partitions), result.status)
+
+            # Stop on error if desired
+            if result.status == "ERROR":
+                logger.warning(f"Stopping due to error in partition {i}")
+                break
+
+        return results
+
+    def merge_results(self, results: List[PartitionResult]) -> Dict[str, Any]:
+        """
+        Merge results from all partitions into a single solution.
+
+        Returns:
+            Dict with:
+            - assignments: Combined list of all assignments
+            - summary: Summary statistics
+            - partition_details: Per-partition info
+        """
+        all_assignments = []
+        total_solve_time = 0
+        partition_details = []
+
+        for result in results:
+            all_assignments.extend(result.assignments)
+            total_solve_time += result.solve_time_seconds
+
+            partition_details.append({
+                'index': result.partition_index,
+                'status': result.status,
+                'solve_time': result.solve_time_seconds,
+                'assignments_count': len(result.assignments),
+                'error': result.error_message
+            })
+
+        # 2026-04-20: defense-in-depth dedupe for LC-06 RT/CT rows.
+        # Fix B (day-boundary snap in _split_oversized_partition) eliminates
+        # sub-partition date overlaps, which is the root cause of RT/CT
+        # duplicates. This pass is a safety net: if two partitions ever emit
+        # the same (resource_id, start, assignment_type) triple (e.g. from
+        # a future overlap bug, or an overlapping top-level partition), we
+        # keep the first and drop the rest. DEMAND rows are NOT deduped —
+        # they have distinct request_ids and their duplicates would indicate
+        # a different solver bug worth surfacing, not hiding.
+        deduped = []
+        seen_ct_rt = set()
+        ct_rt_duplicates = 0
+        for a in all_assignments:
+            t = a.get('assignment_type')
+            if t in ('RT', 'CT'):
+                key = (a.get('resource_id'), a.get('start'), t)
+                if key in seen_ct_rt:
+                    ct_rt_duplicates += 1
+                    continue
+                seen_ct_rt.add(key)
+            deduped.append(a)
+        if ct_rt_duplicates > 0:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                f"merge_results: dropped {ct_rt_duplicates} duplicate RT/CT row(s) "
+                f"across partitions (investigate _split_oversized_partition overlaps)"
+            )
+        all_assignments = deduped
+
+        # Determine overall status
+        statuses = [r.status for r in results]
+        if all(s == "OPTIMAL" for s in statuses):
+            overall_status = "OPTIMAL"
+        elif all(s in ["OPTIMAL", "FEASIBLE"] for s in statuses):
+            overall_status = "FEASIBLE"
+        elif all(s in ["OPTIMAL", "FEASIBLE", "PARTIAL"] for s in statuses):
+            overall_status = "FEASIBLE"  # Partial sub-partitions still produce valid assignments
+        elif "ERROR" in statuses and any(s in ["OPTIMAL", "FEASIBLE", "PARTIAL"] for s in statuses):
+            overall_status = "PARTIAL"  # Some partitions succeeded, some failed
+        elif "ERROR" in statuses:
+            overall_status = "ERROR"
+        elif "INFEASIBLE" in statuses:
+            overall_status = "INFEASIBLE"
+        else:
+            overall_status = "PARTIAL"
+
+        # Aggregate per-partition objective_value. Sum is the natural
+        # aggregate because each partition minimizes its own objective and
+        # the partitions are independent in the model sense (no shared
+        # decision vars). None if no partition produced one.
+        partition_objectives = [r.objective_value for r in results if r.objective_value is not None]
+        total_objective_value = sum(partition_objectives) if partition_objectives else None
+
+        return {
+            'assignments': all_assignments,
+            'summary': {
+                'overall_status': overall_status,
+                'total_solve_time_seconds': total_solve_time,
+                'total_assignments': len(all_assignments),
+                'partitions_solved': len(results),
+                'partitions_successful': sum(1 for r in results if r.status in ["OPTIMAL", "FEASIBLE"]),
+                # 2026-04-22: sum of per-partition CP-SAT objective costs.
+                # None when no partition reached FEASIBLE/OPTIMAL.
+                'total_objective_value': total_objective_value,
+                'partition_objective_values': partition_objectives,
+            },
+            'partition_details': partition_details
+        }
+
+
+# =============================================================================
+# CONVENIENCE FUNCTION
+# =============================================================================
+
+def solve_with_partitioning(
+    demands_data: Dict[str, Any],
+    resources_data: Dict[str, Any],
+    absences_data: Dict[str, Any],
+    constraint_values,
+    objective_weights,
+    config: Optional[PartitionConfig] = None,
+    progress_callback=None
+) -> Dict[str, Any]:
+    """
+    Convenience function to solve with automatic partitioning.
+
+    If the problem is small enough, solves directly.
+    Otherwise, partitions and solves sequentially.
+
+    Args:
+        demands_data: {'data': [list of demands]}
+        resources_data: {'data': [list of resources]}
+        absences_data: {'data': [list of absences]}
+        constraint_values: ConstraintValues object
+        objective_weights: ObjectiveWeights object
+        config: Optional PartitionConfig
+        progress_callback: Optional progress callback
+
+    Returns:
+        Dict with assignments and summary
+    """
+    from preprocessing.data_processor import preprocess_data
+    from solver.model import create_and_solve_model
+    from ortools.sat.python import cp_model as cp
+    import time
+
+    config = config or PartitionConfig()
+    partitioner = SolverPartitioner(config)
+
+    demands = demands_data.get('data', [])
+    resources = resources_data.get('data', [])
+    absences = absences_data.get('data', [])
+
+    # Check if partitioning needed
+    if not partitioner.should_partition(demands):
+        logger.info(f"No partitioning needed for {len(demands)} demands")
+
+        # Solve directly
+        start_time = time.time()
+        preprocessed = preprocess_data(demands_data, resources_data, absences_data)
+        model = create_and_solve_model(
+            preprocessed,
+            constraint_values,
+            objective_weights,
+            time_limit=config.time_limit_per_partition
+        )
+        solve_time = time.time() - start_time
+
+        status_map = {
+            cp.OPTIMAL: "OPTIMAL",
+            cp.FEASIBLE: "FEASIBLE",
+            cp.INFEASIBLE: "INFEASIBLE",
+            cp.MODEL_INVALID: "MODEL_INVALID",
+            cp.UNKNOWN: "TIMEOUT"
+        }
+
+        return {
+            'assignments': model.solution_assignments if hasattr(model, 'solution_assignments') else [],
+            'summary': {
+                'overall_status': status_map.get(model.status, 'UNKNOWN'),
+                'total_solve_time_seconds': solve_time,
+                'total_assignments': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0,
+                'partitions_solved': 1,
+                'partitions_successful': 1 if model.status in [cp.OPTIMAL, cp.FEASIBLE] else 0,
+                'partitioned': False
+            },
+            'partition_details': [{
+                'index': 0,
+                'status': status_map.get(model.status, 'UNKNOWN'),
+                'solve_time': solve_time,
+                'assignments_count': len(model.solution_assignments) if hasattr(model, 'solution_assignments') else 0
+            }]
+        }
+
+    # Partition and solve
+    logger.info(f"Partitioning {len(demands)} demands")
+    partitions = partitioner.create_partitions(demands, resources, absences)
+    results = partitioner.solve_all(partitions, constraint_values, objective_weights, progress_callback)
+    merged = partitioner.merge_results(results)
+    merged['summary']['partitioned'] = True
+
+    return merged

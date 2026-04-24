@@ -1,0 +1,9 @@
+{
+  "id": "6",
+  "subject": "Run solver test with RT+CT as replannable, verify they still block",
+  "description": "Trigger solver on QA with lock_allocations=true, replannable_demand_type=[\"RT Jour de repos\",\"CT Jour de compensation\"], verify logs show these are protected",
+  "activeForm": "Running solver integration test",
+  "status": "in_progress",
+  "blocks": [],
+  "blockedBy": []
+}

@@ -1,0 +1,219 @@
+2026-04-14T07:42:15.471Z [DEBUG] [init] configureGlobalMTLS starting
+2026-04-14T07:42:15.471Z [DEBUG] [init] configureGlobalMTLS complete
+2026-04-14T07:42:15.471Z [DEBUG] [init] configureGlobalAgents starting
+2026-04-14T07:42:15.471Z [DEBUG] [init] configureGlobalAgents complete
+2026-04-14T07:42:15.478Z [DEBUG] Applying permission update: Adding 73 allow rule(s) to destination 'localSettings': ["Bash(mkdir:*)","Bash(python:*)","Bash(python3:*)","Bash(npx tsc:*)","Bash(/home/ayanm/projects/info-base/infobase-ai/backend/venv/bin/python3 -m pytest:*)","Bash(source venv/bin/activate)","Bash(pip install:*)","Bash(source backend/venv/bin/activate)","Bash(git check-ignore:*)","Bash(git add:*)","mcp__context7__resolve-library-id","mcp__knowledge-graph-custom-path__set_graph_path","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion status --porcelain)","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion diff --name-only HEAD~5)","mcp__knowledge-graph-custom-path__get_statistics","mcp__knowledge-graph-custom-path__backup_graph","mcp__knowledge-graph-custom-path__search_nodes","mcp__knowledge-graph-custom-path__add_observations","mcp__knowledge-graph-custom-path__create_entities","mcp__knowledge-graph-custom-path__create_relations","Bash(find:*)","WebSearch","Bash(npm install:*)","Bash(npm run build:*)","Bash(npm run dev:*)","Bash(done)","Bash(curl:*)","Bash(xargs kill -9)","mcp__knowledge-graph-custom-path__read_graph","Bash(ls:*)","mcp__knowledge-graph-custom-path__open_nodes","mcp__knowledge-graph-custom-path__generate_report","mcp__knowledge-graph-custom-path__get_current_graph_path","Bash(for case in ACTE-2024-001 ACTE-2024-002 ACTE-2024-003)","Bash(do echo:*)","Bash(for template in integration_course asylum_application family_reunification)","Bash(grep:*)","Bash(tree:*)","mcp__playwright__browser_navigate","mcp__playwright__browser_type","mcp__playwright__browser_snapshot","mcp__playwright__browser_click","mcp__playwright__browser_wait_for","mcp__playwright__browser_console_messages","mcp__playwright__browser_network_requests","mcp__playwright__browser_evaluate","mcp__playwright__browser_press_key","mcp__playwright__browser_take_screenshot","mcp__playwright__browser_hover","mcp__playwright__browser_handle_dialog","Bash(sudo lsof:*)","Bash(ss:*)","Bash(timeout 10 curl:*)","Bash(source:*)","mcp__playwright__browser_fill_form","mcp__playwright__browser_run_code","Bash(__NEW_LINE_ded5ba2c09052fb0__ sleep 2)","Bash(sleep 3 curl -s -X POST http://localhost:8000/api/validation/case/ACTE-2024-001 -H \"Content-Type: application/json\" -d '{\"\"\"\"formData\"\"\"\": {}, \"\"\"\"language\"\"\"\": \"\"\"\"de\"\"\"\"}')","Bash(pgrep:*)","Skill(update-docs-apis)","mcp__knowledge-graph-custom-path__advanced_search","WebFetch(domain:localhost)","mcp__ide__getDiagnostics","Bash(xargs:*)","Bash(sort:*)","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion log --all --full-history -- \"*/.env\" \"**/.env\" \".env\" \"backend/.env\")","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion show c37bf5f208ccf5ccf1b627f2227c895e994744c6:backend/.env)","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion log --all --full-history --pretty=format:\"%H %s\")","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion log --all --oneline --source --all -S \"AIzaSyA25jr2EC9eaQtUs50OHleoz69B7ULh1ZU\")","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion log --all --oneline --source --all -S \"2b5e151428aed2a6aff7158846cf4f2c\")","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion show 34866ae6:backend/.env)","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion show 136c7ac4:backend/.env)","Bash(git -C /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion reflog --all)"]
+2026-04-14T07:42:15.478Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-04-14T07:42:15.482Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-04-14T07:42:15.483Z [DEBUG] [STARTUP] Running setup()...
+2026-04-14T07:42:15.483Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-04-14T07:42:15.485Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=[]
+2026-04-14T07:42:15.486Z [DEBUG] Error log sink initialized
+2026-04-14T07:42:15.514Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-04-14T07:42:15.514Z [DEBUG] Total plugin skills loaded: 0
+2026-04-14T07:42:15.514Z [DEBUG] Total plugin commands loaded: 0
+2026-04-14T07:42:15.514Z [DEBUG] [STARTUP] setup() completed in 31ms
+2026-04-14T07:42:15.514Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-04-14T07:42:15.598Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-04-14T07:42:15.836Z [DEBUG] [Claude in Chrome] Found chrome profiles: Default
+2026-04-14T07:42:15.847Z [DEBUG] Cannot acquire lock for 2.1.34 - held by PID 13243
+2026-04-14T07:42:15.848Z [ERROR] Error: Error: NON-FATAL: Lock acquisition failed for /home/javiervel/.local/share/claude/versions/2.1.34 (expected in multi-process scenarios)
+    at cZ$ (/$bunfs/root/claude:3581:2098)
+    at qjA (/$bunfs/root/claude:3581:1209)
+    at processTicksAndRejections (native:7:39)
+2026-04-14T07:42:15.855Z [DEBUG] Total plugin agents loaded: 0
+2026-04-14T07:42:15.856Z [DEBUG] [Claude in Chrome] Extension not found in any browser
+2026-04-14T07:42:15.856Z [DEBUG] Loaded 9 unique skills (managed: 0, user: 0, project: 0, additional: 0, legacy commands: 9)
+2026-04-14T07:42:15.856Z [DEBUG] getSkills returning: 9 skill dir commands, 0 plugin skills, 2 bundled skills
+2026-04-14T07:42:15.857Z [DEBUG] [STARTUP] Commands and agents loaded in 343ms
+2026-04-14T07:42:15.858Z [DEBUG] [STARTUP] Running showSetupScreens()...
+2026-04-14T07:42:15.858Z [DEBUG] [render] initLayout starting
+2026-04-14T07:42:15.858Z [DEBUG] Layout engine: yoga
+2026-04-14T07:42:15.884Z [DEBUG] [render] initLayout complete
+2026-04-14T07:42:15.890Z [DEBUG] [keybindings] KeybindingSetup initialized with 100 bindings, 0 warnings
+2026-04-14T07:42:15.896Z [DEBUG] [render] first ink render: 779ms since process start
+2026-04-14T07:42:15.896Z [DEBUG] [keybindings] Watching for changes to /home/javiervel/.claude/keybindings.json
+2026-04-14T07:42:15.920Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-04-14T07:42:15.923Z [DEBUG] [STARTUP] showSetupScreens() completed in 65ms
+2026-04-14T07:42:15.923Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-04-14T07:42:15.923Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-04-14T07:42:15.923Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-04-14T07:42:15.924Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:15.924Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:15.929Z [DEBUG] Total LSP servers loaded: 0
+2026-04-14T07:42:15.930Z [DEBUG] [STARTUP] MCP configs loaded in 452ms
+2026-04-14T07:42:15.934Z [DEBUG] MCP server "knowledge-graph-custom-path": Starting connection with timeout of 30000ms
+2026-04-14T07:42:15.940Z [DEBUG] [Reconnection] computeInitialTeamContext: No teammate context set (not a teammate)
+2026-04-14T07:42:15.943Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.618707.1776152535943
+2026-04-14T07:42:15.943Z [DEBUG] Preserving file permissions: 100644
+2026-04-14T07:42:15.949Z [DEBUG] Temp file written successfully, size: 56051 bytes
+2026-04-14T07:42:15.949Z [DEBUG] Applied original permissions to temp file
+2026-04-14T07:42:15.949Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.618707.1776152535943 to /home/javiervel/.claude.json
+2026-04-14T07:42:15.949Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-14T07:42:15.950Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-04-14T07:42:15.950Z [DEBUG] LSP manager initialized with 0 servers
+2026-04-14T07:42:15.951Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-04-14T07:42:15.951Z [DEBUG] Found 0 hook matchers in settings
+2026-04-14T07:42:15.951Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-04-14T07:42:15.951Z [DEBUG] Loaded 0 installed plugins from /home/javiervel/.claude/plugins/installed_plugins.json
+2026-04-14T07:42:15.951Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-04-14T07:42:15.951Z [DEBUG] LSP server manager initialized successfully
+2026-04-14T07:42:15.951Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-04-14T07:42:15.952Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:15.953Z [DEBUG] [render] initLayout starting
+2026-04-14T07:42:15.953Z [DEBUG] [render] initLayout complete
+2026-04-14T07:42:16.125Z [DEBUG] [keybindings] KeybindingSetup initialized with 100 bindings, 0 warnings
+2026-04-14T07:42:16.152Z [DEBUG] [REPL:mount] REPL mounted, disabled=false
+2026-04-14T07:42:16.153Z [DEBUG] Official marketplace auto-install skipped: already_attempted
+2026-04-14T07:42:16.153Z [DEBUG] performStartupChecks called
+2026-04-14T07:42:16.153Z [DEBUG] Starting background plugin installations
+2026-04-14T07:42:16.154Z [DEBUG] performBackgroundPluginInstallations called
+2026-04-14T07:42:16.571Z [DEBUG] [render] first ink render: 1454ms since process start
+2026-04-14T07:42:16.578Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.json, /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion/.claude/settings.local.json...
+2026-04-14T07:42:16.579Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-04-14T07:42:16.579Z [DEBUG] [claudeai-mcp] Gate returned: true
+2026-04-14T07:42:16.579Z [DEBUG] [claudeai-mcp] Fetching from https://api.anthropic.com/v1/mcp_servers?limit=1000
+2026-04-14T07:42:16.580Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2026-04-14T07:42:16.872Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2026-04-14T07:42:16.872Z [DEBUG] AutoUpdaterWrapper: Installation type: native
+2026-04-14T07:42:16.880Z [DEBUG] Git remote URL: https://github.com/Velazquezjfp/infobase-ai.git
+2026-04-14T07:42:16.880Z [DEBUG] Parsed repository: Velazquezjfp/infobase-ai from https://github.com/Velazquezjfp/infobase-ai.git
+2026-04-14T07:42:16.880Z [DEBUG] Parsed repository: Velazquezjfp/infobase-ai from URL: https://github.com/Velazquezjfp/infobase-ai.git
+2026-04-14T07:42:16.880Z [DEBUG] Path /home/javiervel/clients/BAMF/Diga/app/bamf-acte-companion already tracked for repo velazquezjfp/infobase-ai
+2026-04-14T07:42:16.885Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.618707.1776152536885
+2026-04-14T07:42:16.885Z [DEBUG] Preserving file permissions: 100644
+2026-04-14T07:42:16.893Z [DEBUG] Temp file written successfully, size: 56051 bytes
+2026-04-14T07:42:16.893Z [DEBUG] Applied original permissions to temp file
+2026-04-14T07:42:16.893Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.618707.1776152536885 to /home/javiervel/.claude.json
+2026-04-14T07:42:16.893Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-14T07:42:16.893Z [DEBUG] [claudeai-mcp] Fetched 1 servers
+2026-04-14T07:42:16.894Z [DEBUG] MCP server "claude.ai Notion": Initializing claude.ai proxy transport for server mcpsrv_01KMkC2GBrxu9KGt5jtzWcGD
+2026-04-14T07:42:16.894Z [DEBUG] MCP server "claude.ai Notion": Using claude.ai proxy at https://mcp-proxy.anthropic.com/v1/mcp/mcpsrv_01KMkC2GBrxu9KGt5jtzWcGD
+2026-04-14T07:42:16.894Z [DEBUG] MCP server "claude.ai Notion": claude.ai proxy transport created successfully
+2026-04-14T07:42:16.895Z [DEBUG] MCP server "claude.ai Notion": Starting connection with timeout of 30000ms
+2026-04-14T07:42:16.896Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.618707.1776152536896
+2026-04-14T07:42:16.897Z [DEBUG] Preserving file permissions: 100644
+2026-04-14T07:42:16.903Z [DEBUG] Temp file written successfully, size: 56051 bytes
+2026-04-14T07:42:16.903Z [DEBUG] Applied original permissions to temp file
+2026-04-14T07:42:16.903Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.618707.1776152536896 to /home/javiervel/.claude.json
+2026-04-14T07:42:16.903Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-14T07:42:16.903Z [DEBUG] Watching for changes in skill/command directories: /home/javiervel/.claude/commands...
+2026-04-14T07:42:16.915Z [DEBUG] MCP server "ide": Starting connection with timeout of 30000ms
+2026-04-14T07:42:16.915Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-04-14T07:42:16.915Z [DEBUG] [claudeai-mcp] Gate returned: true
+2026-04-14T07:42:16.916Z [DEBUG] [claudeai-mcp] Fetching from https://api.anthropic.com/v1/mcp_servers?limit=1000
+2026-04-14T07:42:16.928Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/claude/versions/2.1.34)
+2026-04-14T07:42:16.932Z [DEBUG] MCP server "knowledge-graph-custom-path": Successfully connected to stdio server in 1001ms
+2026-04-14T07:42:16.932Z [DEBUG] MCP server "knowledge-graph-custom-path": Connection established with capabilities: {"hasTools":true,"hasPrompts":true,"hasResources":true,"serverVersion":{"name":"Knowledge Graph Custom Path","version":"1.13.1"}}
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.966Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.966Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.967Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.967Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:16.982Z [DEBUG] High write ratio: blit=0, write=1102 (100.0% writes), screen=14x191
+2026-04-14T07:42:16.983Z [DEBUG] MCP server "ide": Successfully connected to ws-ide server in 69ms
+2026-04-14T07:42:16.983Z [DEBUG] MCP server "ide": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"Claude Code VSCode MCP","version":"2.1.34"}}
+2026-04-14T07:42:17.015Z [DEBUG] High write ratio: blit=0, write=1102 (100.0% writes), screen=14x191
+2026-04-14T07:42:17.573Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:17.573Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:17.573Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:17.574Z [DEBUG] [claudeai-mcp] Fetched 1 servers
+2026-04-14T07:42:17.585Z [DEBUG] High write ratio: blit=764, write=992 (56.5% writes), screen=14x191
+2026-04-14T07:42:17.586Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-14T07:42:17.587Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.95b; cc_entrypoint=cli;
+2026-04-14T07:42:17.587Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:17.587Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:17.588Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:17.618Z [DEBUG] High write ratio: blit=764, write=992 (56.5% writes), screen=14x191
+2026-04-14T07:42:17.689Z [DEBUG] High write ratio: blit=764, write=993 (56.5% writes), screen=14x191
+2026-04-14T07:42:17.727Z [DEBUG] High write ratio: blit=764, write=822 (51.8% writes), screen=14x191
+2026-04-14T07:42:17.817Z [DEBUG] Tool search disabled via experiment (tengu_tst_kx7): below threshold, deferred tools present [source: analyzeMcp]
+2026-04-14T07:42:17.828Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-14T07:42:17.828Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-14T07:42:17.828Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-14T07:42:17.841Z [DEBUG] High write ratio: blit=764, write=823 (51.9% writes), screen=14x191
+2026-04-14T07:42:17.867Z [DEBUG] High write ratio: blit=764, write=813 (51.6% writes), screen=14x191
+2026-04-14T07:42:17.908Z [DEBUG] High write ratio: blit=764, write=814 (51.6% writes), screen=14x191
+2026-04-14T07:42:17.994Z [DEBUG] High write ratio: blit=764, write=899 (54.1% writes), screen=14x191
+2026-04-14T07:42:18.159Z [DEBUG] High write ratio: blit=764, write=900 (54.1% writes), screen=14x191
+2026-04-14T07:42:18.277Z [DEBUG] MCP server "claude.ai Notion": Successfully connected to claudeai-proxy server in 1383ms
+2026-04-14T07:42:18.277Z [DEBUG] MCP server "claude.ai Notion": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":true,"serverVersion":{"name":"Notion MCP","icons":[{"src":"https://mcp.notion.com/notion-logo-block-main.svg","mimeType":"image/svg+xml"}],"version":"1.2.0","websiteUrl":"https://developers.notion.com/docs/mcp"}}
+2026-04-14T07:42:18.539Z [DEBUG] Stream started - received first chunk
+2026-04-14T07:42:18.586Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.618707.1776152538586
+2026-04-14T07:42:18.586Z [DEBUG] Preserving file permissions: 100644
+2026-04-14T07:42:18.600Z [DEBUG] Temp file written successfully, size: 56051 bytes
+2026-04-14T07:42:18.600Z [DEBUG] Applied original permissions to temp file
+2026-04-14T07:42:18.600Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.618707.1776152538586 to /home/javiervel/.claude.json
+2026-04-14T07:42:18.600Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-14T07:42:18.680Z [DEBUG] Plugin autoupdate: skipped (auto-updater disabled)
+2026-04-14T07:42:18.680Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/4e7d0f18-231c-418a-809c-2cfabd1c50c7-agent-4e7d0f18-231c-418a-809c-2cfabd1c50c7.json.tmp.618707.1776152538680
+2026-04-14T07:42:18.689Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-04-14T07:42:18.689Z [DEBUG] Renaming /home/javiervel/.claude/todos/4e7d0f18-231c-418a-809c-2cfabd1c50c7-agent-4e7d0f18-231c-418a-809c-2cfabd1c50c7.json.tmp.618707.1776152538680 to /home/javiervel/.claude/todos/4e7d0f18-231c-418a-809c-2cfabd1c50c7-agent-4e7d0f18-231c-418a-809c-2cfabd1c50c7.json
+2026-04-14T07:42:18.689Z [DEBUG] File /home/javiervel/.claude/todos/4e7d0f18-231c-418a-809c-2cfabd1c50c7-agent-4e7d0f18-231c-418a-809c-2cfabd1c50c7.json written atomically
+2026-04-14T07:42:18.723Z [DEBUG] Stats cache is up to date
+2026-04-14T07:42:18.734Z [DEBUG] High write ratio: blit=951, write=1433 (60.1% writes), screen=30x191
+2026-04-14T07:42:18.762Z [DEBUG] High write ratio: blit=0, write=1580 (100.0% writes), screen=30x191

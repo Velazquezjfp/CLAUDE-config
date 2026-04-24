@@ -1,0 +1,160 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#2196F3', 'secondaryColor': '#fff3e0', 'secondaryBorderColor': '#FF9800', 'tertiaryColor': '#e8f5e9', 'tertiaryBorderColor': '#4CAF50' }}}%%
+
+graph TB
+
+    %% =====================================================================
+    %% ONTOLOGY LAYER — "What exists" (vocabulary)
+    %% Defines classes and properties. Any system can read this to
+    %% understand what terms mean.
+    %% =====================================================================
+
+    subgraph ONT["ONTOLOGY — bamf.bund.de/ontology/integration-course"]
+        direction TB
+
+        %% Classes
+        APP["bamf:IntegrationCourseApplication
+        ―――――――――――
+        owl:Class
+        subClassOf: schema:Action
+        ―――――――――――
+        An application for an
+        integration course"]
+
+        PERSON["bamf:Applicant
+        ―――――――――――
+        owl:Class
+        subClassOf: schema:Person
+        ―――――――――――
+        A person applying for
+        an integration course"]
+
+        %% Properties
+        P_REF["bamf:referenceNumber
+        ―――――――――――
+        domain: Application
+        range: xsd:string
+        ―――――――――――
+        Case reference (Aktenzeichen)"]
+
+        P_NAME["bamf:candidateName
+        ―――――――――――
+        domain: Applicant
+        range: xsd:string
+        subPropertyOf: schema:name
+        ―――――――――――
+        Full legal name"]
+
+        P_BIRTH["bamf:birthPlace
+        ―――――――――――
+        domain: Applicant
+        range: xsd:string
+        equivalentProperty: schema:birthPlace
+        ―――――――――――
+        City where applicant was born"]
+
+        P_REASON["bamf:reasonForApplication
+        ―――――――――――
+        domain: Application
+        range: xsd:string
+        subPropertyOf: schema:description
+        ―――――――――――
+        Why they are applying"]
+
+        %% Domain relationships
+        P_REF -->|"domain"| APP
+        P_REASON -->|"domain"| APP
+        P_NAME -->|"domain"| PERSON
+        P_BIRTH -->|"domain"| PERSON
+    end
+
+    %% =====================================================================
+    %% SHACL LAYER — "What shape valid data must have" (constraints)
+    %% References the ontology via sh:targetClass and sh:path.
+    %% The ontology does NOT reference SHACL — the link is one-directional.
+    %% =====================================================================
+
+    subgraph SHACL["SHACL SHAPE — Validation constraints for the form"]
+        direction TB
+
+        NODE["bamf:IntegrationCourseApplicationFormShape
+        ―――――――――――
+        sh:NodeShape
+        ―――――――――――
+        Validates the application form
+        within an integration course Akte"]
+
+        S_REF["sh:PropertyShape
+        ―――――――――――
+        sh:minCount 1
+        sh:pattern ACTE-YYYY-NNN
+        ―――――――――――
+        Required, must match format"]
+
+        S_NAME["sh:PropertyShape
+        ―――――――――――
+        sh:minCount 1
+        sh:minLength 2, maxLength 200
+        ―――――――――――
+        Required, 2-200 chars"]
+
+        S_BIRTH["sh:PropertyShape
+        ―――――――――――
+        sh:minCount 1
+        sh:minLength 2
+        ―――――――――――
+        Required, min 2 chars"]
+
+        S_REASON["sh:PropertyShape
+        ―――――――――――
+        sh:minCount 1
+        sh:minLength 10
+        ―――――――――――
+        Required, min 10 chars"]
+
+        NODE -->|"sh:property"| S_REF
+        NODE -->|"sh:property"| S_NAME
+        NODE -->|"sh:property"| S_BIRTH
+        NODE -->|"sh:property"| S_REASON
+    end
+
+    %% =====================================================================
+    %% CROSS-LAYER REFERENCES — SHACL → Ontology (one-directional)
+    %% =====================================================================
+
+    NODE -.->|"sh:targetClass"| APP
+
+    S_REF -.->|"sh:path"| P_REF
+    S_NAME -.->|"sh:path"| P_NAME
+    S_BIRTH -.->|"sh:path"| P_BIRTH
+    S_REASON -.->|"sh:path"| P_REASON
+
+    %% =====================================================================
+    %% SCHEMA.ORG — External vocabulary that BAMF ontology extends
+    %% =====================================================================
+
+    subgraph SCHEMA["SCHEMA.ORG — External standard vocabulary"]
+        direction TB
+        S_ACTION["schema:Action"]
+        S_PERSON["schema:Person"]
+        S_NAME_P["schema:name"]
+        S_BIRTHPLACE["schema:birthPlace"]
+        S_DESC["schema:description"]
+    end
+
+    APP -.->|"subClassOf"| S_ACTION
+    PERSON -.->|"subClassOf"| S_PERSON
+    P_NAME -.->|"subPropertyOf"| S_NAME_P
+    P_BIRTH -.->|"equivalentProperty"| S_BIRTHPLACE
+    P_REASON -.->|"subPropertyOf"| S_DESC
+
+    %% =====================================================================
+    %% WHY THIS MATTERS FOR AI
+    %% =====================================================================
+    %% An LLM extracting data from a document can read the ontology to
+    %% understand that bamf:birthPlace means "city where born" and is
+    %% equivalent to schema:birthPlace. Then it reads the SHACL shape to
+    %% know the field is required and must be a string of at least 2 chars.
+    %%
+    %% Without this: LLM guesses from field label "Geburtsort"
+    %% With this:    LLM knows exactly what the field means, in any language
+    %% =====================================================================

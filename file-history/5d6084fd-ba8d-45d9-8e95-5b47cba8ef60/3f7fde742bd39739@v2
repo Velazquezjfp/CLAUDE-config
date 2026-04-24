@@ -1,0 +1,36 @@
+# Meal Planner Skeleton
+
+Simple FastAPI + static HTML/CSS/JS app for trying out Claude subagents & slash commands.
+
+## Layout
+
+```
+config_2.0/
+├── main.py            # FastAPI app (port 5000)
+├── requirements.txt
+├── data/
+│   ├── meals.json     # Static "DB" of meals
+│   └── plan.json      # Weekly plan (updated via API)
+└── static/
+    ├── index.html
+    ├── styles.css
+    └── app.js
+```
+
+## Run
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+Open http://localhost:5000
+
+## Endpoints
+
+- `GET /`             -> serves `static/index.html`
+- `GET /api/meals`    -> list of meals
+- `GET /api/plan`     -> current weekly plan
+- `PUT /api/plan`     -> `{ "day": "mon", "slot": "lunch", "meal_id": "m5" }`

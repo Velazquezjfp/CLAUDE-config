@@ -1,0 +1,998 @@
+2026-04-09T08:25:10.690Z [DEBUG] [init] configureGlobalMTLS starting
+2026-04-09T08:25:10.690Z [DEBUG] [init] configureGlobalMTLS complete
+2026-04-09T08:25:10.690Z [DEBUG] [init] configureGlobalAgents starting
+2026-04-09T08:25:10.690Z [DEBUG] [init] configureGlobalAgents complete
+2026-04-09T08:25:10.696Z [DEBUG] Applying permission update: Adding 31 allow rule(s) to destination 'localSettings': ["Bash(source .venv/bin/activate)","Bash(pip show:*)","Bash(python:*)","Bash(source:*)","Bash(pip install:*)","WebFetch(domain:github.com)","WebSearch","WebFetch(domain:www.litellm.ai)","WebFetch(domain:ollama.com)","Bash(du:*)","Bash(file:*)","WebFetch(domain:docs.litellm.ai)","Bash(ollama list:*)","Bash(/home/javiervel/clients/BAMF/Diga/docling-demo/docling-venv/bin/pip:*)","WebFetch(domain:dev.to)","WebFetch(domain:docs.opensearch.org)","WebFetch(domain:pypi.org)","WebFetch(domain:docling-project.github.io)","Bash(/home/javiervel/clients/BAMF/Diga/docling-demo/docling-venv/bin/python:*)","Bash(docker:*)","Bash(systemctl is-active:*)","mcp__ide__executeCode","Bash(1 <<'PYEOF'\nimport warnings; warnings.filterwarnings\\(\"ignore\"\\)\nfrom docling.document_converter import DocumentConverter\nfrom pathlib import Path\nimport json\n\nconverter = DocumentConverter\\(\\)\nresult = converter.convert\\(Path\\('./docs_1/AOK.pdf'\\)\\)\ndoc_dict = result.document.export_to_dict\\(\\)\ntexts = doc_dict['texts']\nitem = texts[0]\nprint\\('text:', item.get\\('text', ''\\)[:100]\\)\nprint\\('label:', item.get\\('label'\\)\\)\nprint\\('prov:', json.dumps\\(item.get\\('prov', []\\), indent=2\\)[:500]\\)\nPYEOF)","Bash(1 <<'PYEOF'\nimport warnings; warnings.filterwarnings\\(\"ignore\"\\)\nfrom docling_graph import run_pipeline, PipelineConfig, PipelineContext\nimport inspect\n\n# Check run_pipeline signature\nprint\\(\"run_pipeline signature:\"\\)\nprint\\(inspect.signature\\(run_pipeline\\)\\)\nprint\\(\\)\n\n# Check PipelineConfig\nprint\\(\"PipelineConfig fields:\"\\)\nfor name, field in PipelineConfig.model_fields.items\\(\\):\n    print\\(f\"  {name}: {field.annotation}\"\\)\nprint\\(\\)\n\n# Check PipelineContext\nprint\\(\"PipelineContext:\", dir\\(PipelineContext\\)\\)\n\n# Check LLM config\nfrom docling_graph import LLMConfig\nprint\\(\"\\\\nLLMConfig fields:\"\\)\nfor name, field in LLMConfig.model_fields.items\\(\\):\n    print\\(f\"  {name}: {field.annotation}\"\\)\nPYEOF)","Bash(1 <<'PYEOF'\nimport warnings; warnings.filterwarnings\\(\"ignore\"\\)\nfrom docling_graph import ModelConfig, ModelsConfig\n\nprint\\(\"ModelConfig fields:\"\\)\nfor name, field in ModelConfig.model_fields.items\\(\\):\n    print\\(f\"  {name}: {field.annotation}, default={field.default}\"\\)\n\nprint\\(\"\\\\nModelsConfig fields:\"\\)\nfor name, field in ModelsConfig.model_fields.items\\(\\):\n    print\\(f\"  {name}: {field.annotation}\"\\)\n\n# Check PipelineContext attributes\nfrom docling_graph import PipelineContext\nimport dataclasses\nprint\\(\"\\\\nPipelineContext fields:\"\\)\nfor f in dataclasses.fields\\(PipelineContext\\):\n    print\\(f\"  {f.name}: {f.type}\"\\)\nPYEOF)","Bash(1 <<'PYEOF'\nimport warnings; warnings.filterwarnings\\(\"ignore\"\\)\nimport ollama, json, re\n\n# Direct test of graph extraction\nmd_sample = open\\(\"temp/AOK.md\"\\).read\\(\\)\nprint\\(f\"AOK markdown: {len\\(md_sample\\)} chars\"\\)\n\nprompt = \"\"\"Extract structured entities from this German document.\nReturn a JSON object with these fields \\(use null if not found\\):\n\n{\n  \"familienname\": \"last name of the person\",\n  \"vorname\": \"first name of the person\",\n  \"geburtsdatum\": \"date of birth \\(YYYY-MM-DD\\)\",\n  \"geburtsort\": \"place of birth\",\n  \"staatsangehoerigkeit\": \"nationality\",\n  \"aufenthaltsstatus\": \"residence status\",\n  \"adresse\": \"full address\",\n  \"telefon\": \"phone number\",\n  \"email\": \"email address\",\n  \"krankenversicherung\": \"health insurance provider\",\n  \"sprachnachweis\": \"language certificate level\",\n  \"pruefungsergebnis\": \"exam result\"\n}\n\nDocument text:\n\"\"\" + md_sample[:4000] + \"\"\"\n\nReturn ONLY valid JSON.\"\"\"\n\nresponse = ollama.chat\\(\n    model=\"gemma3:12b\",\n    messages=[{\"role\": \"user\", \"content\": prompt}],\n    options={\"temperature\": 0.1},\n\\)\nraw = response[\"message\"][\"content\"]\nprint\\(f\"Raw response:\\\\n{raw[:500]}\"\\)\n\njson_match = re.search\\(r\"\\\\{[^{}]*\\(?:\\\\{[^{}]*\\\\}[^{}]*\\)*\\\\}\", raw, re.DOTALL\\)\nif json_match:\n    entities = json.loads\\(json_match.group\\(\\)\\)\n    entities = {k: v for k, v in entities.items\\(\\) if v is not None}\n    print\\(f\"\\\\nExtracted: {json.dumps\\(entities, indent=2, ensure_ascii=False\\)}\"\\)\nelse:\n    print\\(\"No JSON found!\"\\)\nPYEOF)","Bash(python3:*)","Bash(shacl2code generate python --help:*)","Bash(pdfinfo:*)","Bash(ls:*)","Bash(chmod:*)"]
+2026-04-09T08:25:10.696Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-04-09T08:25:10.699Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-04-09T08:25:10.700Z [DEBUG] [STARTUP] Running setup()...
+2026-04-09T08:25:10.700Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-04-09T08:25:10.703Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/home/javiervel/.claude/skills, project=[]
+2026-04-09T08:25:10.703Z [DEBUG] Error log sink initialized
+2026-04-09T08:25:10.732Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-04-09T08:25:10.732Z [DEBUG] Total plugin skills loaded: 0
+2026-04-09T08:25:10.732Z [DEBUG] Total plugin commands loaded: 0
+2026-04-09T08:25:10.732Z [DEBUG] [STARTUP] setup() completed in 32ms
+2026-04-09T08:25:10.732Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-04-09T08:25:10.822Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-04-09T08:25:10.880Z [DEBUG] [Claude in Chrome] Found chrome profiles: Default
+2026-04-09T08:25:10.896Z [DEBUG] Cannot acquire lock for 2.1.34 - held by PID 5557
+2026-04-09T08:25:10.896Z [ERROR] Error: Error: NON-FATAL: Lock acquisition failed for /home/javiervel/.local/share/claude/versions/2.1.34 (expected in multi-process scenarios)
+    at cZ$ (/$bunfs/root/claude:3581:2098)
+    at qjA (/$bunfs/root/claude:3581:1209)
+    at processTicksAndRejections (native:7:39)
+2026-04-09T08:25:10.916Z [DEBUG] [Claude in Chrome] Extension not found in any browser
+2026-04-09T08:25:10.918Z [DEBUG] Total plugin agents loaded: 0
+2026-04-09T08:25:10.919Z [DEBUG] Loaded 9 unique skills (managed: 0, user: 0, project: 0, additional: 0, legacy commands: 9)
+2026-04-09T08:25:10.919Z [DEBUG] getSkills returning: 9 skill dir commands, 0 plugin skills, 2 bundled skills
+2026-04-09T08:25:10.920Z [DEBUG] [STARTUP] Commands and agents loaded in 188ms
+2026-04-09T08:25:10.920Z [DEBUG] [STARTUP] Running showSetupScreens()...
+2026-04-09T08:25:10.920Z [DEBUG] [render] initLayout starting
+2026-04-09T08:25:10.920Z [DEBUG] Layout engine: yoga
+2026-04-09T08:25:10.933Z [DEBUG] [render] initLayout complete
+2026-04-09T08:25:10.938Z [DEBUG] [keybindings] KeybindingSetup initialized with 100 bindings, 0 warnings
+2026-04-09T08:25:10.943Z [DEBUG] [render] first ink render: 592ms since process start
+2026-04-09T08:25:10.943Z [DEBUG] [keybindings] Watching for changes to /home/javiervel/.claude/keybindings.json
+2026-04-09T08:25:10.962Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-04-09T08:25:10.964Z [DEBUG] [STARTUP] showSetupScreens() completed in 44ms
+2026-04-09T08:25:10.964Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-04-09T08:25:10.964Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-04-09T08:25:10.964Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-04-09T08:25:10.964Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:25:10.964Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:25:10.969Z [DEBUG] Total LSP servers loaded: 0
+2026-04-09T08:25:10.969Z [DEBUG] [STARTUP] MCP configs loaded in 273ms
+2026-04-09T08:25:10.972Z [DEBUG] [Reconnection] computeInitialTeamContext: No teammate context set (not a teammate)
+2026-04-09T08:25:10.976Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775723110976
+2026-04-09T08:25:10.976Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T08:25:10.979Z [DEBUG] Temp file written successfully, size: 56582 bytes
+2026-04-09T08:25:10.979Z [DEBUG] Applied original permissions to temp file
+2026-04-09T08:25:10.979Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775723110976 to /home/javiervel/.claude.json
+2026-04-09T08:25:10.979Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T08:25:10.980Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-04-09T08:25:10.980Z [DEBUG] LSP manager initialized with 0 servers
+2026-04-09T08:25:10.981Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-04-09T08:25:10.981Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:25:10.981Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-04-09T08:25:10.982Z [DEBUG] Loaded 0 installed plugins from /home/javiervel/.claude/plugins/installed_plugins.json
+2026-04-09T08:25:10.982Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-04-09T08:25:10.982Z [DEBUG] LSP server manager initialized successfully
+2026-04-09T08:25:10.982Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-04-09T08:25:10.982Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:25:10.988Z [DEBUG] [render] initLayout starting
+2026-04-09T08:25:11.270Z [DEBUG] Git remote URL: null
+2026-04-09T08:25:11.270Z [DEBUG] No git remote URL found
+2026-04-09T08:25:11.270Z [DEBUG] Not in a GitHub repository, skipping path mapping update
+2026-04-09T08:25:11.270Z [DEBUG] [render] initLayout complete
+2026-04-09T08:25:11.274Z [DEBUG] [keybindings] KeybindingSetup initialized with 100 bindings, 0 warnings
+2026-04-09T08:25:11.336Z [DEBUG] High write ratio: blit=0, write=1037 (100.0% writes), screen=17x175
+2026-04-09T08:25:11.340Z [DEBUG] [REPL:mount] REPL mounted, disabled=false
+2026-04-09T08:25:11.687Z [DEBUG] Official marketplace auto-install skipped: already_attempted
+2026-04-09T08:25:11.687Z [DEBUG] performStartupChecks called
+2026-04-09T08:25:11.688Z [DEBUG] Starting background plugin installations
+2026-04-09T08:25:11.688Z [DEBUG] performBackgroundPluginInstallations called
+2026-04-09T08:25:11.981Z [DEBUG] [render] first ink render: 1630ms since process start
+2026-04-09T08:25:12.226Z [DEBUG] Watching for changes in setting files /home/javiervel/.claude/settings.json, /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.json, /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json...
+2026-04-09T08:25:12.227Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-04-09T08:25:12.227Z [DEBUG] [claudeai-mcp] Gate returned: true
+2026-04-09T08:25:12.227Z [DEBUG] [claudeai-mcp] Fetching from https://api.anthropic.com/v1/mcp_servers?limit=1000
+2026-04-09T08:25:12.466Z [DEBUG] Setting installation status: 0 marketplaces, 0 installable plugins, 0 uninstallable plugins
+2026-04-09T08:25:12.467Z [DEBUG] Loaded plugins - Enabled: 0, Disabled: 0, Commands: 0, Agents: 0, Errors: 0
+2026-04-09T08:25:12.467Z [DEBUG] AutoUpdaterWrapper: Installation type: native
+2026-04-09T08:25:12.477Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775723112477
+2026-04-09T08:25:12.477Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T08:25:12.490Z [DEBUG] Temp file written successfully, size: 56582 bytes
+2026-04-09T08:25:12.490Z [DEBUG] Applied original permissions to temp file
+2026-04-09T08:25:12.490Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775723112477 to /home/javiervel/.claude.json
+2026-04-09T08:25:12.490Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T08:25:12.490Z [DEBUG] [claudeai-mcp] Fetched 1 servers
+2026-04-09T08:25:12.491Z [DEBUG] MCP server "claude.ai Notion": Initializing claude.ai proxy transport for server mcpsrv_01KMkC2GBrxu9KGt5jtzWcGD
+2026-04-09T08:25:12.491Z [DEBUG] MCP server "claude.ai Notion": Using claude.ai proxy at https://mcp-proxy.anthropic.com/v1/mcp/mcpsrv_01KMkC2GBrxu9KGt5jtzWcGD
+2026-04-09T08:25:12.491Z [DEBUG] MCP server "claude.ai Notion": claude.ai proxy transport created successfully
+2026-04-09T08:25:12.494Z [DEBUG] MCP server "claude.ai Notion": Starting connection with timeout of 30000ms
+2026-04-09T08:25:12.495Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775723112495
+2026-04-09T08:25:12.495Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T08:25:12.499Z [DEBUG] Temp file written successfully, size: 56582 bytes
+2026-04-09T08:25:12.499Z [DEBUG] Applied original permissions to temp file
+2026-04-09T08:25:12.499Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775723112495 to /home/javiervel/.claude.json
+2026-04-09T08:25:12.500Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T08:25:12.500Z [DEBUG] Watching for changes in skill/command directories: /home/javiervel/.claude/commands...
+2026-04-09T08:25:12.511Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/home/javiervel/.local/share/claude/versions/2.1.34)
+2026-04-09T08:25:12.525Z [DEBUG] rg error (signal=undefined, code=ABORT_ERR, stderr: ), 5329 results
+2026-04-09T08:25:12.525Z [ERROR] AbortError: AbortError: The operation was aborted.
+    at unknown
+    at abortChildProcess (node:child_process:937:42)
+    at onAbortListener2 (node:child_process:35:24)
+    at abort (unknown)
+    at <anonymous> (/$bunfs/root/claude:3437:209)
+2026-04-09T08:25:12.532Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:25:12.532Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:25:12.532Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:25:12.554Z [DEBUG] High write ratio: blit=0, write=1066 (100.0% writes), screen=17x175
+2026-04-09T08:25:14.647Z [DEBUG] MCP server "claude.ai Notion": Successfully connected to claudeai-proxy server in 2156ms
+2026-04-09T08:25:14.648Z [DEBUG] MCP server "claude.ai Notion": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":true,"serverVersion":{"name":"Notion MCP","icons":[{"src":"https://mcp.notion.com/notion-logo-block-main.svg","mimeType":"image/svg+xml"}],"version":"1.2.0","websiteUrl":"https://developers.notion.com/docs/mcp"}}
+2026-04-09T08:25:15.277Z [DEBUG] High write ratio: blit=0, write=1066 (100.0% writes), screen=17x175
+2026-04-09T08:30:11.313Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=undefined
+2026-04-09T08:30:11.632Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T08:30:11.632Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 2,
+  "rejected_count": 0
+}
+2026-04-09T08:32:55.753Z [DEBUG] High write ratio: blit=0, write=2087 (100.0% writes), screen=17x340
+2026-04-09T08:32:57.016Z [DEBUG] High write ratio: blit=0, write=1426 (100.0% writes), screen=18x175
+2026-04-09T08:32:59.392Z [DEBUG] High write ratio: blit=0, write=1398 (100.0% writes), screen=18x168
+2026-04-09T08:32:59.998Z [DEBUG] High write ratio: blit=0, write=1426 (100.0% writes), screen=18x175
+2026-04-09T08:33:02.838Z [DEBUG] High write ratio: blit=0, write=1426 (100.0% writes), screen=18x175
+2026-04-09T08:35:11.398Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T08:35:11.398Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+2026-04-09T08:40:34.018Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-04-09T08:40:34.018Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-04-09T08:40:34.019Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-04-09T08:40:34.019Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-04-09T08:40:34.022Z [DEBUG] Sending 10 skills via attachment (initial, 10 total sent)
+2026-04-09T08:40:34.028Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-04-09T08:40:34.028Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:34.028Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-04-09T08:40:34.031Z [DEBUG] FileHistory: Added snapshot for 225323ae-6d27-4e67-83f6-beb8bea940c7, tracking 0 files
+2026-04-09T08:40:34.035Z [DEBUG] [useDeferredValue] Messages deferred by 2 (0→2)
+2026-04-09T08:40:34.052Z [DEBUG] High write ratio: blit=0, write=1068 (100.0% writes), screen=19x175
+2026-04-09T08:40:34.058Z [DEBUG] Plugin autoupdate: skipped (auto-updater disabled)
+2026-04-09T08:40:34.058Z [DEBUG] Writing to temp file: /home/javiervel/.claude/todos/db5a3587-49d3-446a-a3e7-cf78eba8e33c-agent-db5a3587-49d3-446a-a3e7-cf78eba8e33c.json.tmp.78128.1775724034058
+2026-04-09T08:40:34.061Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-04-09T08:40:34.061Z [DEBUG] Renaming /home/javiervel/.claude/todos/db5a3587-49d3-446a-a3e7-cf78eba8e33c-agent-db5a3587-49d3-446a-a3e7-cf78eba8e33c.json.tmp.78128.1775724034058 to /home/javiervel/.claude/todos/db5a3587-49d3-446a-a3e7-cf78eba8e33c-agent-db5a3587-49d3-446a-a3e7-cf78eba8e33c.json
+2026-04-09T08:40:34.061Z [DEBUG] File /home/javiervel/.claude/todos/db5a3587-49d3-446a-a3e7-cf78eba8e33c-agent-db5a3587-49d3-446a-a3e7-cf78eba8e33c.json written atomically
+2026-04-09T08:40:34.063Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:34.063Z [DEBUG] [SystemPrompt] path=simple proactive=false
+2026-04-09T08:40:34.069Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.6b8; cc_entrypoint=cli;
+2026-04-09T08:40:34.069Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:34.069Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:34.070Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:34.071Z [DEBUG] Total plugin output styles loaded: 0
+2026-04-09T08:40:34.074Z [DEBUG] autocompact: tokens=383 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:34.075Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:34.075Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:34.075Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:34.106Z [DEBUG] [useDeferredValue] Messages deferred by 2 (0→2)
+2026-04-09T08:40:34.115Z [DEBUG] Stats cache stale (2026-03-26), processing 2026-03-27 to 2026-04-08 in background
+2026-04-09T08:40:34.117Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/494cb50a24e86f37.txt
+2026-04-09T08:40:34.127Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/9759b4b230eeff31.txt
+2026-04-09T08:40:34.181Z [DEBUG] High write ratio: blit=0, write=1581 (100.0% writes), screen=23x175
+2026-04-09T08:40:34.182Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/8aca62d38432be4a.txt
+2026-04-09T08:40:34.187Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/069d70e41d123868.txt
+2026-04-09T08:40:34.187Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/17a0f43169f3c395.txt
+2026-04-09T08:40:34.188Z [DEBUG] Cleaned up old paste: /home/javiervel/.claude/paste-cache/cbe9442dbbff2a10.txt
+2026-04-09T08:40:34.230Z [DEBUG] Stats cache saved successfully (lastComputedDate: 2026-04-08)
+2026-04-09T08:40:34.230Z [DEBUG] Stats cache updated with 5 new sessions
+2026-04-09T08:40:34.439Z [DEBUG] Tool search disabled via experiment (tengu_tst_kx7): below threshold, deferred tools present [source: query]
+2026-04-09T08:40:34.439Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:34.445Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.712; cc_entrypoint=cli;
+2026-04-09T08:40:34.446Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:34.446Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:34.447Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:35.129Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:37.698Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:39.794Z [DEBUG] [useDeferredValue] Messages deferred by 1 (2→3)
+2026-04-09T08:40:39.829Z [DEBUG] High write ratio: blit=0, write=1597 (100.0% writes), screen=23x175
+2026-04-09T08:40:40.550Z [DEBUG] [useDeferredValue] Messages deferred by 1 (3→4)
+2026-04-09T08:40:40.570Z [DEBUG] High write ratio: blit=0, write=1697 (100.0% writes), screen=25x175
+2026-04-09T08:40:45.660Z [DEBUG] executePreToolHooks called for tool: Task
+2026-04-09T08:40:45.660Z [DEBUG] Getting matching hook commands for PreToolUse with query: Task
+2026-04-09T08:40:45.660Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:45.661Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2026-04-09T08:40:45.665Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2026-04-09T08:40:45.665Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:45.665Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2026-04-09T08:40:45.666Z [DEBUG] autocompact: tokens=252 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:45.666Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:45.666Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:45.667Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:45.668Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:45.668Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:45.668Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:45.671Z [DEBUG] [useDeferredValue] Messages deferred by 2 (4→6)
+2026-04-09T08:40:45.676Z [DEBUG] High write ratio: blit=0, write=1697 (100.0% writes), screen=25x175
+2026-04-09T08:40:45.710Z [DEBUG] High write ratio: blit=0, write=1913 (100.0% writes), screen=29x175
+2026-04-09T08:40:46.907Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:47.679Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:40:47.680Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:40:47.680Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:47.680Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:47.706Z [DEBUG] [useDeferredValue] Messages deferred by 1 (6→7)
+2026-04-09T08:40:47.712Z [DEBUG] High write ratio: blit=0, write=1940 (100.0% writes), screen=30x175
+2026-04-09T08:40:47.741Z [DEBUG] tree-sitter: loaded from embedded
+2026-04-09T08:40:47.812Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2026-04-09T08:40:47.812Z [DEBUG] Looking for shell config file: /home/javiervel/.bashrc
+2026-04-09T08:40:47.812Z [DEBUG] Snapshots directory: /home/javiervel/.claude/shell-snapshots
+2026-04-09T08:40:47.813Z [DEBUG] Creating snapshot at: /home/javiervel/.claude/shell-snapshots/snapshot-bash-1775724047812-rjoro7.sh
+2026-04-09T08:40:47.813Z [DEBUG] Shell binary exists: true
+2026-04-09T08:40:47.813Z [DEBUG] Execution timeout: 10000ms
+2026-04-09T08:40:47.816Z [DEBUG] [useDeferredValue] Messages deferred by 1 (6→7)
+2026-04-09T08:40:47.848Z [DEBUG] Shell snapshot created successfully (4474 bytes)
+2026-04-09T08:40:47.849Z [DEBUG] No session environment scripts found
+2026-04-09T08:40:47.853Z [DEBUG] High write ratio: blit=0, write=2115 (100.0% writes), screen=30x175
+2026-04-09T08:40:47.903Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:47.904Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.7cc; cc_entrypoint=cli;
+2026-04-09T08:40:47.904Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:47.904Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:47.905Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:47.906Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:40:47.906Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:47.906Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:47.908Z [DEBUG] autocompact: tokens=30029 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:47.908Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:47.908Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:47.910Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:47.910Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:47.910Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:47.911Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:47.912Z [DEBUG] [useDeferredValue] Messages deferred by 1 (7→8)
+2026-04-09T08:40:47.938Z [DEBUG] High write ratio: blit=0, write=2115 (100.0% writes), screen=31x175
+2026-04-09T08:40:48.827Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:48.885Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:49.347Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:40:49.348Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:40:49.348Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:49.348Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:49.354Z [DEBUG] [useDeferredValue] Messages deferred by 1 (8→9)
+2026-04-09T08:40:49.364Z [DEBUG] [useDeferredValue] Messages deferred by 1 (8→9)
+2026-04-09T08:40:49.391Z [DEBUG] High write ratio: blit=0, write=2047 (100.0% writes), screen=32x175
+2026-04-09T08:40:49.398Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:49.398Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.71d; cc_entrypoint=cli;
+2026-04-09T08:40:49.398Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:49.399Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:49.399Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:49.400Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:40:49.400Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:49.400Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:49.401Z [DEBUG] autocompact: tokens=31412 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:49.401Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:49.401Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:49.402Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:49.402Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:49.402Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:49.403Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:49.403Z [DEBUG] [useDeferredValue] Messages deferred by 1 (9→10)
+2026-04-09T08:40:49.433Z [DEBUG] High write ratio: blit=0, write=1873 (100.0% writes), screen=32x175
+2026-04-09T08:40:50.157Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:50.690Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:51.309Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:40:51.310Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:40:51.310Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:51.310Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:51.319Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:51.319Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:51.319Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:51.321Z [DEBUG] [useDeferredValue] Messages deferred by 1 (10→11)
+2026-04-09T08:40:51.330Z [DEBUG] [useDeferredValue] Messages deferred by 1 (10→11)
+2026-04-09T08:40:51.359Z [DEBUG] High write ratio: blit=0, write=1898 (100.0% writes), screen=32x175
+2026-04-09T08:40:51.653Z [DEBUG] Read tool error (339ms): File content (50720 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
+2026-04-09T08:40:51.653Z [ERROR] MaxFileReadTokenExceededError: MaxFileReadTokenExceededError: File content (50720 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
+    at ETD (/$bunfs/root/claude:3257:3309)
+    at processTicksAndRejections (native:7:39)
+2026-04-09T08:40:51.656Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Read
+2026-04-09T08:40:51.656Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:51.656Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:51.659Z [DEBUG] autocompact: tokens=31978 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:51.659Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:51.659Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:51.662Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:51.664Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:51.664Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:51.664Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:51.666Z [DEBUG] [useDeferredValue] Messages deferred by 1 (11→12)
+2026-04-09T08:40:51.702Z [DEBUG] High write ratio: blit=0, write=1831 (100.0% writes), screen=32x175
+2026-04-09T08:40:52.415Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:53.384Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-04-09T08:40:53.385Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-04-09T08:40:53.385Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:53.385Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-04-09T08:40:53.389Z [DEBUG] [useDeferredValue] Messages deferred by 1 (12→13)
+2026-04-09T08:40:53.396Z [DEBUG] [useDeferredValue] Messages deferred by 1 (12→13)
+2026-04-09T08:40:53.433Z [DEBUG] High write ratio: blit=0, write=1942 (100.0% writes), screen=32x175
+2026-04-09T08:40:53.542Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-04-09T08:40:53.542Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:53.542Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-04-09T08:40:53.544Z [DEBUG] autocompact: tokens=34034 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:53.544Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:53.544Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:53.545Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:53.546Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:53.546Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:53.546Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:53.548Z [DEBUG] [useDeferredValue] Messages deferred by 1 (13→14)
+2026-04-09T08:40:53.581Z [DEBUG] High write ratio: blit=0, write=1917 (100.0% writes), screen=32x175
+2026-04-09T08:40:55.027Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:55.953Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:40:55.953Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:40:55.953Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:55.953Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:55.955Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:40:55.955Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:55.955Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:40:55.956Z [DEBUG] [useDeferredValue] Messages deferred by 1 (14→15)
+2026-04-09T08:40:55.993Z [DEBUG] High write ratio: blit=0, write=1936 (100.0% writes), screen=32x175
+2026-04-09T08:40:56.044Z [DEBUG] [useDeferredValue] Messages deferred by 1 (15→16)
+2026-04-09T08:40:56.082Z [DEBUG] High write ratio: blit=0, write=1825 (100.0% writes), screen=32x175
+2026-04-09T08:40:56.172Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:40:56.175Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:40:56.175Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:56.175Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:56.185Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:40:56.185Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:56.185Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:40:56.189Z [DEBUG] [useDeferredValue] Messages deferred by 2 (16→18)
+2026-04-09T08:40:56.232Z [DEBUG] High write ratio: blit=0, write=1836 (100.0% writes), screen=32x175
+2026-04-09T08:40:56.467Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:40:56.468Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:40:56.468Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:56.468Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:56.473Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:40:56.473Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:56.473Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:40:56.474Z [DEBUG] [useDeferredValue] Messages deferred by 1 (18→19)
+2026-04-09T08:40:56.498Z [DEBUG] [useDeferredValue] Messages deferred by 1 (19→20)
+2026-04-09T08:40:56.502Z [DEBUG] High write ratio: blit=0, write=1853 (100.0% writes), screen=32x175
+2026-04-09T08:40:56.513Z [DEBUG] autocompact: tokens=45266 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:56.513Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:56.513Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:56.514Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:56.515Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:56.515Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:56.515Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:56.516Z [DEBUG] [useDeferredValue] Messages deferred by 1 (19→20)
+2026-04-09T08:40:56.549Z [DEBUG] High write ratio: blit=0, write=1824 (100.0% writes), screen=32x175
+2026-04-09T08:40:58.325Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:40:59.729Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:40:59.730Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:40:59.730Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:59.730Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:40:59.733Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:40:59.733Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:59.733Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:40:59.736Z [DEBUG] [useDeferredValue] Messages deferred by 2 (20→22)
+2026-04-09T08:40:59.757Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:40:59.758Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:40:59.758Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:40:59.758Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:59.763Z [DEBUG] [useDeferredValue] Messages deferred by 1 (22→23)
+2026-04-09T08:40:59.766Z [DEBUG] High write ratio: blit=0, write=1835 (100.0% writes), screen=32x175
+2026-04-09T08:40:59.795Z [DEBUG] High write ratio: blit=0, write=1915 (100.0% writes), screen=32x175
+2026-04-09T08:40:59.812Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:59.812Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.71d; cc_entrypoint=cli;
+2026-04-09T08:40:59.812Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:59.812Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:59.813Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:59.813Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:40:59.813Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:40:59.813Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:40:59.815Z [DEBUG] autocompact: tokens=51318 threshold=167000 effectiveWindow=180000
+2026-04-09T08:40:59.815Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:40:59.815Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:40:59.817Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:40:59.817Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:40:59.817Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:40:59.817Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:40:59.819Z [DEBUG] [useDeferredValue] Messages deferred by 1 (23→24)
+2026-04-09T08:40:59.832Z [DEBUG] High write ratio: blit=0, write=1887 (100.0% writes), screen=32x175
+2026-04-09T08:41:00.711Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:01.484Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:04.992Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:04.993Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:04.993Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:04.993Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:05.000Z [DEBUG] [useDeferredValue] Messages deferred by 1 (24→25)
+2026-04-09T08:41:05.010Z [DEBUG] [useDeferredValue] Messages deferred by 1 (24→25)
+2026-04-09T08:41:05.037Z [DEBUG] High write ratio: blit=0, write=2083 (100.0% writes), screen=32x175
+2026-04-09T08:41:05.043Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:05.043Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.7cc; cc_entrypoint=cli;
+2026-04-09T08:41:05.043Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:05.043Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:05.043Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:05.044Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:05.044Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:05.044Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:05.045Z [DEBUG] autocompact: tokens=52559 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:05.045Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:05.045Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:05.046Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:05.047Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:05.047Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:05.047Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:05.049Z [DEBUG] [useDeferredValue] Messages deferred by 1 (25→26)
+2026-04-09T08:41:05.078Z [DEBUG] High write ratio: blit=0, write=2003 (100.0% writes), screen=32x175
+2026-04-09T08:41:05.740Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:06.865Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:08.457Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:08.457Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:08.457Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:08.457Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:08.465Z [DEBUG] [useDeferredValue] Messages deferred by 1 (26→27)
+2026-04-09T08:41:08.498Z [DEBUG] High write ratio: blit=0, write=2178 (100.0% writes), screen=32x175
+2026-04-09T08:41:08.554Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:08.554Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.049; cc_entrypoint=cli;
+2026-04-09T08:41:08.554Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:08.554Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:08.555Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:08.555Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:08.555Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:08.555Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:08.557Z [DEBUG] autocompact: tokens=53088 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:08.557Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:08.557Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:08.558Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:08.559Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:08.559Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:08.559Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:08.560Z [DEBUG] [useDeferredValue] Messages deferred by 1 (27→28)
+2026-04-09T08:41:08.593Z [DEBUG] High write ratio: blit=0, write=2003 (100.0% writes), screen=32x175
+2026-04-09T08:41:09.154Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:09.383Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:09.383Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:09.383Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:09.682Z [ERROR] MaxFileReadTokenExceededError: MaxFileReadTokenExceededError: File content (50720 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
+    at ETD (/$bunfs/root/claude:3257:3309)
+    at processTicksAndRejections (native:7:39)
+2026-04-09T08:41:11.574Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:12.222Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:41:12.223Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:41:12.223Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:12.223Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:41:12.230Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:41:12.230Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:12.231Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:41:12.232Z [DEBUG] [useDeferredValue] Messages deferred by 1 (28→29)
+2026-04-09T08:41:12.272Z [DEBUG] High write ratio: blit=0, write=2022 (100.0% writes), screen=32x175
+2026-04-09T08:41:12.278Z [DEBUG] [useDeferredValue] Messages deferred by 1 (29→30)
+2026-04-09T08:41:12.289Z [DEBUG] autocompact: tokens=54415 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:12.289Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:12.289Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:12.291Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:12.292Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:12.292Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:12.292Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:12.313Z [DEBUG] High write ratio: blit=0, write=1847 (100.0% writes), screen=32x175
+2026-04-09T08:41:13.376Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:14.254Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:41:14.255Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:41:14.255Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:14.255Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:41:14.263Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:41:14.263Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:14.264Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:41:14.267Z [DEBUG] [useDeferredValue] Messages deferred by 2 (30→32)
+2026-04-09T08:41:14.307Z [DEBUG] High write ratio: blit=0, write=1859 (100.0% writes), screen=32x175
+2026-04-09T08:41:14.512Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T08:41:14.513Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T08:41:14.513Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:14.513Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T08:41:14.518Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T08:41:14.518Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:14.518Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T08:41:14.520Z [DEBUG] [useDeferredValue] Messages deferred by 1 (32→33)
+2026-04-09T08:41:14.539Z [DEBUG] [useDeferredValue] Messages deferred by 1 (33→34)
+2026-04-09T08:41:14.549Z [DEBUG] autocompact: tokens=57805 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:14.549Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:14.549Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:14.551Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:14.552Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:14.552Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:14.552Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:14.556Z [DEBUG] High write ratio: blit=0, write=1856 (100.0% writes), screen=32x175
+2026-04-09T08:41:16.102Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:17.033Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:17.034Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:17.034Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:17.034Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:17.050Z [DEBUG] [useDeferredValue] Messages deferred by 1 (34→35)
+2026-04-09T08:41:17.084Z [DEBUG] High write ratio: blit=0, write=1997 (100.0% writes), screen=32x175
+2026-04-09T08:41:17.105Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:17.105Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.ff2; cc_entrypoint=cli;
+2026-04-09T08:41:17.105Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:17.105Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:17.105Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:17.106Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:17.106Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:17.106Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:17.107Z [DEBUG] autocompact: tokens=59242 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:17.107Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:17.108Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:17.109Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:17.110Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:17.110Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:17.110Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:17.111Z [DEBUG] [useDeferredValue] Messages deferred by 1 (35→36)
+2026-04-09T08:41:17.152Z [DEBUG] High write ratio: blit=0, write=1969 (100.0% writes), screen=32x175
+2026-04-09T08:41:17.883Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:18.674Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:19.162Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:19.163Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:19.163Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:19.163Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:19.173Z [DEBUG] [useDeferredValue] Messages deferred by 1 (36→37)
+2026-04-09T08:41:19.183Z [DEBUG] [useDeferredValue] Messages deferred by 1 (36→37)
+2026-04-09T08:41:19.210Z [DEBUG] High write ratio: blit=0, write=2115 (100.0% writes), screen=32x175
+2026-04-09T08:41:19.223Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:19.224Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.71d; cc_entrypoint=cli;
+2026-04-09T08:41:19.224Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:19.224Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:19.224Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:19.225Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:19.225Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:19.225Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:19.226Z [DEBUG] autocompact: tokens=60123 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:19.226Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:19.226Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:19.228Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:19.228Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:19.228Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:19.229Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:19.230Z [DEBUG] [useDeferredValue] Messages deferred by 1 (37→38)
+2026-04-09T08:41:19.261Z [DEBUG] High write ratio: blit=0, write=1974 (100.0% writes), screen=32x175
+2026-04-09T08:41:19.980Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:21.106Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:24.216Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:24.218Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:24.218Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:24.218Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:24.232Z [DEBUG] [useDeferredValue] Messages deferred by 1 (38→39)
+2026-04-09T08:41:24.269Z [DEBUG] High write ratio: blit=0, write=2003 (100.0% writes), screen=32x175
+2026-04-09T08:41:24.294Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:24.294Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.1f0; cc_entrypoint=cli;
+2026-04-09T08:41:24.295Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:24.295Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:24.295Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:24.296Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:24.296Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:24.296Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:24.298Z [DEBUG] autocompact: tokens=61645 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:24.298Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:24.299Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:24.301Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:24.301Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:24.301Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:24.302Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:24.303Z [DEBUG] [useDeferredValue] Messages deferred by 1 (39→40)
+2026-04-09T08:41:24.337Z [DEBUG] High write ratio: blit=0, write=1857 (100.0% writes), screen=32x175
+2026-04-09T08:41:25.121Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:25.151Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:25.523Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:25.523Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:25.523Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:25.818Z [ERROR] MaxFileReadTokenExceededError: MaxFileReadTokenExceededError: File content (50720 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
+    at ETD (/$bunfs/root/claude:3257:3309)
+    at processTicksAndRejections (native:7:39)
+2026-04-09T08:41:25.999Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:25.999Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:25.999Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:25.999Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:26.013Z [DEBUG] [useDeferredValue] Messages deferred by 1 (40→41)
+2026-04-09T08:41:26.046Z [DEBUG] High write ratio: blit=0, write=2032 (100.0% writes), screen=32x175
+2026-04-09T08:41:26.050Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:26.050Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.558; cc_entrypoint=cli;
+2026-04-09T08:41:26.050Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:26.050Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:26.051Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:26.051Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T08:41:26.051Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T08:41:26.051Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:26.052Z [DEBUG] autocompact: tokens=61860 threshold=167000 effectiveWindow=180000
+2026-04-09T08:41:26.053Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:26.053Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T08:41:26.054Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T08:41:26.055Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:26.055Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:26.055Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:26.056Z [DEBUG] [useDeferredValue] Messages deferred by 1 (41→42)
+2026-04-09T08:41:26.082Z [DEBUG] High write ratio: blit=0, write=2003 (100.0% writes), screen=32x175
+2026-04-09T08:41:26.965Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:27.114Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:27.601Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T08:41:27.602Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T08:41:27.602Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:27.602Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:27.612Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T08:41:27.612Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.563; cc_entrypoint=cli;
+2026-04-09T08:41:27.612Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T08:41:27.612Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T08:41:27.613Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T08:41:27.614Z [DEBUG] [useDeferredValue] Messages deferred by 1 (42→43)
+2026-04-09T08:41:27.651Z [DEBUG] High write ratio: blit=0, write=2178 (100.0% writes), screen=32x175
+2026-04-09T08:41:28.331Z [DEBUG] Stream started - received first chunk
+2026-04-09T08:41:28.420Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "xargs:*"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2026-04-09T08:41:28.420Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2026-04-09T08:41:28.421Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2026-04-09T08:41:28.421Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:28.421Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T08:41:28.433Z [DEBUG] High write ratio: blit=0, write=2288 (100.0% writes), screen=38x175
+2026-04-09T08:41:34.471Z [DEBUG] Getting matching hook commands for Notification with query: permission_prompt
+2026-04-09T08:41:34.471Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T08:41:34.471Z [DEBUG] Matched 0 unique hooks for query "permission_prompt" (0 before deduplication)
+2026-04-09T08:45:11.421Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T08:45:11.421Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}
+2026-04-09T09:11:40.134Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2026-04-09T09:11:40.134Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2026-04-09T09:11:40.138Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json.tmp.78128.1775725900138
+2026-04-09T09:11:40.138Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T09:11:40.145Z [DEBUG] Temp file written successfully, size: 4764 bytes
+2026-04-09T09:11:40.145Z [DEBUG] Applied original permissions to temp file
+2026-04-09T09:11:40.145Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json.tmp.78128.1775725900138 to /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json
+2026-04-09T09:11:40.145Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json written atomically
+2026-04-09T09:11:40.147Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(xargs:*)"]
+2026-04-09T09:11:40.170Z [DEBUG] High write ratio: blit=0, write=2160 (100.0% writes), screen=32x175
+2026-04-09T09:11:40.174Z [DEBUG] AutoUpdaterWrapper: Installation type: native
+2026-04-09T09:11:40.301Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:40.302Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.6d2; cc_entrypoint=cli;
+2026-04-09T09:11:40.303Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:40.303Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:40.303Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:40.305Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:11:40.305Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:11:40.305Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:40.309Z [DEBUG] autocompact: tokens=62195 threshold=167000 effectiveWindow=180000
+2026-04-09T09:11:40.309Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:40.309Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:11:40.312Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:11:40.313Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:40.313Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:40.314Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:40.316Z [DEBUG] [useDeferredValue] Messages deferred by 1 (43→44)
+2026-04-09T09:11:40.350Z [DEBUG] High write ratio: blit=0, write=1985 (100.0% writes), screen=32x175
+2026-04-09T09:11:41.077Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:42.085Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:42.372Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T09:11:42.373Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T09:11:42.373Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:11:42.373Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:42.389Z [DEBUG] [useDeferredValue] Messages deferred by 1 (44→45)
+2026-04-09T09:11:42.420Z [DEBUG] High write ratio: blit=0, write=2161 (100.0% writes), screen=32x175
+2026-04-09T09:11:42.636Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:42.637Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.6d2; cc_entrypoint=cli;
+2026-04-09T09:11:42.637Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:42.637Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:42.637Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:42.638Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:11:42.638Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:11:42.638Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:42.639Z [DEBUG] autocompact: tokens=63685 threshold=167000 effectiveWindow=180000
+2026-04-09T09:11:42.639Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:42.639Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:11:42.640Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:11:42.641Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:42.641Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:42.641Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:42.643Z [DEBUG] [useDeferredValue] Messages deferred by 1 (45→46)
+2026-04-09T09:11:42.673Z [DEBUG] High write ratio: blit=0, write=1986 (100.0% writes), screen=32x175
+2026-04-09T09:11:43.230Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:44.376Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:45.861Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T09:11:45.862Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T09:11:45.862Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:11:45.862Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:45.870Z [DEBUG] [useDeferredValue] Messages deferred by 1 (46→47)
+2026-04-09T09:11:45.907Z [DEBUG] High write ratio: blit=0, write=2164 (100.0% writes), screen=32x175
+2026-04-09T09:11:45.915Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:45.915Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.7cc; cc_entrypoint=cli;
+2026-04-09T09:11:45.915Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:45.915Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:45.916Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:45.917Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:11:45.917Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:11:45.917Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:45.918Z [DEBUG] autocompact: tokens=65420 threshold=167000 effectiveWindow=180000
+2026-04-09T09:11:45.918Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:45.918Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:11:45.919Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:11:45.920Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:45.920Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:45.920Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:45.921Z [DEBUG] [useDeferredValue] Messages deferred by 1 (47→48)
+2026-04-09T09:11:45.952Z [DEBUG] High write ratio: blit=0, write=1989 (100.0% writes), screen=32x175
+2026-04-09T09:11:46.544Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:47.039Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:47.453Z [DEBUG] executePreToolHooks called for tool: Read
+2026-04-09T09:11:47.454Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-04-09T09:11:47.454Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:11:47.454Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-04-09T09:11:47.458Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-04-09T09:11:47.458Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:11:47.458Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-04-09T09:11:47.461Z [DEBUG] autocompact: tokens=66159 threshold=167000 effectiveWindow=180000
+2026-04-09T09:11:47.462Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:47.462Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:11:47.463Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:11:47.464Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:47.464Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:47.464Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:47.465Z [DEBUG] [useDeferredValue] Messages deferred by 2 (48→50)
+2026-04-09T09:11:47.489Z [DEBUG] High write ratio: blit=0, write=1842 (100.0% writes), screen=32x175
+2026-04-09T09:11:48.470Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:49.464Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T09:11:49.465Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T09:11:49.465Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:11:49.465Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:49.470Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:49.470Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:11:49.470Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.1f0; cc_entrypoint=cli;
+2026-04-09T09:11:49.470Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:49.470Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:49.470Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.1f0; cc_entrypoint=cli;
+2026-04-09T09:11:49.470Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:11:49.470Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:11:49.470Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:49.471Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:11:49.472Z [DEBUG] [useDeferredValue] Messages deferred by 1 (50→51)
+2026-04-09T09:11:49.497Z [DEBUG] High write ratio: blit=0, write=1867 (100.0% writes), screen=32x175
+2026-04-09T09:11:50.206Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:50.425Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:11:50.849Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Bash",
+        "ruleContent": "cat << 'EOF'\n# Full project structure\nfind /home/javiervel/clients/BAMF/Diga/docling-demo -maxdepth 2 -type f \\( -name \"*.py\" -o -name \"*.ipynb\" -o -name \"*.sh\" -o -name \"*.jsonld\" -o -name \"*.md\" \\) ! -path \"*/docling-venv/*\" ! -path \"*/__pycache__/*\" | sort\nEOF"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "localSettings"
+  }
+]
+2026-04-09T09:11:50.850Z [DEBUG] executePermissionRequestHooks called for tool: Bash
+2026-04-09T09:11:50.850Z [DEBUG] Getting matching hook commands for PermissionRequest with query: Bash
+2026-04-09T09:11:50.850Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:11:50.850Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:11:50.860Z [DEBUG] High write ratio: blit=0, write=2087 (100.0% writes), screen=43x175
+2026-04-09T09:12:02.070Z [DEBUG] Persisting permission update: addRules to source 'localSettings'
+2026-04-09T09:12:02.070Z [DEBUG] Persisting 1 allow rule(s) to localSettings
+2026-04-09T09:12:02.071Z [DEBUG] Writing to temp file: /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json.tmp.78128.1775725922071
+2026-04-09T09:12:02.071Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T09:12:02.078Z [DEBUG] Temp file written successfully, size: 5070 bytes
+2026-04-09T09:12:02.078Z [DEBUG] Applied original permissions to temp file
+2026-04-09T09:12:02.078Z [DEBUG] Renaming /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json.tmp.78128.1775725922071 to /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json
+2026-04-09T09:12:02.078Z [DEBUG] File /home/javiervel/clients/BAMF/Diga/docling-demo/.claude/settings.local.json written atomically
+2026-04-09T09:12:02.079Z [DEBUG] Applying permission update: Adding 1 allow rule(s) to destination 'localSettings': ["Bash(cat << 'EOF'\n# Full project structure\nfind /home/javiervel/clients/BAMF/Diga/docling-demo -maxdepth 2 -type f \\\\\\( -name \"*.py\" -o -name \"*.ipynb\" -o -name \"*.sh\" -o -name \"*.jsonld\" -o -name \"*.md\" \\\\\\) ! -path \"*/docling-venv/*\" ! -path \"*/__pycache__/*\" | sort\nEOF)"]
+2026-04-09T09:12:02.096Z [DEBUG] High write ratio: blit=0, write=1862 (100.0% writes), screen=32x175
+2026-04-09T09:12:02.101Z [DEBUG] AutoUpdaterWrapper: Installation type: native
+2026-04-09T09:12:02.124Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:02.125Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.1f0; cc_entrypoint=cli;
+2026-04-09T09:12:02.125Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:02.125Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:02.125Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:02.126Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:12:02.126Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:12:02.126Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:12:02.126Z [DEBUG] autocompact: tokens=66498 threshold=167000 effectiveWindow=180000
+2026-04-09T09:12:02.126Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:02.126Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:12:02.128Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:12:02.129Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:02.129Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:02.129Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:02.131Z [DEBUG] [useDeferredValue] Messages deferred by 1 (51→52)
+2026-04-09T09:12:02.163Z [DEBUG] High write ratio: blit=0, write=1834 (100.0% writes), screen=32x175
+2026-04-09T09:12:02.729Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:03.209Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:03.609Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T09:12:03.610Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T09:12:03.610Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:12:03.610Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:12:03.626Z [DEBUG] [useDeferredValue] Messages deferred by 1 (52→53)
+2026-04-09T09:12:03.656Z [DEBUG] High write ratio: blit=0, write=2010 (100.0% writes), screen=32x175
+2026-04-09T09:12:03.671Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:03.672Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.7cc; cc_entrypoint=cli;
+2026-04-09T09:12:03.672Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:03.672Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:03.672Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:03.673Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:12:03.673Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:12:03.673Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:12:03.674Z [DEBUG] autocompact: tokens=67105 threshold=167000 effectiveWindow=180000
+2026-04-09T09:12:03.674Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:03.674Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:12:03.675Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:12:03.676Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:03.676Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:03.676Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:03.678Z [DEBUG] [useDeferredValue] Messages deferred by 1 (53→54)
+2026-04-09T09:12:03.711Z [DEBUG] High write ratio: blit=0, write=1985 (100.0% writes), screen=32x175
+2026-04-09T09:12:04.331Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:04.678Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:05.376Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-04-09T09:12:05.376Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-04-09T09:12:05.376Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:12:05.377Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:12:05.385Z [DEBUG] [useDeferredValue] Messages deferred by 1 (54→55)
+2026-04-09T09:12:05.419Z [DEBUG] High write ratio: blit=0, write=2098 (100.0% writes), screen=32x175
+2026-04-09T09:12:05.439Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:05.439Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.ff2; cc_entrypoint=cli;
+2026-04-09T09:12:05.439Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:05.439Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:05.439Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:05.440Z [DEBUG] Getting matching hook commands for PostToolUse with query: Bash
+2026-04-09T09:12:05.440Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:12:05.440Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-04-09T09:12:05.441Z [DEBUG] autocompact: tokens=67568 threshold=167000 effectiveWindow=180000
+2026-04-09T09:12:05.441Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T09:12:05.441Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:12:05.442Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.21c; cc_entrypoint=cli;
+2026-04-09T09:12:05.443Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:05.443Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:05.443Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:05.444Z [DEBUG] [useDeferredValue] Messages deferred by 1 (55→56)
+2026-04-09T09:12:05.469Z [DEBUG] High write ratio: blit=0, write=1923 (100.0% writes), screen=32x175
+2026-04-09T09:12:06.001Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:06.894Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:47.857Z [DEBUG] Getting matching hook commands for SubagentStop with query: Explore
+2026-04-09T09:12:47.857Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:12:47.857Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2026-04-09T09:12:47.860Z [DEBUG] Getting matching hook commands for PostToolUse with query: Task
+2026-04-09T09:12:47.860Z [DEBUG] Found 5 hook matchers in settings
+2026-04-09T09:12:47.860Z [DEBUG] Matched 0 unique hooks for query "Task" (0 before deduplication)
+2026-04-09T09:12:47.862Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-04-09T09:12:47.862Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-04-09T09:12:47.862Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-04-09T09:12:47.862Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-04-09T09:12:47.864Z [DEBUG] autocompact: tokens=47098 threshold=167000 effectiveWindow=180000
+2026-04-09T09:12:47.864Z [DEBUG] Tool search disabled via experiment (tengu_tst_kx7): below threshold, deferred tools present [source: query]
+2026-04-09T09:12:47.865Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T09:12:47.867Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.712; cc_entrypoint=cli;
+2026-04-09T09:12:47.869Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T09:12:47.869Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T09:12:47.869Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T09:12:47.871Z [DEBUG] [useDeferredValue] Messages deferred by 1 (56→57)
+2026-04-09T09:12:47.878Z [DEBUG] High write ratio: blit=0, write=1743 (100.0% writes), screen=27x175
+2026-04-09T09:12:47.878Z [DEBUG] Full reset (shrink->below): prevHeight=32, nextHeight=27, viewport=31
+2026-04-09T09:12:47.915Z [DEBUG] High write ratio: blit=0, write=1791 (100.0% writes), screen=28x175
+2026-04-09T09:12:49.885Z [DEBUG] Stream started - received first chunk
+2026-04-09T09:12:51.723Z [DEBUG] [useDeferredValue] Messages deferred by 1 (57→58)
+2026-04-09T09:12:51.763Z [DEBUG] High write ratio: blit=0, write=1802 (100.0% writes), screen=28x175
+2026-04-09T09:13:34.454Z [DEBUG] [useDeferredValue] Messages deferred by 1 (58→59)
+2026-04-09T09:13:34.538Z [DEBUG] High write ratio: blit=0, write=12775 (100.0% writes), screen=389x175
+2026-04-09T09:13:34.549Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-04-09T09:13:34.549Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:13:34.549Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-04-09T09:13:35.125Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775726015125
+2026-04-09T09:13:35.125Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T09:13:35.128Z [DEBUG] Temp file written successfully, size: 56582 bytes
+2026-04-09T09:13:35.128Z [DEBUG] Applied original permissions to temp file
+2026-04-09T09:13:35.128Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775726015125 to /home/javiervel/.claude.json
+2026-04-09T09:13:35.128Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T09:13:35.130Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775726015130
+2026-04-09T09:13:35.130Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T09:13:35.137Z [DEBUG] Temp file written successfully, size: 56582 bytes
+2026-04-09T09:13:35.137Z [DEBUG] Applied original permissions to temp file
+2026-04-09T09:13:35.137Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775726015130 to /home/javiervel/.claude.json
+2026-04-09T09:13:35.137Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T09:13:35.139Z [DEBUG] [useDeferredValue] Messages deferred by 1 (59→60)
+2026-04-09T09:13:35.186Z [DEBUG] High write ratio: blit=0, write=12744 (100.0% writes), screen=389x175
+2026-04-09T09:14:35.167Z [DEBUG] Getting matching hook commands for Notification with query: idle_prompt
+2026-04-09T09:14:35.167Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T09:14:35.167Z [DEBUG] Matched 0 unique hooks for query "idle_prompt" (0 before deduplication)
+2026-04-09T09:15:11.218Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T09:15:11.218Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 11,
+  "rejected_count": 0
+}
+2026-04-09T09:49:00.868Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T09:52:11.786Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T09:52:49.065Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T09:53:33.590Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T09:53:34.805Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T09:53:37.693Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T10:32:14.675Z [DEBUG] High write ratio: blit=3150, write=11467 (78.4% writes), screen=389x175
+2026-04-09T10:35:11.399Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T10:35:11.399Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+2026-04-09T10:35:11.511Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=undefined
+2026-04-09T10:36:07.870Z [DEBUG] High write ratio: blit=3150, write=11474 (78.5% writes), screen=388x175
+2026-04-09T10:51:57.993Z [DEBUG] High write ratio: blit=3150, write=11474 (78.5% writes), screen=388x175
+2026-04-09T10:53:10.415Z [DEBUG] High write ratio: blit=3150, write=11650 (78.7% writes), screen=389x175
+2026-04-09T10:55:11.347Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T10:55:11.348Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 1,
+  "rejected_count": 0
+}
+2026-04-09T14:07:58.046Z [DEBUG] High write ratio: blit=3150, write=11650 (78.7% writes), screen=389x175
+2026-04-09T14:07:59.334Z [DEBUG] High write ratio: blit=0, write=12927 (100.0% writes), screen=389x175
+2026-04-09T14:08:00.548Z [DEBUG] High write ratio: blit=0, write=12878 (100.0% writes), screen=389x168
+2026-04-09T14:08:00.745Z [DEBUG] High write ratio: blit=3024, write=11636 (79.4% writes), screen=389x168
+2026-04-09T14:18:16.093Z [DEBUG] High write ratio: blit=3024, write=11636 (79.4% writes), screen=389x168
+2026-04-09T14:18:40.974Z [DEBUG] High write ratio: blit=0, write=13775 (100.0% writes), screen=387x340
+2026-04-09T14:18:41.794Z [DEBUG] High write ratio: blit=0, write=12906 (100.0% writes), screen=389x168
+2026-04-09T14:18:43.401Z [DEBUG] High write ratio: blit=3024, write=11664 (79.4% writes), screen=389x168
+2026-04-09T14:18:44.249Z [DEBUG] High write ratio: blit=3024, write=11664 (79.4% writes), screen=389x168
+2026-04-09T14:18:44.681Z [DEBUG] High write ratio: blit=0, write=12955 (100.0% writes), screen=389x175
+2026-04-09T14:18:45.240Z [DEBUG] High write ratio: blit=0, write=12955 (100.0% writes), screen=389x175
+2026-04-09T14:18:45.700Z [DEBUG] High write ratio: blit=3150, write=11678 (78.8% writes), screen=389x175
+2026-04-09T14:18:50.615Z [DEBUG] High write ratio: blit=3150, write=11678 (78.8% writes), screen=389x175
+2026-04-09T14:20:00.936Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-04-09T14:20:00.936Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-04-09T14:20:00.937Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-04-09T14:20:00.937Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-04-09T14:20:00.946Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-04-09T14:20:00.946Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T14:20:00.946Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-04-09T14:20:00.946Z [DEBUG] FileHistory: Making snapshot for message 670a3e96-501c-4f95-ac62-a6aaeb108785
+2026-04-09T14:20:00.947Z [DEBUG] FileHistory: Added snapshot for 670a3e96-501c-4f95-ac62-a6aaeb108785, tracking 0 files
+2026-04-09T14:20:00.949Z [DEBUG] [useDeferredValue] Messages deferred by 1 (60→61)
+2026-04-09T14:20:00.971Z [DEBUG] High write ratio: blit=0, write=12864 (100.0% writes), screen=392x175
+2026-04-09T14:20:00.979Z [DEBUG] [useDeferredValue] Messages deferred by 1 (60→61)
+2026-04-09T14:20:00.982Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-04-09T14:20:00.982Z [DEBUG] [SystemPrompt] path=simple proactive=false
+2026-04-09T14:20:00.983Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.599; cc_entrypoint=cli;
+2026-04-09T14:20:00.985Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T14:20:00.985Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T14:20:00.986Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T14:20:00.990Z [DEBUG] autocompact: tokens=52110 threshold=167000 effectiveWindow=180000
+2026-04-09T14:20:00.991Z [DEBUG] Tool search disabled via experiment (tengu_tst_kx7): below threshold, deferred tools present [source: query]
+2026-04-09T14:20:00.991Z [DEBUG] Using tool-based global cache marker on TaskList
+2026-04-09T14:20:00.996Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.34.712; cc_entrypoint=cli;
+2026-04-09T14:20:00.998Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-04-09T14:20:00.998Z [DEBUG] [API:auth] OAuth token check starting
+2026-04-09T14:20:00.999Z [DEBUG] [API:auth] OAuth token check complete
+2026-04-09T14:20:01.012Z [DEBUG] [useDeferredValue] Messages deferred by 1 (60→61)
+2026-04-09T14:20:01.048Z [DEBUG] High write ratio: blit=0, write=13206 (100.0% writes), screen=395x175
+2026-04-09T14:20:02.230Z [DEBUG] Stream started - received first chunk
+2026-04-09T14:20:02.310Z [DEBUG] High write ratio: blit=3150, write=11929 (79.1% writes), screen=395x175
+2026-04-09T14:20:04.199Z [DEBUG] Stream started - received first chunk
+2026-04-09T14:20:11.457Z [DEBUG] Metrics opt-out API response: enabled=true, vcsLinking=undefined
+2026-04-09T14:20:11.653Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T14:20:11.654Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 7,
+  "rejected_count": 0
+}
+2026-04-09T14:20:17.978Z [DEBUG] [useDeferredValue] Messages deferred by 1 (61→62)
+2026-04-09T14:20:18.012Z [WARN] [PROMPT CACHE BREAK] unknown cause [source=repl_main_thread, call #3, cache read: 43061 → 0, creation: 52127]
+2026-04-09T14:20:18.020Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-04-09T14:20:18.020Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T14:20:18.020Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-04-09T14:20:19.047Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775744419047
+2026-04-09T14:20:19.047Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T14:20:19.051Z [DEBUG] Temp file written successfully, size: 56701 bytes
+2026-04-09T14:20:19.051Z [DEBUG] Applied original permissions to temp file
+2026-04-09T14:20:19.051Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775744419047 to /home/javiervel/.claude.json
+2026-04-09T14:20:19.051Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T14:20:19.053Z [DEBUG] Writing to temp file: /home/javiervel/.claude.json.tmp.78128.1775744419053
+2026-04-09T14:20:19.053Z [DEBUG] Preserving file permissions: 100644
+2026-04-09T14:20:19.057Z [DEBUG] Temp file written successfully, size: 56701 bytes
+2026-04-09T14:20:19.057Z [DEBUG] Applied original permissions to temp file
+2026-04-09T14:20:19.057Z [DEBUG] Renaming /home/javiervel/.claude.json.tmp.78128.1775744419053 to /home/javiervel/.claude.json
+2026-04-09T14:20:19.057Z [DEBUG] File /home/javiervel/.claude.json written atomically
+2026-04-09T14:20:19.058Z [DEBUG] [useDeferredValue] Messages deferred by 1 (61→62)
+2026-04-09T14:20:19.071Z [DEBUG] High write ratio: blit=0, write=13086 (100.0% writes), screen=392x175
+2026-04-09T14:20:19.106Z [DEBUG] High write ratio: blit=0, write=19902 (100.0% writes), screen=501x175
+2026-04-09T14:21:19.038Z [DEBUG] Getting matching hook commands for Notification with query: idle_prompt
+2026-04-09T14:21:19.038Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T14:21:19.039Z [DEBUG] Matched 0 unique hooks for query "idle_prompt" (0 before deduplication)
+2026-04-09T14:25:11.662Z [DEBUG] BigQuery metrics exported successfully
+2026-04-09T14:25:11.662Z [DEBUG] BigQuery API Response: {
+  "accepted_count": 6,
+  "rejected_count": 0
+}
+2026-04-09T14:34:14.619Z [DEBUG] High write ratio: blit=3150, write=18625 (85.5% writes), screen=501x175
+2026-04-09T14:34:36.948Z [DEBUG] High write ratio: blit=3150, write=18625 (85.5% writes), screen=501x175
+2026-04-09T14:36:14.231Z [DEBUG] High write ratio: blit=3150, write=18625 (85.5% writes), screen=501x175
+2026-04-09T14:36:14.278Z [DEBUG] High write ratio: blit=3150, write=18625 (85.5% writes), screen=501x175
+2026-04-09T14:48:55.214Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-04-09T14:48:55.214Z [DEBUG] Found 0 hook matchers in settings
+2026-04-09T14:48:55.214Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

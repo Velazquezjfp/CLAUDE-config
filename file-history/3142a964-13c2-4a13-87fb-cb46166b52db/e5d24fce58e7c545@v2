@@ -1,0 +1,92 @@
+# ============================================================================
+# SHACL Shape for Integration Course Application Form
+# ============================================================================
+# This file defines the CONSTRAINTS for data that conforms to the ontology.
+# It describes WHAT SHAPE valid data must have — required fields, data types,
+# patterns, cardinality.
+#
+# The SHACL shape REFERENCES the ontology (via sh:targetClass and sh:path).
+# The ontology does NOT reference this file. This is by design:
+# one ontology can have multiple SHACL shapes (different forms, different
+# validation strictness, different use cases).
+#
+# File: integration_course_shacl.ttl
+# Format: Turtle (Terse RDF Triple Language)
+# ============================================================================
+
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix schema: <http://schema.org/> .
+@prefix bamf:   <https://bamf.bund.de/ontology/integration-course#> .
+
+# ============================================================================
+# NodeShape — targets the class from the ontology
+# ============================================================================
+# sh:targetClass links THIS shape to the ontology class.
+# It says: "Any data that claims to be a bamf:IntegrationCourseApplication
+# MUST conform to these constraints."
+# ============================================================================
+
+bamf:IntegrationCourseApplicationFormShape
+    a sh:NodeShape ;
+    sh:targetClass bamf:IntegrationCourseApplication ;
+    sh:name "Integration Course Application Form" ;
+    sh:description "Validation shape for the integration course application form within an Akte/case. Ensures all required fields are present and correctly formatted." ;
+
+    # Each sh:property references an ontology property via sh:path
+    sh:property bamf:ReferenceNumberShape ;
+    sh:property bamf:CandidateNameShape ;
+    sh:property bamf:BirthPlaceShape ;
+    sh:property bamf:ReasonForApplicationShape .
+
+# ============================================================================
+# PropertyShapes — one per form field
+# ============================================================================
+# sh:path points to the ONTOLOGY property. This is the link.
+# Everything else (datatype, minCount, pattern) is the CONSTRAINT.
+# ============================================================================
+
+bamf:ReferenceNumberShape
+    a sh:PropertyShape ;
+    sh:path bamf:referenceNumber ;        # ← references ontology property
+    sh:datatype xsd:string ;
+    sh:name "Reference Number" ;
+    sh:description "Case reference number (Aktenzeichen)" ;
+    sh:minCount 1 ;                       # required
+    sh:maxCount 1 ;                       # single value
+    sh:pattern "^ACTE-\\d{4}-\\d{3}$" ;   # must match format ACTE-YYYY-NNN
+    sh:message "Reference number must follow the format ACTE-YYYY-NNN (e.g., ACTE-2024-001)" .
+
+bamf:CandidateNameShape
+    a sh:PropertyShape ;
+    sh:path bamf:candidateName ;          # ← references ontology property
+    sh:datatype xsd:string ;
+    sh:name "Candidate Name" ;
+    sh:description "Full legal name of the applicant" ;
+    sh:minCount 1 ;                       # required
+    sh:maxCount 1 ;
+    sh:minLength 2 ;
+    sh:maxLength 200 ;
+    sh:message "Candidate name is required and must be between 2 and 200 characters" .
+
+bamf:BirthPlaceShape
+    a sh:PropertyShape ;
+    sh:path bamf:birthPlace ;             # ← references ontology property
+    sh:datatype xsd:string ;
+    sh:name "Place of Birth" ;
+    sh:description "City or locality where the applicant was born" ;
+    sh:minCount 1 ;                       # required
+    sh:maxCount 1 ;
+    sh:minLength 2 ;
+    sh:message "Place of birth is required" .
+
+bamf:ReasonForApplicationShape
+    a sh:PropertyShape ;
+    sh:path bamf:reasonForApplication ;   # ← references ontology property
+    sh:datatype xsd:string ;
+    sh:name "Reason for Application" ;
+    sh:description "Why the applicant is requesting the integration course" ;
+    sh:minCount 1 ;                       # required
+    sh:maxCount 1 ;
+    sh:minLength 10 ;
+    sh:message "Reason for application is required and must be at least 10 characters" .

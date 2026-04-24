@@ -1,0 +1,9 @@
+{
+  "id": "2",
+  "subject": "Query code-graph for context",
+  "description": "Verify graph state and scan for anything that would collide with server/storage.js or data.json",
+  "activeForm": "Querying code-graph",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

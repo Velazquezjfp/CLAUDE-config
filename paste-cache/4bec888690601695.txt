@@ -1,0 +1,11 @@
+Headline findings:
+  - ✅ All 7 independently verifiable hard/legal constraints PASS on 100% of assignments (CP_02, HC_01_absence, LC_01, LC_03, LC_04, LC_05, LC_06_nights, LC_07). Partitioning + Phase I
+  carryover + sub-partitioning all work cleanly.
+  - ❌ Real DEMAND coverage 27.2% (167/613) — but the analyzer reports 167.54% "EXCELLENT" because it counts RT/CT normalized rows as covered demands. Primary KPI is broken.
+  - ⚠️  CT massively over-allocated: 592 rows vs static target 147 (4× over). LC-06 has no upper bound — solver fills idle slots with CT.
+  - ⚠️  Per-objective metrics computed but not surfaced to /solver/status. Also objective_value, num_assignments, coverage_percentage, fetch_rt, fetch_ct all saved as null/false in
+  planner_output despite values existing upstream.
+  - ⚠️  RT Jour de repos missing from replannable-demand-types DB catalog.
+  - 📋 11 prioritized gaps in §9 (P1 instrumentation, P2 solver, P3 data-quality).
+
+  Artifacts in /tmp/: baseline, solver log, status, inputs (demands/resources/blocks), outputs (plan/assignments), analysis summary. Durable handle is PLAN-20260421153557 for DB re-query.

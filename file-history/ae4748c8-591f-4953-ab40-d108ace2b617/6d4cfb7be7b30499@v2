@@ -1,0 +1,204 @@
+# Changelog — CT/RT Rest-Day Hard Constraint (Phases A–K)
+
+**Date:** 2026-04-17
+**Author:** javier.velazquez@bosenet.com
+**Plan:** `solver_v2/planner_dev/ct_rt_hard_constraint-2026-04-13.md`
+
+---
+
+> ### ⚠️ NOT TESTED END-TO-END YET
+>
+> All phases have passed their in-process unit/smoke tests (syntax,
+> dataclass round-trips, constraint feasibility on synthetic CP-SAT
+> models, anchor pinning, overlap enforcement, analyzer warnings, LC-08
+> v2 gate logic). **None of it has been exercised through the live
+> Docker QA stack against a real dataset.** Before merging or enabling
+> for users, run the test matrix in
+> `test_cases_ct_rt_hard_constraint-2026-04-17.md`.
+
+---
+
+## Scope
+
+Implements RT (Jour de repos) and CT (Jour de compensation) as a **hard
+constraint** that allocates rest days per resource per calendar month,
+aligned with AZG (railway labor law) and BAR CCT (CFF collective
+agreement):
+
+- Min **4 RT** per calendar month
+- Min **2 CT** per calendar month
+- Min **6 combined** rest days per calendar month
+- Rest interval = 24h measured from a prior-shift-end anchor (not
+  midnight-bound)
+- Cross-partition carryover of per-month counts and free weekends
+- Coupling with LC-05 (free-weekend frequency) so a chosen free weekend
+  counts toward the monthly rest quota
+
+Replaces the abandoned post-processing approach
+(`ct_rt_generator-27.03.md`) with a CP-SAT decision-variable model.
+
+**Default behavior is unchanged.** LC-06 is gated by per-request flags
+`rt_replannable` and `ct_replannable` which are False unless the trigger
+payload explicitly includes `"RT Jour de repos"` and/or `"CT Jour de
+compensation"` in `replannable_demand_type`. When both are False:
+
+- `sanitize_replannable_types` behaves as before (RT/CT stay protected)
+- LC-06 decision variables are not created
+- LC-08 v2 remains the safety-net combined-rest check
+- JSONB and `planner_assignments` rows all have
+  `assignment_type='DEMAND'`
+- `planner_output.fetch_rt = fetch_ct = TRUE` (FE reads RT/CT from the
+  external DB as today)
+
+---
+
+## Files changed
+
+### New files
+
+| Path | Purpose |
+|---|---|
+| `solver_v2/preprocessing/rest_targets.py` | Phase D — `RestTarget` dataclass and `compute_rest_targets()` helper. Decomposes planning range into calendar-month segments, ceil-prorates 4/2/6 targets for partial months, subtracts carryover counts from partition state (graceful degradation on missing data). |
+| `solver_v2/constraints/lc_06_rest_days_allocation.py` | Phase E — `add_rest_days_constraints()` creates per-(resource, day) RT and CT BoolVars, enforces mutual exclusion, demand/rest overlap, per-segment targets, LC-05 weekend coupling (current and cross-partition), and Priority-1 anchor pinning for day 0 from `last_shift_end`. Returns `(rt_vars, ct_vars, violations, metadata)` and stashes an anchor map on the model for `_extract_solution`. |
+
+### Modified files
+
+| Path | Phase | Summary |
+|---|---|---|
+| `solver_v2/config.py` | A, G | Added `RT_CALENDAR_TYPE`, `CT_CALENDAR_TYPE`, `REPLANNABLE_REST_TYPES`, `MIN_RT_PER_MONTH=4`, `MIN_CT_PER_MONTH=2`, `MIN_REST_DAYS_PER_MONTH=6`, `MIN_REST_GAP_HOURS=24`. Registered `"LC_06_rest_days_allocation"` in `ENABLED_CONSTRAINTS`. |
+| `solver_v2/api/data_pipeline.py` | A | Added `get_protected_blocking_set()`. Reworded `sanitize_replannable_types` to strip only the protected subset (`ALWAYS_BLOCKING_CALENDAR_TYPES − {RT, CT}`), so RT/CT pass through when requested. |
+| `solver_v2/api/service.py` | A, B, H | Default `rt_replannable = ct_replannable = False`; compute from `replannable_demand_type` in the `lock_allocations=True` path; stash on `preprocessed_data`. `_save_results_sync` gained `rt_replannable`/`ct_replannable` params, forwards them as `fetch_rt = NOT rt_replannable` / `fetch_ct = NOT ct_replannable` to `post_planner_output`. Normalized bulk insert propagates `assignment_type`, preserves real NULL for CT/RT `request_id` (was stringifying to `"None"`), and logs a per-type count. |
+| `solver_v2/api/client.py` | B, C | `post_planner_output` accepts `fetch_rt` / `fetch_ct` (default True) and sends them in the payload. `post_planner_assignments_bulk` docstring updated to document `assignment_type` and nullable `request_id`. |
+| `solver_v2/constraints/lc_05_weekend_frequency.py` | F | Return signature is now `(violations, metadata, free_weekend_vars_dict)`. Added a per-resource cache so overlapping 5-week windows reuse the same `weekend_free` BoolVar (pre-existed as duplicate-var inefficiency). Exposed vars keyed by `(resource_id, (saturday_dt, sunday_dt))` so LC-06 can couple them. Auto-free weekends (no demand on Sat or Sun) are still excluded from both the sum and the exposed dict, matching pre-existing semantics. |
+| `solver_v2/constraints/lc_08_monthly_rest_v2.py` | K | Docstring-only change: added Phase-K note that this constraint is skipped when LC-06 is active. |
+| `solver_v2/solver/model.py` | F, G, K | Imported `add_rest_days_constraints` and `compute_rest_targets`; extended `datetime` import with `timedelta, timezone`. Initialized `rt_vars`, `ct_vars`, `lc_06_anchor_map`, `lc_05_free_weekend_vars` in `__init__`. LC-05 call now unpacks the 3-tuple and stashes `free_weekend_vars`. After LC-08 v2, added the LC-06 invocation block gated by `rt_replannable OR ct_replannable` — computes targets, harvests `prior_free_weekends` from `incoming_state.resource_states.*.free_weekend_by_month`, and wires everything into `add_rest_days_constraints`. LC-08 v2 block gated behind LC-06 (Phase K): when `LC_06_rest_days_allocation ∈ ENABLED_CONSTRAINTS` AND either flag is True, LC-08 v2 is skipped. `_extract_solution` adds `assignment_type='DEMAND'` to existing demand rows and calls a new `_extract_rest_day_rows` helper that emits synthetic 24h RT/CT rows with `request_id=bsa_id=None`, `duration_hours=24.0`, timestamps from the anchor map (falls back to midnight). |
+| `solver_v2/solver/partition_state.py` | I | `ResourceState` gained `rt_count_by_month`, `ct_count_by_month`, `free_weekend_by_month`. `to_dict` serializes all three; `from_dict` handles missing keys gracefully. `extract_state_from_solution` carries these forward, tallies RT/CT rows (without bumping `last_shift_end` or other DEMAND-only rolling state), tracks `demand_dates_by_resource` during the loop, and derives `free_weekend_by_month` from DEMAND absence across Saturdays in `[partition_start, partition_end]`. Prunes LC-06 month-keyed state to `partition_end − 62 days`. |
+| `solver_v2/analysis/constraint_analyzers/lc_08_monthly_rest_analyzer.py` | J | New `_analyze_ct_rt_compliance(data)` method — counts RT/CT calendar days from `data.resource_absences` (TRIM-style case-insensitive match tolerates dev DB whitespace quirk), compares to per-month prorated gross targets (`rt_gross`, `ct_gross`), and emits WARNING dicts when the actual count falls short AND the corresponding replannable flag is False. Wrapped in try/except — never breaks the analysis pipeline. Hooked into `analyze_violations` so the check runs independently of legacy violation metadata. Result dict now always exposes `ct_rt_compliance_alerts`. |
+| `solver_v2/analysis/solution_analyzer.py` | J | Registered the `LC_08_MonthlyRestAnalyzer` under the active `LC_08_monthly_rest_v2` constraint key (pre-existing dead-mapping — v2 was enabled in `ENABLED_CONSTRAINTS` but no analyzer was routed to it). |
+| `mock_data_v2/database_application_v2/database/schema_planner_output.sql` | B | Added `fetch_rt` / `fetch_ct` BOOLEAN NOT NULL DEFAULT TRUE columns + column comments. Idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` so existing deployments migrate cleanly. |
+| `mock_data_v2/database_application_v2/api/routers/planner_output.py` | B | All three GETs now SELECT `po.fetch_rt, po.fetch_ct`. POST accepts and inserts both fields (defaults to TRUE). |
+| `mock_data_v2/database_application_v2/database/schema_planner_assignments.sql` | C | Made `request_id` nullable; added `assignment_type VARCHAR(20) NOT NULL DEFAULT 'DEMAND'` column and `idx_pa_assignment_type` index. Idempotent ALTER for existing deployments. |
+| `mock_data_v2/database_application_v2/api/routers/planner_assignments.py` | C | `list_assignments` GET returns `assignment_type` and supports `?assignment_type=DEMAND\|CT\|RT` filter. Bulk insert includes `assignment_type` and forwards real NULL for missing `request_id`. |
+| `mock_data_v2/database_application_v2/api/routers/assignments.py` | C | External-DB `list_assignments` gained `start_date`, `end_date`, and `calendar_type` query params (TRIM-style comparison to tolerate dev DB whitespace in values like `"CT Jour de compensation "`). |
+
+---
+
+## Constraint architecture
+
+```
+Planning range:     [2026-04-15 ─────────────────────── 2026-06-10]
+                           │                                      │
+LC-06 (monthly blocks):   ┌┴────────┐ ┌─────────────┐ ┌──────────┴─┐
+                          │Apr 15-30│ │May 1-31     │ │Jun 1-10    │
+                          │(53%)    │ │(full month) │ │(33%)       │
+                          │rt≥3,ct≥2│ │rt=4,ct=2    │ │rt≥2,ct≥1   │
+                          │comb≥4   │ │comb=6       │ │comb≥2      │
+                          └─────────┘ └─────────────┘ └────────────┘
+LC-05 (5-week windows):
+  Rolling, crosses month boundaries, unchanged by LC-06.
+
+LC-04 (pairwise):         No window — demand-to-demand min 12h gap.
+
+Coupling:
+  LC-05 fw[r,w]=1 ⟹ LC-06: rt[r,Sat]+ct[r,Sat] ≥ 1
+                           rt[r,Sun]+ct[r,Sun] ≥ 1
+  Prior-partition free weekends in free_weekend_by_month force rt+ct ≥ 1
+  on any Sat/Sun that falls inside the current planning range.
+```
+
+---
+
+## Operational notes
+
+1. **FE contract.** The trigger payload's `replannable_demand_type` now
+   accepts `"RT Jour de repos"` and `"CT Jour de compensation"`. When
+   present, `lock_allocations=true`, the solver replans those blocks.
+   The resulting `planner_output` row returns `fetch_rt=false` /
+   `fetch_ct=false` and the FE should read the new RT/CT schedule from
+   `GET /planner-output/assignments/?plan_id=…&assignment_type=RT|CT`.
+
+2. **Back-compat for existing planner_output consumers.** Columns
+   `fetch_rt`/`fetch_ct` default to TRUE, so any plan created before
+   Phase B migration retains the historical semantics (FE reads RT/CT
+   from the external DB).
+
+3. **Anchor priority.** Currently implemented deterministically for day
+   0 only, using `incoming_state.resource_states[r].last_shift_end`.
+   Output display still uses the midnight fallback for days 1..N.
+   Priority-2 (current-partition previous shift end) refinement is
+   **not yet implemented** — a follow-up could walk the solved
+   assignments in `_extract_rest_day_rows` to refine output timestamps.
+
+4. **LC-08 v2 gating.** When LC-06 is active, LC-08 v2 is skipped to
+   avoid double-constraining (LC-06's `combined_required ≥ 6` already
+   satisfies LC-08 v2's bound). When neither RT nor CT is marked
+   replannable, LC-08 v2 still runs — nothing regresses for the default
+   payload.
+
+5. **Graceful degradation.** `compute_rest_targets` logs a warning and
+   uses full prorated targets if partition state is missing or lacks
+   the new LC-06 carryover fields. `_analyze_ct_rt_compliance` wraps
+   everything in try/except — an alerting failure never blocks the
+   solve.
+
+6. **Anchor map lifecycle.** LC-06 writes the anchor map as a plain
+   Python attribute on the `cp_model.CpModel` instance
+   (`model.lc_06_anchor_map`). The model wrapper copies it into
+   `self.lc_06_anchor_map` after the constraint call so `_extract_solution`
+   has access.
+
+---
+
+## In-process test results
+
+Every phase shipped with at least one smoke test. A representative run
+of all Phase-level sanity checks:
+
+- **Phase A** — syntax checks on config/pipeline/service.
+- **Phase B** — normalize transform produces `fetch_rt`/`fetch_ct`
+  with correct inverse semantics; DB columns serialize via idempotent
+  migration.
+- **Phase C** — router round-trip: `assignment_type=RT` survives the
+  insert and the GET filter.
+- **Phase D** — plan example 2026-04-15→2026-06-10 yields Apr rt=3,
+  May rt=4, Jun rt=2; carryover reduces targets; ceil handles partial
+  months; empty/inverted ranges handled.
+- **Phase E** — CP-SAT model solves with mutual exclusion, targets met,
+  overlap constraint pushes rest off the demand day, Priority-1 anchor
+  applied per-resource; `rt_replannable=False` yields empty `rt_vars`.
+- **Phase F** — LC-05 returns 3-tuple; `fw_dict` size equals
+  `|resources| × |non-auto-free-weekends|`; keys well-formed.
+- **Phase G** — end-to-end solve produced 1 DEMAND + 1 RT + 5 CT rows
+  with `assignment_type` set; anchor map on the model.
+- **Phase H** — normalize path converts CT/RT `demand_id=None` into
+  actual None (not the string `"None"`); per-type counts log.
+- **Phase I** — 6 test cases: dataclass round-trip, graceful missing
+  keys, RT/CT counting from synthetic solution, free-weekend
+  derivation (demand on Sat excludes that weekend), `last_shift_end`
+  not polluted by RT/CT, month pruning removes Jan when partition ends
+  in May.
+- **Phase J** — 4 test cases: shortage → 2 alerts (RT+CT),
+  `rt_replannable=True` suppresses RT alert only, both replannable → no
+  alerts, sufficient data → no alerts. TRIM-style whitespace tolerance
+  confirmed.
+- **Phase K** — gate skips LC-08 v2 for all 3 "any flag set"
+  combinations; executes when both False; executes when `LC_06_…` is
+  not in `ENABLED_CONSTRAINTS` (defensive); docstring updated.
+
+---
+
+## Rollback
+
+If LC-06 needs to be disabled quickly:
+
+1. Remove `"LC_06_rest_days_allocation"` from
+   `ENABLED_CONSTRAINTS` in `solver_v2/config.py`.
+2. Keep everything else in place. The gate in `model.py` notices the
+   absence and LC-08 v2 resumes running.
+3. Alternatively, leave the constraint enabled but clients stop sending
+   RT/CT in `replannable_demand_type` — LC-06 decision variables won't
+   be created and behavior matches pre-phase-A baseline.
+
+No DB rollback is required; the new columns default to their historical
+meaning (`fetch_rt=TRUE`, `fetch_ct=TRUE`, `assignment_type='DEMAND'`,
+nullable `request_id` is strictly wider).

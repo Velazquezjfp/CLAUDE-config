@@ -1,0 +1,298 @@
+"""
+Planner Assignments router - Normalized assignment data from solver output
+Connects to INTERNAL database (cff_planning)
+
+Provides queryable/filterable access to individual assignments,
+replacing the need to parse the full JSONB blob from planner_output.
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from typing import Optional, List
+from datetime import datetime
+import math
+import json
+
+
+def _parse_dt(val):
+    """Parse datetime string to datetime object, or return as-is if already datetime/None."""
+    if val is None or isinstance(val, datetime):
+        return val
+    if isinstance(val, str):
+        for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S.%f%z",
+                    "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S%z",
+                    "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f",
+                    "%Y-%m-%d"):
+            try:
+                return datetime.strptime(val, fmt)
+            except ValueError:
+                continue
+    return val
+
+from database import get_internal_db
+from models import PaginatedResponse
+
+
+router = APIRouter(prefix="/planner-output/assignments", tags=["Planner Assignments"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def list_assignments(
+    plan_id: str = Query(..., description="Plan ID (required)"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    team_id: Optional[int] = Query(None, description="Filter by team ID"),
+    group_id: Optional[int] = Query(None, description="Filter by group ID"),
+    bsa_id: Optional[str] = Query(None, description="Filter by BSA ID"),
+    request_id: Optional[str] = Query(None, description="Filter by request/demand ID"),
+    start_date: Optional[str] = Query(None, description="Filter assignments starting on or after (ISO date)"),
+    end_date: Optional[str] = Query(None, description="Filter assignments ending on or before (ISO date)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=200, description="Items per page"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    List assignments with pagination and filters.
+
+    **Required:** `plan_id`
+    **Optional filters:** resource_id, team_id, group_id, bsa_id, request_id, start_date, end_date
+    """
+    try:
+        offset = (page - 1) * per_page
+
+        where_clauses = ["plan_id = :plan_id"]
+        params = {"plan_id": plan_id, "limit": per_page, "offset": offset}
+
+        if resource_id:
+            where_clauses.append("resource_id = :resource_id")
+            params["resource_id"] = resource_id
+        if team_id is not None:
+            where_clauses.append("team_id = :team_id")
+            params["team_id"] = team_id
+        if group_id is not None:
+            where_clauses.append("group_id = :group_id")
+            params["group_id"] = group_id
+        if bsa_id:
+            where_clauses.append("bsa_id = :bsa_id")
+            params["bsa_id"] = bsa_id
+        if request_id:
+            where_clauses.append("request_id = :request_id")
+            params["request_id"] = request_id
+        if start_date:
+            where_clauses.append("calendar_start >= :start_date")
+            params["start_date"] = _parse_dt(start_date)
+        if end_date:
+            where_clauses.append("calendar_end <= :end_date")
+            params["end_date"] = _parse_dt(end_date)
+
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+        count_result = await db.execute(
+            text(f"SELECT COUNT(*) FROM planner_assignments {where_sql}"),
+            params,
+        )
+        total = count_result.scalar()
+
+        query = text(f"""
+            SELECT id, plan_id, job_id, request_id, bsa_id,
+                   resource_id, resource_name, resource_category,
+                   team_id, team_name, group_id, group_name,
+                   calendar_start, calendar_end, duration_hours,
+                   is_night_shift, created_at
+            FROM planner_assignments
+            {where_sql}
+            ORDER BY calendar_start, resource_id
+            LIMIT :limit OFFSET :offset
+        """)
+
+        result = await db.execute(query, params)
+        rows = [dict(row._mapping) for row in result.fetchall()]
+
+        return PaginatedResponse(
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=math.ceil(total / per_page) if total > 0 else 0,
+            data=rows,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching assignments: {str(e)}")
+
+
+@router.get("/summary")
+async def assignments_summary(
+    plan_id: str = Query(..., description="Plan ID (required)"),
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Aggregated stats for a plan's assignments: counts by team, group, night shifts.
+    """
+    try:
+        # Total count
+        total_result = await db.execute(
+            text("SELECT COUNT(*) FROM planner_assignments WHERE plan_id = :plan_id"),
+            {"plan_id": plan_id},
+        )
+        total = total_result.scalar()
+
+        # By team
+        team_result = await db.execute(
+            text("""
+                SELECT team_id, team_name, COUNT(*) as count
+                FROM planner_assignments
+                WHERE plan_id = :plan_id
+                GROUP BY team_id, team_name
+                ORDER BY count DESC
+            """),
+            {"plan_id": plan_id},
+        )
+        by_team = [dict(row._mapping) for row in team_result.fetchall()]
+
+        # By group
+        group_result = await db.execute(
+            text("""
+                SELECT group_id, group_name, COUNT(*) as count
+                FROM planner_assignments
+                WHERE plan_id = :plan_id
+                GROUP BY group_id, group_name
+                ORDER BY count DESC
+            """),
+            {"plan_id": plan_id},
+        )
+        by_group = [dict(row._mapping) for row in group_result.fetchall()]
+
+        # Night shift count
+        night_result = await db.execute(
+            text("""
+                SELECT COUNT(*) FROM planner_assignments
+                WHERE plan_id = :plan_id AND is_night_shift = true
+            """),
+            {"plan_id": plan_id},
+        )
+        night_shifts = night_result.scalar()
+
+        # Distinct resources
+        resource_result = await db.execute(
+            text("""
+                SELECT COUNT(DISTINCT resource_id) FROM planner_assignments
+                WHERE plan_id = :plan_id
+            """),
+            {"plan_id": plan_id},
+        )
+        distinct_resources = resource_result.scalar()
+
+        return {
+            "plan_id": plan_id,
+            "total_assignments": total,
+            "distinct_resources": distinct_resources,
+            "night_shifts": night_shifts,
+            "by_team": by_team,
+            "by_group": by_group,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching summary: {str(e)}")
+
+
+@router.post("/bulk", status_code=201)
+async def bulk_insert_assignments(
+    payload: dict,
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """
+    Bulk insert assignments from solver output.
+
+    **Required fields:** plan_id, assignments (list)
+    **Optional:** job_id
+    """
+    try:
+        plan_id = payload.get("plan_id")
+        job_id = payload.get("job_id")
+        assignments = payload.get("assignments", [])
+
+        if not plan_id:
+            raise HTTPException(status_code=400, detail="Missing required field: plan_id")
+        if not assignments:
+            raise HTTPException(status_code=400, detail="Missing or empty: assignments")
+
+        inserted = 0
+        batch_size = 500
+
+        for i in range(0, len(assignments), batch_size):
+            batch = assignments[i:i + batch_size]
+            values_parts = []
+            params = {"plan_id": plan_id, "job_id": job_id}
+
+            for j, a in enumerate(batch):
+                prefix = f"a{j}_"
+                values_parts.append(f"""(
+                    :plan_id, :job_id,
+                    :{prefix}request_id, :{prefix}bsa_id,
+                    :{prefix}resource_id, :{prefix}resource_name, :{prefix}resource_category,
+                    :{prefix}team_id, :{prefix}team_name,
+                    :{prefix}group_id, :{prefix}group_name,
+                    :{prefix}calendar_start, :{prefix}calendar_end,
+                    :{prefix}duration_hours, :{prefix}is_night_shift
+                )""")
+                params[f"{prefix}request_id"] = str(a.get("request_id", ""))
+                params[f"{prefix}bsa_id"] = a.get("bsa_id")
+                params[f"{prefix}resource_id"] = str(a.get("resource_id", ""))
+                params[f"{prefix}resource_name"] = a.get("resource_name")
+                params[f"{prefix}resource_category"] = a.get("resource_category")
+                params[f"{prefix}team_id"] = a.get("team_id")
+                params[f"{prefix}team_name"] = a.get("team_name")
+                params[f"{prefix}group_id"] = a.get("group_id")
+                params[f"{prefix}group_name"] = a.get("group_name")
+                params[f"{prefix}calendar_start"] = _parse_dt(a.get("calendar_start"))
+                params[f"{prefix}calendar_end"] = _parse_dt(a.get("calendar_end"))
+                params[f"{prefix}duration_hours"] = a.get("duration_hours")
+                params[f"{prefix}is_night_shift"] = a.get("is_night_shift", False)
+
+            insert_sql = text(f"""
+                INSERT INTO planner_assignments (
+                    plan_id, job_id,
+                    request_id, bsa_id,
+                    resource_id, resource_name, resource_category,
+                    team_id, team_name, group_id, group_name,
+                    calendar_start, calendar_end,
+                    duration_hours, is_night_shift
+                ) VALUES {', '.join(values_parts)}
+            """)
+
+            await db.execute(insert_sql, params)
+            inserted += len(batch)
+
+        await db.commit()
+
+        return {"inserted": inserted, "plan_id": plan_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error bulk inserting assignments: {str(e)}")
+
+
+@router.delete("/{plan_id}", status_code=204)
+async def delete_assignments_by_plan(
+    plan_id: str,
+    db: AsyncSession = Depends(get_internal_db),
+):
+    """Delete all assignments for a plan."""
+    try:
+        result = await db.execute(
+            text("DELETE FROM planner_assignments WHERE plan_id = :plan_id"),
+            {"plan_id": plan_id},
+        )
+        await db.commit()
+
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"No assignments found for plan_id: {plan_id}")
+
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting assignments: {str(e)}")

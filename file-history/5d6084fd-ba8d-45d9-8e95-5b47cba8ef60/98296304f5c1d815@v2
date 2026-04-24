@@ -1,0 +1,68 @@
+import json
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+DATA_DIR = BASE_DIR / "data"
+MEALS_FILE = DATA_DIR / "meals.json"
+PLAN_FILE = DATA_DIR / "plan.json"
+
+app = FastAPI(title="Meal Planner")
+
+
+def load_json(path: Path):
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_json(path: Path, data) -> None:
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+class PlanEntry(BaseModel):
+    day: str
+    slot: str
+    meal_id: str | None = None
+
+
+@app.get("/api/meals")
+def get_meals():
+    return load_json(MEALS_FILE)
+
+
+@app.get("/api/plan")
+def get_plan():
+    return load_json(PLAN_FILE)
+
+
+@app.put("/api/plan")
+def update_plan(entry: PlanEntry):
+    valid_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+    valid_slots = {"breakfast", "lunch", "dinner"}
+    if entry.day not in valid_days or entry.slot not in valid_slots:
+        raise HTTPException(status_code=400, detail="Invalid day or slot")
+
+    plan = load_json(PLAN_FILE)
+    plan.setdefault(entry.day, {})[entry.slot] = entry.meal_id
+    save_json(PLAN_FILE, plan)
+    return plan
+
+
+@app.get("/")
+def index():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)

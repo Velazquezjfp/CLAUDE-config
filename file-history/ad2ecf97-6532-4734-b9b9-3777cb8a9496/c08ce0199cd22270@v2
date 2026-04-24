@@ -1,0 +1,103 @@
+# Sprint 001 — Execution Roadmap
+
+_Generated from `_dep-graph.json`. Do not edit manually — regenerate with `/sprint-roadmap-update 001` when requirements change._
+
+**Summary:** 10 requirements across 5 waves. 5 file conflicts auto-resolved.
+
+## Wave 1 — Foundational
+
+_These requirements have no pending dependencies and can execute in parallel sessions._
+
+- **S001-D-001** — Local JSON persistence of profile and meal log in data.json (data)
+  - Affected: creates 5
+  - File: `S001-D-001.md`
+
+- **S001-F-001** — Local Node.js + Express server on port 8010 started via npm start or node server.js (functional)
+  - Affected: creates 4
+  - File: `S001-F-001.md`
+
+- **S001-F-002** — Single-page frontend with Profile, Meal Log, and Add Meal tabs (plain HTML/CSS/JS) (functional)
+  - Affected: creates 10
+  - File: `S001-F-002.md`
+
+## Wave 2 — Feature
+
+_Runs after Wave 1 completes._
+
+- **S001-F-004** — REST API for profile and meal log (GET/POST profile, GET/POST/DELETE meals) (functional)
+  - Depends on: S001-D-001, S001-F-001
+  - Affected: creates 11, modifies 1, reads 3
+  - File: `S001-F-004.md`
+
+- **S001-F-007** — Daily calorie target via Mifflin-St Jeor adjusted for goal, shown on Profile tab (functional)
+  - Depends on: S001-F-002
+  - Affected: creates 4, modifies 2
+  - File: `S001-F-007.md`
+
+## Wave 3 — Feature
+
+_Runs after Wave 2 completes._
+
+- **S001-F-003** — Profile form capturing biometrics, goal, diet, activity, and restrictions (functional)
+  - Depends on: S001-F-002, S001-F-004
+  - Affected: creates 13, modifies 3, reads 2
+  - File: `S001-F-003.md`
+
+- **S001-NFR-001** — No-build startup — node server.js serves /public as static with no build step (non-functional)
+  - Depends on: S001-F-001, S001-F-002, S001-F-004
+  - Affected: modifies 2, reads 3
+  - File: `S001-NFR-001.md`
+
+## Wave 4 — Feature
+
+_Runs after Wave 3 completes._
+
+- **S001-F-005** — Add Meal form with name, type, date, calories, protein, description, and mood (functional)
+  - Depends on: S001-F-002, S001-F-003, S001-F-004
+  - Affected: creates 10, modifies 3, reads 1
+  - File: `S001-F-005.md`
+
+- **S001-NFR-002** — Sub-1-second first-interactive on localhost, express as sole runtime dependency (non-functional)
+  - Depends on: S001-F-001, S001-F-002, S001-NFR-001
+  - Affected: modifies 1, reads 3
+  - File: `S001-NFR-002.md`
+
+## Wave 5 — Feature
+
+_Runs after Wave 4 completes._
+
+- **S001-F-006** — Meal Log list showing name, type, date, calories, protein, mood, and per-entry remove (functional)
+  - Depends on: S001-F-002, S001-F-003, S001-F-004, S001-F-005
+  - Affected: creates 7, modifies 3, reads 2
+  - File: `S001-F-006.md`
+
+## Dependency edges
+
+### Semantic (from requirement text)
+
+- **S001-D-001** → **S001-F-004** — S001-F-004 declares a semantic dependency on S001-D-001
+
+### Structural (from affected_surface)
+
+- **S001-F-001** → **S001-F-004** — S001-F-004 modifies file 'server.js' which S001-F-001 creates
+- **S001-F-001** → **S001-NFR-001** — S001-NFR-001 modifies file 'server.js' which S001-F-001 creates
+- **S001-F-001** → **S001-NFR-002** — S001-NFR-002 modifies file 'package.json' which S001-F-001 creates
+- **S001-F-002** → **S001-F-003** — S001-F-003 modifies file 'public/index.html' which S001-F-002 creates
+- **S001-F-002** → **S001-F-005** — S001-F-005 modifies file 'public/index.html' which S001-F-002 creates
+- **S001-F-002** → **S001-F-006** — S001-F-006 modifies file 'public/index.html' which S001-F-002 creates
+- **S001-F-002** → **S001-F-007** — S001-F-007 modifies file 'public/index.html' which S001-F-002 creates
+- **S001-F-002** → **S001-NFR-001** — S001-NFR-001 reads file 'public/index.html' which S001-F-002 creates
+- **S001-F-002** → **S001-NFR-002** — S001-NFR-002 reads file 'public/index.html' which S001-F-002 creates
+- **S001-F-004** → **S001-F-003** — S001-F-003 reads endpoint 'get /api/profile' which S001-F-004 creates
+- **S001-F-004** → **S001-F-005** — S001-F-005 reads endpoint 'post /api/meals' which S001-F-004 creates
+- **S001-F-004** → **S001-F-006** — S001-F-006 reads endpoint 'get /api/meals' which S001-F-004 creates
+
+### Conflicts (auto-resolved)
+
+- **S001-F-003** → **S001-F-005** — both modify file 'public/index.html' — S001-F-005 deferred to avoid parallel-edit collision
+- **S001-F-003** → **S001-F-006** — both modify file 'public/index.html' — S001-F-006 deferred to avoid parallel-edit collision
+- **S001-F-004** → **S001-NFR-001** — both modify file 'server.js' — S001-NFR-001 deferred to avoid parallel-edit collision
+- **S001-F-005** → **S001-F-006** — both modify file 'public/index.html' — S001-F-006 deferred to avoid parallel-edit collision
+- **S001-NFR-001** → **S001-NFR-002** — both modify file 'package.json' — S001-NFR-002 deferred to avoid parallel-edit collision
+
+_Conflicts mean the target requirement was pushed to a later wave because it would have modified the same file as the source. Both still execute; they just can't be parallel._

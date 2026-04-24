@@ -1,0 +1,25 @@
+# Diagnostic Report: Solver Job Cancellation Failure (404 Not Found)
+
+## 📋 Overview
+**Date:** 2026-03-26  
+**Issue:** Frontend "Cancel" button fails to stop a running job.  
+**Error Message:** `Failed 404: job not found {job_id}`  
+**Impact:** Solver continues to consume high CPU/memory resources even after a user attempts to terminate the task.
+
+---
+
+## 🔍 Symptoms & Evidence
+
+### 1. The "Amnesiac" API
+The logs indicate that the `JobManager` was re-initialized shortly before the cancellation request was received. 
+> `INFO:__main__:JobManager initialized: max_concurrent_jobs=1`
+
+### 2. Orphaned Solver Process
+While the API returns a **404**, the logs show that the solver is still actively processing partitions:
+> `INFO:solver.checkpoint_manager: Checkpoint saved: ...partition_007.json`  
+> `INFO:solver.partitioner: Solving partition 8: 200 demands`
+
+### 3. Failed Cancellation Requests
+Multiple POST requests to the cancel endpoint failed because the API no longer recognized the Job ID in its local memory:
+```text
+INFO: 172.21.0.1 - "POST /qa/planner/api/v1/solver/cancel/JOB-20260326120049-041D0E" 404 Not Found

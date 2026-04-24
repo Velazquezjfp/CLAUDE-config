@@ -1,0 +1,286 @@
+# Layer 3 Architectural Proposal — Decouple LC-06 from Partitioned Solving
+
+> **Status:** DESIGN / NOT IMPLEMENTED
+> **Context:** After Fix #14 and Fix #15, LC-06 compliance is 100% on validated
+> scopes. But both fixes are patches on top of a deeper mismatch: LC-06's
+> semantic is **per-calendar-month** while the solver architecture is
+> **per-demand-partition**. This doc captures the cleaner architectural
+> rewrite option, for use only if a future regression or scope change
+> re-exposes the fault line.
+> **When to revisit:** if the carryover/partition dance introduces a new
+> class of bug; or if Phase I state management becomes a maintenance burden;
+> or if we want to parallelize partition solves (currently serial due to
+> carryover dependency).
+
+---
+
+## 1. The underlying architectural tension
+
+The solver is built around **demand-driven partitions**: each partition holds
+a chunk of demands + their matching resources + their absences, and produces
+assignments for that chunk. Partition boundaries are chosen for CP-SAT
+tractability (~200 demands max per partition).
+
+LC-06 asks a different question: **"did every resource get their monthly
+rest-day minimum, regardless of which demands they worked?"** This is a
+per-resource, per-calendar-month check. It has no natural connection to the
+partition boundaries.
+
+Today's architecture fits LC-06 into the partitioned world via two
+compensating mechanisms:
+
+1. **Phase I carryover (`PartitionState`)** — after each partition solves,
+   we record how many RT/CT that resource accumulated, so subsequent
+   partitions can compute `rt_required = max(0, gross - prior_rt)`.
+
+2. **Phase D proration (`compute_rest_targets`)** — each partition computes
+   its own per-segment target (originally per-partition, now cumulative via
+   Fix #15) using calendar-month math.
+
+Both are necessary to make LC-06 work in a partitioned solve. Both have
+produced bugs (Fix #14 → scope issue; Fix #15 → proration undercount). A
+third class of bug could appear if future changes alter partition boundary
+semantics.
+
+---
+
+## 2. Proposed architecture: hoist LC-06 above the partitioner
+
+### 2.1 Conceptual shape
+
+```
+  OLD (current):
+  ┌─────────────────────────────────────────────────────────────┐
+  │ For each partition:                                         │
+  │   1. Preprocess demands + resources + absences              │
+  │   2. Build CP-SAT model:                                    │
+  │      - demand vars  x[r, d]                                 │
+  │      - rest-day vars rt[r, day], ct[r, day]                 │
+  │      - ALL constraints including LC-06 with carryover math  │
+  │   3. Solve                                                  │
+  │   4. Update PartitionState carryover for next partition     │
+  │ Merge all partition outputs                                 │
+  └─────────────────────────────────────────────────────────────┘
+
+  NEW (proposed):
+  ┌─────────────────────────────────────────────────────────────┐
+  │ STAGE A — DEMAND ASSIGNMENT (partitioned, parallelizable):  │
+  │   For each partition (independent, could run in parallel):  │
+  │     1. Preprocess demands + resources + absences            │
+  │     2. Build CP-SAT model:                                  │
+  │        - demand vars  x[r, d]                               │
+  │        - all demand-related constraints (HC_*, LC_01..07)   │
+  │        - NO LC-06 rest-day vars                             │
+  │     3. Solve                                                │
+  │   Merge all partition demand-assignments                    │
+  │                                                             │
+  │ STAGE B — REST-DAY ALLOCATION (single pass, full range):    │
+  │   1. Build a FULL-RANGE LC-06 model:                        │
+  │      - input: all demand assignments from Stage A           │
+  │      -        all resources in plan scope                   │
+  │      -        existing RT/CT absences from external DB      │
+  │      - vars:  rt[r, day], ct[r, day] for ALL (r, day)       │
+  │      - constraints:                                         │
+  │        * Per calendar-month: ≥4 RT + ≥2 CT + ≥6 combined    │
+  │          (hard, no proration — each month is a month)       │
+  │        * No overlap with Stage A demand assignments         │
+  │        * Priority-1 anchor (absorbs pre-range carryover)    │
+  │        * LC-05 free-weekend coupling                        │
+  │   2. Solve (small model — only rest-day vars)               │
+  │   3. Merge with Stage A assignments                         │
+  └─────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 Why this removes both classes of bug
+
+- **Fix #14's scope issue** dissolves: Stage B iterates `all team-filtered
+  resources` by construction — the category filter is a Stage-A concern only,
+  never leaks into Stage B.
+- **Fix #15's proration issue** dissolves: Stage B sees the full plan range
+  for every resource, every month, at once. No per-partition proration math
+  at all. Targets are simple: `sum(rt_vars) over month >= 4` (with ceil-proration
+  applied ONCE for plans that start/end mid-month, not per partition).
+- **Phase I carryover** becomes a mid-range seed only (pre-plan-range RT/CT
+  absences + Priority-1 last_shift_end), not an inter-partition state
+  transfer. The `PartitionState.rt_count_by_month` / `ct_count_by_month`
+  fields become unnecessary for LC-06 (they may still exist for analytics).
+
+### 2.3 Why demand assignment stays partitioned
+
+The reason partitioning was introduced — CP-SAT model size on 30k+ demands
+— hasn't changed. Stage A still needs the demand split. The rewrite
+preserves this optimization.
+
+### 2.4 What Stage B actually solves
+
+Stage B's model size is small: ~374 resources × ~34 days × 2 types = ~25,000
+BoolVars. Plus a small number of target + overlap + coupling constraints.
+At our QA scope this would solve in **seconds**, not minutes. Even at
+production scale (~1000 resources × ~90 days) it's a bounded problem —
+likely under a minute.
+
+### 2.5 Dependency: Stage A → Stage B
+
+Stage A doesn't know about rest-day vars. It assigns demands greedily
+respecting hard constraints (LC_01-07, HC_*), producing `{(resource, day):
+has_demand}` pairs.
+
+Stage B takes this as input. For each (resource, day) with demand, the
+rest-day decision `rt[r,d]` and `ct[r,d]` are forced to 0 (a resource can't
+rest and work on the same day). For each (resource, day) with NO demand,
+rest-day vars are free. LC-06 targets drive which days become rest.
+
+**Edge case:** what if Stage A assignments make Stage B infeasible (some
+resource has too many demand-days to fit 4+2 rest days)? This would
+happen if Stage A itself violates LC-06 implicitly. Mitigation options:
+- Stage A adds a SOFT hint ("try to leave 6 days per month free per resource")
+  — doesn't enforce, just guides.
+- Stage B detects and reports infeasible resources; solver returns PARTIAL
+  status with specific resources listed.
+- Or: add a cheap slack variable in Stage B so it never infeasibles; count
+  slack as a post-solve "LC-06 shortfall" metric.
+
+---
+
+## 3. Implementation outline
+
+Estimated effort: **2-3 weeks, single developer**. Breakdown:
+
+### 3.1 Stage A changes (~3-5 days)
+
+- Remove LC-06 block from `solver/model.py::_add_constraint_modules`
+- Remove LC-06 variable stashing (`self.rt_vars`, `self.ct_vars`)
+- Remove `compute_rest_targets` call from model.py
+- Remove `full_plan_start/end` plumbing (partitioner → preprocessed → model)
+- Keep LC-05 free-weekend vars in Stage A (they're demand-timing-related),
+  but export them for Stage B to read
+- Keep Phase I PartitionState transfer (still useful for Stage A analytics)
+
+### 3.2 New Stage B module (~5-8 days)
+
+- New file: `solver_v2/solver/stage_b_rest_allocator.py`
+- Classes:
+  - `RestDayAllocator` — builds + solves the Stage B model
+  - `RestDayInput` — holds demand assignments, absences, LC-05 fw vars, resources
+- Unit tests: single-resource, multi-resource, mid-range start, mid-range end,
+  cross-month, resources with/without existing absences, edge cases from
+  R6b/R7 tests.
+- Integration with `service.py`: after `solve_with_checkpointing` returns
+  Stage A results, invoke `RestDayAllocator` with the merged output.
+
+### 3.3 Output merge (~1-2 days)
+
+- Merge Stage B's RT/CT rows with Stage A's DEMAND rows
+- Preserve Phase H normalizer semantics (request_id=None, bsa_id=None, duration=24h)
+- Update `_save_results_sync` to track which stage produced each row
+- merge_results dedupe logic may simplify or become unnecessary (sub-partition
+  overlaps in Stage A don't affect Stage B)
+
+### 3.4 Analyzer updates (~1-2 days)
+
+- `LC_06_RestDaysAnalyzer` — should already work since it reads final output
+- `ct_rt_compliance` surface in `solution_analyzer.py` — may simplify now that
+  LC-06 is a single-pass check
+- Phase J alerts (`_analyze_ct_rt_compliance`) — keep as source-data pre-check
+- Expose Stage B solve-time + objective separately in `analysis_summary`
+
+### 3.5 Config + rollback (~1 day)
+
+- New flag: `LC_06_STAGE_B_ENABLED: bool = False` (opt-in during rollout)
+- When False: legacy partitioned LC-06 path runs (Fix #14+#15 code intact)
+- When True: Stage A skips LC-06, Stage B runs
+- A/B can be run on the same scope to compare results
+
+---
+
+## 4. Risks + mitigations
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Stage B produces different assignments than current (regression) | Medium | Config-flag gate + parallel runs on validation scope with tolerance-based diff |
+| Stage B infeasibility for resources over-booked in Stage A | Low-medium | Slack vars in Stage B; report as PARTIAL |
+| LC-05 weekend coupling interaction splits across stages awkwardly | Medium | Keep LC-05 free-weekend vars in Stage A (since they depend on demand presence), export selected ones to Stage B |
+| Priority-1 anchor state management complicates Stage B | Low | Single pass means the anchor fires cleanly for the first day of plan range; no inter-partition propagation |
+| Performance regression at very large scope (1000+ resources) | Low | Stage B is small model, likely faster than current partitioned total |
+| Breaks existing test suite | Medium | Keep legacy path behind flag; run test suite against both until confidence built |
+
+---
+
+## 5. When to actually build this
+
+**Do NOT build this if:**
+- Current architecture continues to pass all validation (R7+ reports).
+- No new LC-06 bug class emerges.
+- Production is stable with Fix #14+#15.
+
+**DO build this if:**
+- A regression appears that can't be cleanly traced to Fix #14 or #15's
+  scope — i.e., the partitioned approach starts failing in new ways.
+- Product requirements change such that LC-06 needs to support new
+  semantics (weekly rest minimums? cross-month smoothing? different
+  proration rules?).
+- We want to parallelize partition solves for throughput.
+- Phase I carryover state handling becomes a maintenance burden (today it's
+  stable; may not be true forever).
+
+**Intermediate option if the above isn't quite enough pressure:**
+- Refactor LC-06 into its own module that LOOKS like Stage B (same public
+  API) but today runs per-partition. Makes the future rewrite easier
+  without requiring a full switch today.
+
+---
+
+## 6. Success metrics for the rewrite
+
+If built, measure against the current architecture on R7b's scope:
+
+| Metric | Current (Fix #14+#15) | Target |
+|---|---|---|
+| LC-06 compliance | 100% | 100% (must not regress) |
+| Solve time | ~22 min (full fleet) | ≤ 22 min (stretch: faster via parallel Stage A) |
+| Model complexity | 5.7k assignments + inter-partition state | Stage A has cleaner model per partition; Stage B ~25k vars |
+| Analyzer simplicity | Per-constraint analyzers + cross-partition aggregation | LC-06 analyzer sees full range naturally |
+| Regression surface | Fix #14 + #15 + future proration fixes = 5 files of carryover-aware code | Single Stage B module; Stage A simpler |
+
+---
+
+## 7. Prior art / lessons learned from the patches
+
+The three fixes that collectively work around Layer 3 are:
+
+1. **Fix #14** — Decouples LC-06 resource scope from demand-matching scope.
+   Already halfway to Layer 3: LC-06 iterates the full team-filtered list,
+   demand matching iterates the category-filtered subset. Stage B inherits
+   exactly this split by design.
+
+2. **Fix #15** — Cumulative proration to make per-partition math sum to
+   full-month gross. Would be ENTIRELY UNNECESSARY in Layer 3 — Stage B sees
+   the full month directly.
+
+3. **Fix #13** — Soft penalty on excess rest days. Would still exist in
+   Stage B (to prevent "parking" resources on CT), but the config is simpler
+   (no need to handle required=0 edge case — that doesn't happen when
+   targets are full-month).
+
+This suggests the Layer 3 rewrite would SHRINK the LC-06 codebase by
+~30-40% while making correctness more obvious.
+
+---
+
+## 8. Open questions for the rewrite (if undertaken)
+
+- Should Stage B use CP-SAT too, or can a simpler greedy be used given
+  demands are already assigned?
+- How does Stage B handle LC-08 v2 (which currently runs as a fallback
+  when LC-06 is skipped)? Likely: LC-08 v2 disappears entirely, LC-06
+  handles everything.
+- Does the `PartitionState.rt_count_by_month` / `ct_count_by_month`
+  field still need to exist? Probably not — Phase I becomes a pre-range
+  seed only.
+- Does the `Phase H normalizer` (at `solver/model.py:_extract_rest_day_rows`)
+  simplify? It already handles single-solve and partitioned — the partitioned
+  branch goes away.
+
+---
+
+Produced 2026-04-22. Not a commitment; a blueprint for when or if.

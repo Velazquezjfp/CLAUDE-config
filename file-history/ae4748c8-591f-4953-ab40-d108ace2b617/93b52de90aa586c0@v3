@@ -1,0 +1,48 @@
+-- Replannable Demand Types Table
+-- Stores calendar types that are considered "replannable" (can be moved/reassigned by solver)
+-- Used by HC-04 constraint to exclude these types from blocking resource availability
+-- This table is in the INTERNAL database (parameters DB)
+
+-- =============================================================================
+-- Replannable Demand Types (HC-04 Support)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS replannable_demand_types (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL DEFAULT 'global',
+    type_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    active BOOLEAN DEFAULT TRUE,
+    is_custom BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(type_name, user_id)
+);
+
+-- Idempotent migration for existing deployments (2026-04-21).
+-- CREATE TABLE IF NOT EXISTS above is a no-op when the table already exists,
+-- so is_custom was never added to the live table in persistent volumes.
+-- This ALTER is safe to run every startup.
+ALTER TABLE replannable_demand_types
+    ADD COLUMN IF NOT EXISTS is_custom BOOLEAN DEFAULT FALSE;
+
+-- Self-healing row restoration (2026-04-21).
+-- `RT Jour de repos` was observed missing from the live QA DB during
+-- Holistic Report #1 (only `CT Jour de compensation` was present). The seed
+-- file `replannable_demand_types_seed.sql` only runs on first init, so
+-- manually-deleted rows in persistent volumes never come back. These
+-- idempotent INSERTs are safe to run every startup (ON CONFLICT DO NOTHING)
+-- and ensure the core RT/CT pair is always present.
+INSERT INTO replannable_demand_types (type_name, description, active, is_custom) VALUES
+    ('RT Jour de repos', 'Rest day', TRUE, FALSE),
+    ('CT Jour de compensation', 'Compensation day', TRUE, FALSE)
+ON CONFLICT (type_name, user_id) DO NOTHING;
+
+-- Index for performance
+CREATE INDEX IF NOT EXISTS idx_replannable_demand_types_active ON replannable_demand_types(active);
+CREATE INDEX IF NOT EXISTS idx_replannable_demand_types_name ON replannable_demand_types(type_name);
+CREATE INDEX IF NOT EXISTS idx_replannable_demand_types_user_id ON replannable_demand_types(user_id);
+
+COMMENT ON TABLE replannable_demand_types IS 'Calendar types that can be replanned by solver (HC-04). These types are excluded from blocking resource availability.';
+COMMENT ON COLUMN replannable_demand_types.type_name IS 'Calendar type name as it appears in assignments.calendar_type';
+COMMENT ON COLUMN replannable_demand_types.description IS 'Optional description of the type';
+COMMENT ON COLUMN replannable_demand_types.active IS 'Whether this type is currently considered replannable';

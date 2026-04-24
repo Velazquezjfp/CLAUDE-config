@@ -1,0 +1,134 @@
+ Hier ist die komplette Analyse für dein Kubernetes-Deployment:
+
+  ---
+  1. Docker / Software-Anforderungen
+
+  Base Image
+
+  - docker.io/pytorch/pytorch (Ubuntu 22.04, CUDA-fähig, ~7.8 GB allein für conda/pytorch)
+  - Python 3.10.13 (nicht 3.11 - das ist die aktuelle Version im Container)
+
+  requirements.txt (deine 8 direkten Dependencies)
+
+  numpy<2
+  Flask
+  Levenshtein
+  opencv-python-headless
+  opencv-contrib-python-headless
+  spacy
+  pandas
+  easyocr
+
+  Tatsächlich installierte Schlüssel-Bibliotheken (aus dem Container)
+  ┌────────────────────────────────┬───────────┬──────────────────────────┐
+  │             Paket              │  Version  │          Zweck           │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ torch                          │ 2.2.1     │ PyTorch (vom Base Image) │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ torchvision                    │ 0.17.1    │ (vom Base Image)         │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ spacy                          │ 3.8.11    │ NER Modelle              │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ easyocr                        │ 1.7.2     │ OCR (EN, AR, FA)         │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ opencv-python-headless         │ 4.11.0.86 │ Bildverarbeitung         │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ opencv-contrib-python-headless │ 4.11.0.86 │ OpenCV extras            │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ Flask                          │ 3.1.2     │ Web API                  │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ Levenshtein                    │ 0.27.3    │ String-Matching          │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ pandas                         │ 2.3.3     │ Datenverarbeitung        │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ numpy                          │ 1.26.3    │ Numerik                  │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ pillow                         │ 10.2.0    │ Bildformat-Support       │
+  ├────────────────────────────────┼───────────┼──────────────────────────┤
+  │ scikit-image                   │ 0.25.2    │ (easyocr Dependency)     │
+  └────────────────────────────────┴───────────┴──────────────────────────┘
+  NLTK: Wird NICHT verwendet - stattdessen EasyOCR
+
+  ML-Modelle im Container
+  ┌──────────────────────────────────┬────────┬────────────────────────────────────────┐
+  │              Modell              │ Größe  │                  Typ                   │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ model-best1 (SpaCy NER)          │ ~34 MB │ Allgemeine Dokumente (24 Entity-Typen) │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ model-best-birthcert (SpaCy NER) │ ~33 MB │ Geburtsurkunden (21 Entity-Typen)      │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ yolo/ (YOLOv4-tiny)              │ ~23 MB │ Objekterkennung (4 Klassen)            │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ yolo-birthcert/ (YOLOv4-tiny)    │ ~23 MB │ Objekterkennung (7 Klassen)            │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ frontalface.xml (Haar Cascade)   │ 1.2 MB │ Gesichtserkennung                      │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ EasyOCR arabic.pth               │ 206 MB │ Arabisch OCR Modell                    │
+  ├──────────────────────────────────┼────────┼────────────────────────────────────────┤
+  │ EasyOCR craft_mlt_25k.pth        │ 80 MB  │ Text-Detektion                         │
+  └──────────────────────────────────┴────────┴────────────────────────────────────────┘
+  ---
+  2. Host / Kubernetes Anforderungen
+
+  Docker Image Größe
+
+  8.4 GB total (das ist schon das gebaute Image anony:ai)
+
+  Storage (pro Pod)
+  ┌──────────────────────────────┬───────────────────┐
+  │          Komponente          │       Größe       │
+  ├──────────────────────────────┼───────────────────┤
+  │ Docker Image                 │ 8.4 GB            │
+  ├──────────────────────────────┼───────────────────┤
+  │ /opt/conda (PyTorch + deps)  │ 7.8 GB            │
+  ├──────────────────────────────┼───────────────────┤
+  │ /usr/src/app (App + Modelle) │ 114 MB            │
+  ├──────────────────────────────┼───────────────────┤
+  │ /root/.EasyOCR (OCR Modelle) │ 285 MB            │
+  ├──────────────────────────────┼───────────────────┤
+  │ Runtime temp (/photo/)       │ ~10 MB            │
+  ├──────────────────────────────┼───────────────────┤
+  │ Gesamt pro Node              │ ~10 GB mindestens │
+  └──────────────────────────────┴───────────────────┘
+  CPU
+
+  - Die App nutzt CPU-only Inference (YOLO via OpenCV DNN, SpaCy, EasyOCR)
+  - Obwohl das Base Image CUDA-fähig ist, werden keine GPU-Operationen genutzt (OpenCV DNN Backend, nicht CUDA)
+  - Empfehlung: 2-4 vCPUs pro Pod (EasyOCR und YOLO brauchen bei Bildverarbeitung CPU-Leistung)
+
+  RAM
+  ┌────────────────────────────┬─────────┐
+  │         Geschätzt          │  Wert   │
+  ├────────────────────────────┼─────────┤
+  │ PyTorch Runtime            │ ~500 MB │
+  ├────────────────────────────┼─────────┤
+  │ SpaCy Modelle (2x geladen) │ ~200 MB │
+  ├────────────────────────────┼─────────┤
+  │ EasyOCR Modelle            │ ~400 MB │
+  ├────────────────────────────┼─────────┤
+  │ OpenCV Bildverarbeitung    │ ~200 MB │
+  ├────────────────────────────┼─────────┤
+  │ Flask + Overhead           │ ~100 MB │
+  ├────────────────────────────┼─────────┤
+  │ Request (minimum)          │ 2 GB    │
+  ├────────────────────────────┼─────────┤
+  │ Limit (empfohlen)          │ 4 GB    │
+  └────────────────────────────┴─────────┘
+  Kubernetes Resource Spec (Empfehlung)
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: "2Gi"
+    limits:
+      cpu: "4"
+      memory: "4Gi"
+
+  Wichtige Hinweise für K8s
+
+  1. Kein GPU nötig - obwohl das pytorch Base Image CUDA enthält, nutzt dein Code nur CPU. Du könntest alternativ ein leichteres Base Image verwenden (z.B. python:3.10-slim)
+  und nur die nötigen Pakete installieren, was das Image von 8.4 GB auf ~3-4 GB reduzieren würde.
+  2. Port: 5000/TCP (ein einzelner Endpunkt: POST /ai-analysis)
+  3. EasyOCR Modelle: Werden beim ersten Aufruf nach /root/.EasyOCR/ heruntergeladen, falls nicht vorhanden. Für K8s solltest du diese ins Image einbacken.
+  4. Kein persistenter Storage nötig - die App speichert Bilder nur temporär unter /usr/src/app/photo/
+  5. Stateless - die App hat keine Datenbank, also skalierbar mit mehreren Replicas

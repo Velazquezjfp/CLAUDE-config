@@ -1,0 +1,98 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "schema": "http://schema.org/",
+    "bamf": "https://bamf.bund.de/ontology/integration-course#"
+  },
+
+  "_comment": "This is what a machine sees when it resolves the ontology URL. When you visit schema.org/birthPlace, the browser shows HTML. But when a machine requests it (Accept: application/ld+json), it gets back a JSON object like this. This file is the JSON-LD equivalent of integration_course_ontology.ttl.",
+
+  "@graph": [
+    {
+      "@id": "https://bamf.bund.de/ontology/integration-course",
+      "@type": "owl:Ontology",
+      "rdfs:label": [
+        { "@value": "BAMF Integration Course Ontology", "@language": "en" },
+        { "@value": "BAMF Integrationskurs-Ontologie", "@language": "de" }
+      ],
+      "rdfs:comment": "Defines the vocabulary for Integration Course applications at BAMF.",
+      "owl:versionInfo": "1.0.0"
+    },
+
+    {
+      "@id": "bamf:IntegrationCourseApplication",
+      "@type": "owl:Class",
+      "rdfs:label": [
+        { "@value": "Integration Course Application", "@language": "en" },
+        { "@value": "Integrationskurs-Antrag", "@language": "de" }
+      ],
+      "rdfs:comment": "An application submitted by a person to participate in a German integration course (Integrationskurs) under AufenthG §43-44a.",
+      "rdfs:subClassOf": { "@id": "schema:Action" }
+    },
+
+    {
+      "@id": "bamf:Applicant",
+      "@type": "owl:Class",
+      "rdfs:label": [
+        { "@value": "Applicant", "@language": "en" },
+        { "@value": "Antragsteller", "@language": "de" }
+      ],
+      "rdfs:comment": "A person applying for an integration course.",
+      "rdfs:subClassOf": { "@id": "schema:Person" }
+    },
+
+    {
+      "@id": "bamf:referenceNumber",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:label": [
+        { "@value": "Reference Number", "@language": "en" },
+        { "@value": "Aktenzeichen", "@language": "de" }
+      ],
+      "rdfs:comment": "The official case reference number assigned by BAMF to this application (e.g., ACTE-2024-001).",
+      "rdfs:domain": { "@id": "bamf:IntegrationCourseApplication" },
+      "rdfs:range": { "@id": "xsd:string" }
+    },
+
+    {
+      "@id": "bamf:candidateName",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:label": [
+        { "@value": "Candidate Name", "@language": "en" },
+        { "@value": "Name des Antragstellers", "@language": "de" }
+      ],
+      "rdfs:comment": "The full legal name of the applicant as it appears on official documents.",
+      "rdfs:domain": { "@id": "bamf:Applicant" },
+      "rdfs:range": { "@id": "xsd:string" },
+      "rdfs:subPropertyOf": { "@id": "schema:name" }
+    },
+
+    {
+      "@id": "bamf:birthPlace",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:label": [
+        { "@value": "Place of Birth", "@language": "en" },
+        { "@value": "Geburtsort", "@language": "de" }
+      ],
+      "rdfs:comment": "The city or locality where the applicant was born.",
+      "rdfs:domain": { "@id": "bamf:Applicant" },
+      "rdfs:range": { "@id": "xsd:string" },
+      "owl:equivalentProperty": { "@id": "schema:birthPlace" }
+    },
+
+    {
+      "@id": "bamf:reasonForApplication",
+      "@type": "owl:DatatypeProperty",
+      "rdfs:label": [
+        { "@value": "Reason for Application", "@language": "en" },
+        { "@value": "Antragsgrund", "@language": "de" }
+      ],
+      "rdfs:comment": "Free-text explanation of why the applicant is requesting participation in the integration course.",
+      "rdfs:domain": { "@id": "bamf:IntegrationCourseApplication" },
+      "rdfs:range": { "@id": "xsd:string" },
+      "rdfs:subPropertyOf": { "@id": "schema:description" }
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+"""
+Idle Time Objective Analyzer
+Analyzes resource utilization and identifies idle resources
+"""
+from .base_analyzer import ObjectiveAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class IdleTimeAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for minimize_idle_time objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='minimize_idle_time',
+            objective_name='Minimize Idle Time'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """
+        Analyze resource utilization performance.
+
+        IMPORTANT: a resource with ONLY RT/CT rest-day rows is NOT "active"
+        for utilization purposes — it's on rest. Filter to DEMAND rows
+        before counting active resources. Without this filter, resources
+        allocated only rest days by LC-06 were being misreported as
+        "utilized" and idle_resources was understated (R1: reported 3,
+        reality 11).
+        """
+        # Get assignments - handle both attribute names for compatibility
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+        demand_assignments = [a for a in assignments if a.get('assignment_type', 'DEMAND') == 'DEMAND']
+
+        total_resources = len(data.resource_ids)
+
+        # Count resources with ANY DEMAND assignments (rest days don't count as utilization)
+        active_resource_ids = {a['resource_id'] for a in demand_assignments}
+        active_resources = len(active_resource_ids)
+        idle_resources = total_resources - active_resources
+        utilization_rate = (active_resources / total_resources * 100) if total_resources > 0 else 0
+
+        # Get idle resource details
+        idle_resource_ids = [
+            res_id for res_id in data.resource_ids
+            if res_id not in active_resource_ids
+        ]
+
+        # Analyze gaps
+        gaps = self.get_gap_details(solution, data, idle_resource_ids)
+
+        return {
+            "objective_id": "minimize_idle_time",
+            "objective_name": "Minimize Idle Time",
+            "target_description": "Maximize resource utilization by minimizing idle resources",
+            "achieved_value": active_resources,
+            "max_possible_value": total_resources,
+            "achievement_rate": round(utilization_rate, 2),
+            "performance_category": self.classify_performance(utilization_rate),
+            "gaps": gaps,
+            "metrics": {
+                "total_resources": total_resources,
+                "active_resources": active_resources,
+                "idle_resources": idle_resources,
+                "utilization_rate": round(utilization_rate, 2),
+                "idle_resource_ids": idle_resource_ids
+            }
+        }
+
+    def get_gap_details(self, solution, data, idle_resource_ids):
+        """
+        Analyze why resources are idle
+        """
+        gaps = []
+
+        if not idle_resource_ids:
+            return gaps
+
+        # Analyze idle resources
+        qualification_mismatches = []
+        capacity_underutilized = []
+
+        for res_id in idle_resource_ids:
+            # Find the resource details
+            resource = next((r for r in data.resources if r['resource_id'] == res_id), None)
+            if not resource:
+                continue
+
+            res_quals = set(resource.get('qualifications', []))
+
+            # Check if there are unassigned requests they could fulfill.
+            # Count DEMAND-only — RT/CT rows have no demand_id.
+            assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+            demand_assignments = [a for a in assignments if a.get('assignment_type', 'DEMAND') == 'DEMAND']
+            covered_ids = {a['demand_id'] for a in demand_assignments if a.get('demand_id') is not None}
+            
+            uncovered_requests = [
+                req for req in data.requests
+                if req['id'] not in covered_ids
+            ]
+
+            # Check qualification matches
+            matching_requests = []
+            for request in uncovered_requests:
+                req_quals = set(request.get('required_qualifications', []))
+                if req_quals.issubset(res_quals):
+                    matching_requests.append(request['id'])
+
+            if matching_requests:
+                capacity_underutilized.append({
+                    'resource_id': res_id,
+                    'qualifications': list(res_quals),
+                    'matching_uncovered_requests': matching_requests[:5]  # Sample
+                })
+            else:
+                # No matching requests - qualification mismatch
+                qualification_mismatches.append({
+                    'resource_id': res_id,
+                    'qualifications': list(res_quals)
+                })
+
+        # Build gap report
+        if capacity_underutilized:
+            gaps.append({
+                "gap_type": "CAPACITY_UNDERUTILIZED",
+                "description": f"{len(capacity_underutilized)} idle resources could fulfill uncovered requests",
+                "impact": f"{len(capacity_underutilized) / len(idle_resource_ids) * 100:.1f}% of idle resources have matching work",
+                "recommendations": self._generate_utilization_recommendations(capacity_underutilized)
+            })
+
+        if qualification_mismatches:
+            gaps.append({
+                "gap_type": "QUALIFICATION_MISMATCH",
+                "description": f"{len(qualification_mismatches)} idle resources have no matching requests",
+                "impact": f"{len(qualification_mismatches) / len(idle_resource_ids) * 100:.1f}% of idle resources",
+                "recommendations": [
+                    "Review resource qualifications vs. demand requirements",
+                    "Consider cross-training resources for high-demand qualifications",
+                    "Evaluate if these resources are needed for this planning period"
+                ]
+            })
+
+        return gaps
+
+    def _generate_utilization_recommendations(self, underutilized):
+        """Generate recommendations to utilize idle resources"""
+        recommendations = []
+
+        if underutilized:
+            recommendations.append(
+                f"PRIORITY: {len(underutilized)} idle resources have matching uncovered requests"
+            )
+            recommendations.append(
+                "Review constraint violations preventing these assignments"
+            )
+            recommendations.append(
+                "Check: weekly hour limits, availability windows, rest periods"
+            )
+            
+            # Sample specific resources
+            for item in underutilized[:3]:
+                recommendations.append(
+                    f"Example: Resource {item['resource_id']} could fulfill "
+                    f"{len(item['matching_uncovered_requests'])} uncovered requests"
+                )
+
+        if not recommendations:
+            recommendations.append(
+                "All idle resources appropriately excluded - no actionable gaps"
+            )
+
+        return recommendations

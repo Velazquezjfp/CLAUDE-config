@@ -1,0 +1,448 @@
+# Test Cases — CT/RT Hard Constraint (Phases A–K)
+
+**Date:** 2026-04-17
+**Changelog:** `changelog-ct-rt-hard-constraint-2026-04-17.md`
+**Plan:** `ct_rt_hard_constraint-2026-04-13.md`
+
+---
+
+## Target environment
+
+- **QA planner trigger:** `POST http://localhost:8005/qa/planner/api/v1/solver/trigger`
+- **QA planner output (read):** `http://localhost:8005/qa/planner/api/v1/planner-output/*`
+- **QA cff_api Swagger:** `http://localhost:8003/qa/ai/docs`
+  - Assignments (external DB): `/qa/ai/docs#/Assignments`
+  - Planner output / assignments: `/qa/ai/docs#/Planner%20Output`
+- **Docker (QA):** container `43d2b3d9c76e cff-solver-qa-solver-api`
+
+**Rebuild before running:**
+```bash
+cd mock_data_v2/database_application_v2
+docker compose build api
+docker compose up -d api
+# Rebuild solver
+cd -
+docker compose -f mock_data_v2/database_application_v2/docker-compose.yml build solver-api
+docker compose -f mock_data_v2/database_application_v2/docker-compose.yml up -d solver-api
+```
+
+The two schema migrations run on container startup (both are idempotent):
+- `planner_output`: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS fetch_rt BOOLEAN ... DEFAULT TRUE`
+- `planner_assignments`: `ALTER COLUMN request_id DROP NOT NULL`, `ADD COLUMN IF NOT EXISTS assignment_type ... DEFAULT 'DEMAND'`
+
+After the rebuild, verify the migrations landed:
+```bash
+docker exec cff_api_qa psql -U postgres -d cff_planning -c \
+  "SELECT column_name, data_type, is_nullable FROM information_schema.columns
+   WHERE table_name IN ('planner_output','planner_assignments')
+     AND column_name IN ('fetch_rt','fetch_ct','assignment_type','request_id')
+   ORDER BY table_name, column_name;"
+```
+
+Expect:
+```
+   column_name    |     data_type     | is_nullable
+------------------+-------------------+-------------
+ assignment_type  | character varying | NO
+ request_id       | character varying | YES            ← now nullable
+ fetch_ct         | boolean           | NO
+ fetch_rt         | boolean           | NO
+```
+
+---
+
+## Payload templates
+
+### T-BASE — baseline (regression check, no RT/CT replanning)
+
+Exact payload the user shared; used to verify nothing regressed for
+existing callers. LC-06 must NOT activate.
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "test_requests": 50,
+  "test_resources": 80,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-05-30"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-05-01", "end": "2026-05-30", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["Service de nuit"],
+  "options": {"time_limit_seconds": 7200}
+}
+```
+
+### T-RT — RT replannable only
+
+Marks RT replannable; CT remains locked.
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-05-30"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-05-01", "end": "2026-05-30", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["RT Jour de repos"],
+  "options": {"time_limit_seconds": 7200}
+}
+```
+
+### T-CT — CT replannable only
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-05-30"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-05-01", "end": "2026-05-30", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["CT Jour de compensation"],
+  "options": {"time_limit_seconds": 7200}
+}
+```
+
+### T-BOTH — RT and CT replannable (primary happy-path)
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-05-31"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-05-01", "end": "2026-05-31", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["RT Jour de repos", "CT Jour de compensation"],
+  "options": {"time_limit_seconds": 7200}
+}
+```
+
+### T-CROSS — planning crosses three calendar months
+
+Exercises Phase D's segment decomposition with two partial months on
+the boundaries. Expected proration per resource per month:
+- Apr 15..30 (16/30): `rt≥3, ct≥2, combined≥4`
+- May 1..31 (full):   `rt=4, ct=2, combined=6`
+- Jun 1..10 (10/30):  `rt≥2, ct≥1, combined≥2`
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-04-15", "end_date": "2026-06-10"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-04-15", "end": "2026-06-10", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["RT Jour de repos", "CT Jour de compensation", "Service de nuit"],
+  "options": {"time_limit_seconds": 7200}
+}
+```
+
+### T-SHORT — week-long range forces partial-month math
+
+Full-month proration of 7/31 ≈ 0.226: `rt≥1, ct≥1, combined≥2`. Useful
+for fast iteration while debugging.
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-04", "end_date": "2026-05-10"},
+  "target_team_ids": [],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [{"start": "2026-05-04", "end": "2026-05-10", "reason": "Sprint freeze"}],
+  "replannable_demand_type": ["RT Jour de repos", "CT Jour de compensation"],
+  "options": {"time_limit_seconds": 1800}
+}
+```
+
+### T-UNLOCKED — `lock_allocations=false` (rt/ct flags must stay False)
+
+Confirms Phase A's flag derivation only fires when
+`lock_allocations=true`; absences remain blocking via
+`filter_to_always_blocking`.
+
+```json
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-05-30"},
+  "lock_allocations": false,
+  "replannable_demand_type": ["RT Jour de repos", "CT Jour de compensation"],
+  "options": {"time_limit_seconds": 3600}
+}
+```
+
+---
+
+## Test matrix
+
+| ID | Payload | Precondition | Expected | Priority |
+|---|---|---|---|---|
+| TC-01 | T-BASE | Fresh DB | Legacy behavior: no CT/RT row, `fetch_rt=fetch_ct=TRUE`, LC-08 v2 log shows it ran. | P0 |
+| TC-02 | T-BOTH | Fresh DB | LC-06 activates; `fetch_rt=fetch_ct=FALSE`; RT and CT rows appear in `planner_assignments`. | P0 |
+| TC-03 | T-RT | Fresh DB | `fetch_rt=FALSE, fetch_ct=TRUE`; only RT rows added; CT rows (if any) unchanged from source. | P1 |
+| TC-04 | T-CT | Fresh DB | `fetch_rt=TRUE, fetch_ct=FALSE`; only CT rows added. | P1 |
+| TC-05 | T-CROSS | Fresh DB | Per-month targets match proration table; rows distributed across Apr/May/Jun. | P1 |
+| TC-06 | T-SHORT | Fresh DB | Combined ≥ 2 achievable on any 2 rest days; solver finds feasible solution quickly. | P2 |
+| TC-07 | T-UNLOCKED | Fresh DB | Phase A protects RT/CT: `fetch_rt=fetch_ct=TRUE`, no LC-06 activation, only always-blocking absences applied. | P2 |
+| TC-08 | T-BOTH | Run TC-02, then TC-02 again | Same payload twice — plan_id differs, no schema errors, no crash from re-running LC-06 with carryover already present. | P2 |
+| TC-09 | T-BASE then T-BOTH | Sequential runs | Transitioning from non-replannable to replannable produces RT/CT rows on the second run only. | P2 |
+| TC-10 | T-BOTH with a resource that has no RT/CT source data | Targeted resource | Phase J analyzer emits WARNING in `constraint_violations.LC_08_monthly_rest_v2.ct_rt_compliance_alerts` with `actual<required` and the fix-suggestion message. Solver still succeeds. | P1 |
+
+---
+
+## Verification queries
+
+For every run, capture the `plan_id` from the trigger response or from
+`GET /planner-output/?user_id=javi_test` (latest entry). Then run the
+checks below.
+
+### V-1: fetch_rt / fetch_ct flags
+
+```bash
+curl -s "http://localhost:8005/qa/planner/api/v1/planner-output/plan/${PLAN_ID}" \
+  | jq '.[0] | {plan_id, fetch_rt, fetch_ct, status}'
+```
+
+- TC-01 → `{fetch_rt: true, fetch_ct: true}`
+- TC-02 → `{fetch_rt: false, fetch_ct: false}`
+- TC-03 → `{fetch_rt: false, fetch_ct: true}`
+- TC-04 → `{fetch_rt: true, fetch_ct: false}`
+
+### V-2: assignment_type distribution
+
+```bash
+curl -s "http://localhost:8005/qa/planner/api/v1/planner-output/assignments/?plan_id=${PLAN_ID}&per_page=200" \
+  | jq '[.data[] | .assignment_type] | group_by(.) | map({(.[0]): length}) | add'
+```
+
+Expected shapes:
+- TC-01: `{"DEMAND": N}` — no CT/RT rows.
+- TC-02: `{"DEMAND": N, "RT": R, "CT": C}` with `R ≥ 4` per resource-month and `C ≥ 2`.
+- TC-03: `{"DEMAND": N, "RT": R}` — no CT rows from solver (CT still in external DB).
+- TC-04: `{"DEMAND": N, "CT": C}`.
+
+### V-3: RT/CT rows have NULL request_id and bsa_id
+
+Confirms Phase C schema change and Phase H normalizer fix.
+
+```bash
+curl -s "http://localhost:8005/qa/planner/api/v1/planner-output/assignments/?plan_id=${PLAN_ID}&assignment_type=RT&per_page=5" \
+  | jq '.data[] | {request_id, bsa_id, assignment_type, calendar_start, calendar_end, duration_hours}'
+```
+
+Expect `request_id: null`, `bsa_id: null`, `assignment_type: "RT"`,
+`duration_hours: 24`, start/end 24h apart.
+
+### V-4: Month-level RT/CT counts per resource (meets targets)
+
+```bash
+curl -s "http://localhost:8005/qa/planner/api/v1/planner-output/assignments/?plan_id=${PLAN_ID}&per_page=1000" \
+  | jq -r '.data[] |
+      select(.assignment_type=="RT" or .assignment_type=="CT") |
+      [.resource_id, (.calendar_start|.[0:7]), .assignment_type] | @tsv' \
+  | sort | uniq -c | sort -k3
+```
+
+Check (e.g. TC-02 on a 31-day month): each resource gets **at least 4
+RT and 2 CT** in `2026-05`.
+
+### V-5: External DB RT/CT verification
+
+Uses the new Phase-C filters on the external assignments router. When
+RT/CT are replanned by the solver, the **external DB assignments table
+is NOT modified by the solver** — these are the source-of-truth blocks.
+This query surfaces the original data so you can eyeball what Phase J
+would compare against.
+
+```bash
+# RT blocks for a given resource in May
+curl -s "http://localhost:8003/qa/ai/api/v1/assignments/?resource_id=12345&calendar_type=RT+Jour+de+repos&start_date=2026-05-01&end_date=2026-05-31&per_page=50" \
+  | jq '.data | length, .data[0]'
+
+# CT blocks
+curl -s "http://localhost:8003/qa/ai/api/v1/assignments/?resource_id=12345&calendar_type=CT+Jour+de+compensation&start_date=2026-05-01&end_date=2026-05-31&per_page=50" \
+  | jq '.data | length, .data[0]'
+```
+
+### V-6: LC-08 v2 gate behavior
+
+Check the solver stdout in the container log. TC-02 should contain:
+
+```
+[LC_06] Adding rest-day allocation: rt_replannable=True, ct_replannable=True, days=..., resources=...
+...
+  [LC_08_monthly_rest_v2] SKIPPED — LC-06 rest-days allocation active (supersedes)
+```
+
+TC-01 should NOT contain that SKIPPED line and should contain the usual
+LC-08 v2 addition log.
+
+```bash
+docker logs 43d2b3d9c76e --since 10m 2>&1 | grep -E "LC_06|LC_08_monthly_rest_v2"
+```
+
+### V-7: Phase J analyzer alert
+
+When a resource has insufficient RT/CT source data AND it wasn't marked
+replannable, the analyzer must surface a warning in the analysis
+report. Inspect via the solver job's stored report (depends on storage
+— either API endpoint or on-disk file). Look for:
+
+```json
+{
+  "constraint_violations": {
+    "LC_08_monthly_rest_v2": {
+      "ct_rt_compliance_alerts": [
+        {
+          "severity": "WARNING",
+          "resource_id": "...",
+          "month_key": "2026-05",
+          "kind": "RT",
+          "actual": 2,
+          "required": 4,
+          "is_full_month": true,
+          "message": "Resource ... has only 2 RT day(s) in 2026-05 (required: 4)..."
+        }
+      ]
+    }
+  }
+}
+```
+
+### V-8: Partition carryover (cross-partition + multi-month)
+
+For TC-05 (T-CROSS), if the partitioner splits by month, the second
+partition should inherit RT/CT counts from the first. Confirm via:
+
+```bash
+# Inspect solver checkpoints (solver_v2/checkpoints/)
+docker exec 43d2b3d9c76e ls -la /app/solver_v2/checkpoints/
+
+# Check rt_count_by_month in serialized state (if a partition persisted)
+docker exec 43d2b3d9c76e cat /app/solver_v2/checkpoints/<job_id>.json \
+  | jq '.resource_states[] | {rt: .rt_count_by_month, ct: .ct_count_by_month}' \
+  | head
+```
+
+---
+
+## Negative / edge-case checks
+
+### N-1: RT in replannable but `lock_allocations=false` (TC-07 payload)
+
+Confirms Phase A flag is False when unlocked:
+```
+rt_replannable=False, ct_replannable=False
+```
+No LC-06 activation expected.
+
+### N-2: RT included with an ALWAYS_BLOCKING type that isn't RT/CT
+
+```json
+"replannable_demand_type": ["RT Jour de repos", "Vacances"]
+```
+Expect log: `replannable_demand_type contains protected absences (stripped): ['Vacances']`.
+RT passes through; `Vacances` is stripped. LC-06 activates for RT only
+(`fetch_rt=false`, `fetch_ct=true`).
+
+### N-3: Trailing whitespace tolerance
+
+```json
+"replannable_demand_type": [" RT Jour de repos ", "CT Jour de compensation "]
+```
+Should behave identically to the trimmed form. Verified by Phase J's
+`.strip().lower()` comparison.
+
+### N-4: Same payload twice
+
+Second run with identical payload should:
+- Produce a new `plan_id`.
+- Not crash on carryover deserialization.
+- If the checkpoint persists RT/CT counts from the first run in the
+  same month, the second solve's `compute_rest_targets` subtracts them
+  and may require fewer (or zero) additional rest days.
+
+### N-5: Schema migration idempotency
+
+Run the docker rebuild twice. Expect **no errors** from the `ADD COLUMN
+IF NOT EXISTS` / `ALTER COLUMN DROP NOT NULL` statements.
+
+---
+
+## Solver-log signatures to confirm wiring
+
+| Signature | From | Meaning |
+|---|---|---|
+| `LC-06 rest replanning: rt_replannable=True, ct_replannable=True` | service.py | Phase A flags set from trigger payload. |
+| `lock_allocations=true: N blocks (replannable excluded: ['RT Jour de repos', 'CT Jour de compensation'])` | service.py | Phase A sanitize let RT/CT through to `exclude_calendar_types`. |
+| `[LC_06] Adding rest-day allocation: …` | lc_06_rest_days_allocation.py | LC-06 reached the body — flags recognized. |
+| `[LC_06] Priority-1 anchor applied to N resource(s) on day 0` | lc_06_rest_days_allocation.py | Partition-boundary anchor carried over; only on partition #2+. |
+| `[LC_06] Overlap (demand↔rest) constraints: N` | lc_06_rest_days_allocation.py | Overlap enforcement applied. |
+| `[LC_06] Target constraints: rt=N, ct=N, combined=N` | lc_06_rest_days_allocation.py | Per-month targets seeded. |
+| `[LC_08_monthly_rest_v2] SKIPPED — LC-06 rest-days allocation active` | model.py | Phase K gate fired. |
+| `LC-06 rest-day rows emitted: RT=N, CT=N` | model._extract_solution | Output stage added synthetic rows. |
+| `Saved N normalized assignments for plan PLAN-... (by type: {'DEMAND': X, 'RT': Y, 'CT': Z})` | service.py | Phase H normalized insert succeeded with new column. |
+
+---
+
+## Golden-path scenario (end-to-end walkthrough)
+
+The fastest way to gain confidence.
+
+1. **Start clean:** rebuild `api` + `solver-api` containers, verify the
+   two schema migrations via the `psql` check above.
+2. **Baseline run (TC-01):**
+   - Trigger with T-BASE. Wait for completion.
+   - Confirm `fetch_rt=fetch_ct=TRUE` (V-1).
+   - Confirm no `RT` / `CT` rows (V-2).
+   - Confirm solver log shows LC-08 v2 running normally (no `SKIPPED`).
+3. **Activation run (TC-02):**
+   - Trigger with T-BOTH.
+   - Confirm solver log: `LC-06 rest replanning: rt_replannable=True, ct_replannable=True`.
+   - Confirm `[LC_08_monthly_rest_v2] SKIPPED` in log.
+   - Confirm `fetch_rt=fetch_ct=FALSE` (V-1).
+   - Confirm `RT` + `CT` rows with NULL `request_id`/`bsa_id` (V-3).
+   - Confirm per-resource, per-month counts meet ≥4 RT, ≥2 CT (V-4).
+4. **Cross-month run (TC-05):**
+   - Trigger with T-CROSS.
+   - Spot-check month-level counts match the proration table.
+   - If partitioning kicks in, verify checkpoint carryover (V-8).
+
+If all of those pass, the implementation is behaving as designed on
+real data and you can expand into the edge cases.
+
+---
+
+## Known limitations (to re-test after the initial green run)
+
+1. **Priority-2 anchor refinement** is not implemented. RT/CT output
+   timestamps use midnight fallback for all days except day 0 (which
+   uses partition `last_shift_end`). A follow-up can walk the solved
+   assignments in `_extract_rest_day_rows` to shift the anchor to the
+   most recent demand end within 24h.
+2. **Auto-free weekends in LC-05** remain excluded from the exposed
+   `free_weekend_vars_dict`. If a weekend has no demand on Sat or Sun
+   for anyone, LC-06 does not explicitly couple it. The monthly target
+   still flexibly satisfies the quota on any 6 days.
+3. **Resource-category awareness in targets.** Currently all resources
+   in scope get the same 4/2/6 targets. If certain categories have
+   different rest rules per CCT, a future patch would vary targets by
+   resource category.

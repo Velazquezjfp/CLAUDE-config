@@ -1,0 +1,9 @@
+{
+  "id": "5",
+  "subject": "Update requirement frontmatter",
+  "description": "Set status=implemented with implementation/test timestamps and counts.",
+  "activeForm": "Updating frontmatter",
+  "status": "pending",
+  "blocks": [],
+  "blockedBy": []
+}

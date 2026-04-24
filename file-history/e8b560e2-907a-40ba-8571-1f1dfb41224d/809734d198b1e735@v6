@@ -1,0 +1,517 @@
+"""
+LC-06: Rest Days Allocation (HARD CONSTRAINT)
+
+Enforces minimum RT (Jour de repos) and CT (Jour de compensation) rest days
+per calendar month per resource:
+  - min 4 RT per full month
+  - min 2 CT per full month
+  - min 6 combined (RT + CT) per full month
+Partial months are prorated (ceil of fraction) by Phase D (rest_targets).
+
+Source: BAR CCT via solver_v2/planner_dev/ct_rt_hard_constraint-2026-04-13.md
+
+Activation: this module is only invoked when `rt_replannable` or
+`ct_replannable` is True. When neither is True the solver does not
+decide rest days — the external assignments table's existing RT/CT blocks
+remain authoritative and are enforced as absences via LC-08 v2 fallback.
+
+Anchor rules (for the 24h rest interval associated with each (resource, day)):
+  - Priority 1 — partition carryover: for the FIRST day of the planning
+    range, if `incoming_state.resource_states[r].last_shift_end` is within
+    the 24h immediately preceding midnight of day 0, use that as
+    `anchor_start`. This yields rest periods like 13:00→13:00 (AZG-aligned).
+  - Priority 2 — current-partition shift end: pinned at output time
+    (Phase H / _extract_solution) from the actual assignment; cannot be
+    pinned pre-solve because it depends on solver decisions.
+  - Fallback — midnight of day d: used for overlap-constraint enforcement
+    on all days except the pinned first-day case. This is intentionally
+    conservative (stricter than AZG): demands within the calendar day block
+    the rest-day assignment. Output display may use a later anchor.
+
+Related:
+  - LC-04 enforces 12h rest between any two demand shifts (pairwise).
+  - LC-05 enforces one free weekend per 5-week sliding window; its
+    `free_weekend_vars` are coupled here so that a chosen free weekend
+    counts toward the monthly rest quota.
+  - LC-08 v2 remains enabled as a safety-net combined-rest check when
+    LC-06 is not active for a given resource (see Phase K).
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+from ortools.sat.python import cp_model
+
+logger = logging.getLogger(__name__)
+
+
+def add_rest_days_constraints(
+    model: cp_model.CpModel,
+    x_vars: Dict[Tuple[str, Any], Any],
+    data,
+    constraints,
+    rest_targets: Dict[str, Dict[str, Any]],
+    lc_05_free_weekend_vars: Optional[Dict[Tuple, Any]] = None,
+    prior_free_weekends: Optional[Dict[str, Dict[str, List[Tuple[date, date]]]]] = None,
+    rt_replannable: bool = True,
+    ct_replannable: bool = True,
+    incoming_state=None,
+    all_resource_ids: Optional[List] = None,
+) -> Tuple[Dict[Tuple[str, date], Any], Dict[Tuple[str, date], Any], list, list]:
+    """Add LC-06 rest-day allocation constraints to the CP-SAT model.
+
+    Args:
+        model: the CP-SAT model under construction.
+        x_vars: existing assignment variables {(resource_id, request_id): BoolVar}.
+        data: PreprocessedData — supplies planning_start, planning_end,
+              resource_ids, and the requests list (with shift_start_time /
+              shift_finish_time strings).
+        constraints: ConstraintValues (accepted for interface parity; LC-06
+                     uses hardcoded targets from config.py — 4/2/6).
+        rest_targets: output of Phase D's compute_rest_targets.
+        lc_05_free_weekend_vars: dict keyed by (resource_id, (sat_dt, sun_dt))
+                                  with values being LC-05 free-weekend BoolVars.
+                                  Optional — absent means no LC-05 coupling.
+        prior_free_weekends: dict {resource_id: {month_key: [(sat_date, sun_date), ...]}}
+                              carried over from prior partitions.
+        rt_replannable: if False, no `rt[r,d]` variables are created.
+        ct_replannable: if False, no `ct[r,d]` variables are created.
+        incoming_state: optional PartitionState for Priority-1 anchor carryover.
+        all_resource_ids: optional full plan-range resource ID list (team-filtered
+                          but NOT category-filtered). When provided, LC-06
+                          enforces rest-day minimums on ALL these resources
+                          (Fix #14, 2026-04-22). When omitted or None, falls back
+                          to data.resource_ids — the partition's category-filtered
+                          subset, which was the pre-Fix-#14 behavior and could
+                          drop resources from LC-06 scope silently.
+
+    Returns:
+        (rt_vars, ct_vars, violations, metadata). rt_vars/ct_vars are empty dicts
+        if the corresponding flag is False. violations is always [] (hard
+        constraint). metadata is a list of dicts for analyzer visibility.
+    """
+    rt_vars: Dict[Tuple[str, date], Any] = {}
+    ct_vars: Dict[Tuple[str, date], Any] = {}
+    violations: list = []
+    metadata: list = []
+
+    if not (rt_replannable or ct_replannable):
+        logger.info("[LC_06] Skipped (neither rt_replannable nor ct_replannable).")
+        return rt_vars, ct_vars, violations, metadata
+
+    if not rest_targets:
+        logger.warning("[LC_06] rest_targets is empty — no constraints added.")
+        return rt_vars, ct_vars, violations, metadata
+
+    # Fix #14: resolve the LC-06 resource scope. Prefer the caller-supplied
+    # full list (team-filtered but not category-filtered); fall back to the
+    # partition's filtered list for backward compatibility.
+    lc06_resource_ids = all_resource_ids if all_resource_ids is not None else list(data.resource_ids)
+    if all_resource_ids is not None and len(lc06_resource_ids) != len(data.resource_ids):
+        logger.info(
+            f"[LC_06] Scope: {len(lc06_resource_ids)} in-scope resources "
+            f"(partition's category-filtered demand scope is {len(data.resource_ids)}; "
+            f"LC-06 covers {len(lc06_resource_ids) - len(data.resource_ids)} additional "
+            f"resource(s) that have no demand match here but still need monthly rest)"
+        )
+
+    # --- Derive planning-day list (date objects, inclusive) ---
+    planning_start_dt = _to_utc(getattr(data, 'planning_start', None))
+    planning_end_dt = _to_utc(getattr(data, 'planning_end', None))
+    if planning_start_dt is None or planning_end_dt is None:
+        logger.error("[LC_06] data.planning_start / planning_end not available — aborting LC-06.")
+        return rt_vars, ct_vars, violations, metadata
+
+    start_day = planning_start_dt.date()
+    end_day = planning_end_dt.date()
+    planning_days: List[date] = []
+    cur = start_day
+    while cur <= end_day:
+        planning_days.append(cur)
+        cur = cur + timedelta(days=1)
+    planning_days_set = set(planning_days)
+
+    logger.info(
+        f"[LC_06] Adding rest-day allocation: rt_replannable={rt_replannable}, "
+        f"ct_replannable={ct_replannable}, days={len(planning_days)}, "
+        f"resources={len(lc06_resource_ids)}"
+    )
+
+    # --- Parse demand shift times once ---
+    request_times: Dict[Any, Tuple[datetime, datetime]] = {}
+    for req in data.requests:
+        req_id = req.get('id')
+        s = _parse_demand_datetime(req.get('shift_start_time'))
+        e = _parse_demand_datetime(req.get('shift_finish_time'))
+        if s and e and req_id is not None:
+            request_times[req_id] = (s, e)
+
+    # --- Pre-compute anchor_start per (resource, day) ---
+    # Priority 1: partition last_shift_end within 24h before midnight of day 0.
+    # Fallback: midnight of day d.
+    anchors: Dict[Tuple[str, date], datetime] = {}
+    priority1_applied = 0
+    resource_states = getattr(incoming_state, 'resource_states', {}) if incoming_state else {}
+    for r in lc06_resource_ids:
+        for idx, d in enumerate(planning_days):
+            midnight_d = datetime.combine(d, time(0, 0), tzinfo=timezone.utc)
+            anchor = midnight_d  # fallback
+
+            if idx == 0 and r in resource_states:
+                rs = resource_states[r]
+                last_end = getattr(rs, 'last_shift_end', None)
+                if last_end is not None:
+                    if last_end.tzinfo is None:
+                        last_end = last_end.replace(tzinfo=timezone.utc)
+                    if midnight_d - timedelta(hours=24) <= last_end <= midnight_d:
+                        anchor = last_end
+                        priority1_applied += 1
+            anchors[(r, d)] = anchor
+    if priority1_applied:
+        logger.info(f"[LC_06] Priority-1 anchor applied to {priority1_applied} resource(s) on day 0")
+
+    # --- Create decision variables ---
+    var_count = 0
+    for r in lc06_resource_ids:
+        for d in planning_days:
+            if rt_replannable:
+                rt_vars[(r, d)] = model.NewBoolVar(f'rt_{r}_{d.isoformat()}')
+                var_count += 1
+            if ct_replannable:
+                ct_vars[(r, d)] = model.NewBoolVar(f'ct_{r}_{d.isoformat()}')
+                var_count += 1
+    logger.info(f"[LC_06] Created {var_count} rest-day decision variables")
+
+    # --- Constraint 1: Mutual exclusion (only when both flags active) ---
+    mutual_excl_count = 0
+    if rt_replannable and ct_replannable:
+        for r in lc06_resource_ids:
+            for d in planning_days:
+                model.Add(rt_vars[(r, d)] + ct_vars[(r, d)] <= 1)
+                mutual_excl_count += 1
+    logger.info(f"[LC_06] Mutual-exclusion constraints: {mutual_excl_count}")
+
+    # --- Constraint 2: No overlap with assigned demand ---
+    # Pre-compute for each (r, d) the set of demands overlapping the 24h rest
+    # interval [anchor_start, anchor_start + 24h]. Emit:
+    #   x[r, req] + rt[r, d] + ct[r, d] <= 1
+    overlap_count = 0
+    # Cache per-anchor overlap sets for efficiency — many (r, d) pairs share
+    # the midnight-fallback anchor, so we key by (anchor_start, anchor_end).
+    overlap_cache: Dict[Tuple[datetime, datetime], List[Any]] = {}
+    # Overlap iterates lc06_resource_ids — but only resources with x_vars emit
+    # constraints (the x_key check below auto-filters). Resources in LC-06
+    # scope but outside the partition's demand scope (Fix #14) skip cleanly.
+    for r in lc06_resource_ids:
+        for d in planning_days:
+            anchor_start = anchors[(r, d)]
+            anchor_end = anchor_start + timedelta(hours=24)
+            key = (anchor_start, anchor_end)
+            if key not in overlap_cache:
+                overlap_cache[key] = [
+                    req_id for req_id, (s, e) in request_times.items()
+                    if _intervals_overlap(s, e, anchor_start, anchor_end)
+                ]
+            overlapping = overlap_cache[key]
+            if not overlapping:
+                continue
+            for req_id in overlapping:
+                x_key = (r, req_id)
+                if x_key not in x_vars:
+                    continue
+                terms = [x_vars[x_key]]
+                if rt_replannable:
+                    terms.append(rt_vars[(r, d)])
+                if ct_replannable:
+                    terms.append(ct_vars[(r, d)])
+                model.Add(sum(terms) <= 1)
+                overlap_count += 1
+    logger.info(f"[LC_06] Overlap (demand↔rest) constraints: {overlap_count}")
+
+    # --- Constraint 3: Per-segment targets ---
+    # Pull upper-bound cap multiplier from config. Zero/None disables caps
+    # (pre-2026-04-21 behavior — minimums only, solver may over-allocate).
+    try:
+        from config import REST_DAY_ALLOCATION_CAP_MULTIPLIER as _cap_mult
+    except ImportError:
+        _cap_mult = None
+    cap_enabled = bool(_cap_mult) and float(_cap_mult) > 0.0
+
+    # 2026-04-22 Fix #13: soft penalty on over-allocation. Complements the
+    # hard cap — cap handles required>0 partitions, penalty handles
+    # required=0 partitions (where a hard cap risks infeasibility). The
+    # penalty terms are stashed on `model._lc_06_excess_terms` and pulled
+    # into the objective by the caller in solver/model.py (same
+    # side-channel pattern as `lc_06_anchor_map`).
+    try:
+        from config import REST_DAY_EXCESS_PENALTY_WEIGHT as _excess_weight_raw
+    except ImportError:
+        _excess_weight_raw = None
+    excess_weight = int(_excess_weight_raw) if _excess_weight_raw and int(_excess_weight_raw) > 0 else 0
+    excess_enabled = excess_weight > 0
+    excess_terms: list = []   # list of (int_var * weight) terms for the Minimize objective
+
+    import math as _math
+    target_rt_count = 0
+    target_ct_count = 0
+    target_combined_count = 0
+    cap_rt_count = 0
+    cap_ct_count = 0
+    cap_combined_count = 0
+    excess_var_count = 0
+    for r in lc06_resource_ids:
+        r_targets = rest_targets.get(r)
+        if not r_targets:
+            continue
+        for month_key, t in r_targets.items():
+            seg_start = t.segment_start
+            seg_end = t.segment_end
+            seg_days = [d for d in planning_days if seg_start <= d <= seg_end]
+            if not seg_days:
+                continue
+
+            if rt_replannable and t.rt_required > 0:
+                model.Add(sum(rt_vars[(r, d)] for d in seg_days) >= t.rt_required)
+                target_rt_count += 1
+
+            if ct_replannable and t.ct_required > 0:
+                model.Add(sum(ct_vars[(r, d)] for d in seg_days) >= t.ct_required)
+                target_ct_count += 1
+
+            if t.combined_required > 0:
+                terms = []
+                if rt_replannable:
+                    terms.extend(rt_vars[(r, d)] for d in seg_days)
+                if ct_replannable:
+                    terms.extend(ct_vars[(r, d)] for d in seg_days)
+                if terms:
+                    model.Add(sum(terms) >= t.combined_required)
+                    target_combined_count += 1
+
+            # Upper-bound caps — prevent the solver from "parking" idle
+            # resources on rest days when demand coverage is weakly weighted.
+            # Cap = ceil(multiplier * gross_target). Gross (not required)
+            # is used so the cap is stable across partitions even when
+            # prior carryover reduces the per-partition required.
+            #
+            # 2026-04-22 (Fix #12 v2): SKIP the cap entirely when
+            # t.rt_required == 0 (carryover has already met the full-month
+            # minimum). Attempts to cap at 0 or 1 in that case clashed
+            # with LC-05 weekend coupling (which requires rt+ct >= 2 over
+            # a weekend) and Priority-1 anchor forcing (which fixes
+            # specific rt[r,d]=1), producing INFEASIBLE partitions with
+            # "empty domain after intersecting with [0]" errors. Leaving
+            # carryover-satisfied partitions uncapped keeps the solver
+            # feasible; the bulk of the over-allocation still gets
+            # trimmed by the cap on required>0 partitions.
+            rt_cap = ct_cap = comb_cap = None
+            if cap_enabled:
+                if rt_replannable and t.rt_required > 0 and t.rt_gross > 0:
+                    rt_cap = int(_math.ceil(float(_cap_mult) * t.rt_gross))
+                    model.Add(sum(rt_vars[(r, d)] for d in seg_days) <= rt_cap)
+                    cap_rt_count += 1
+                if ct_replannable and t.ct_required > 0 and t.ct_gross > 0:
+                    ct_cap = int(_math.ceil(float(_cap_mult) * t.ct_gross))
+                    model.Add(sum(ct_vars[(r, d)] for d in seg_days) <= ct_cap)
+                    cap_ct_count += 1
+                if t.combined_required > 0 and t.combined_gross > 0:
+                    comb_cap = int(_math.ceil(float(_cap_mult) * t.combined_gross))
+                    terms = []
+                    if rt_replannable:
+                        terms.extend(rt_vars[(r, d)] for d in seg_days)
+                    if ct_replannable:
+                        terms.extend(ct_vars[(r, d)] for d in seg_days)
+                    if terms:
+                        model.Add(sum(terms) <= comb_cap)
+                        cap_combined_count += 1
+
+            # Soft excess penalty — Fix #13.
+            # excess = max(0, sum(rt_vars) - rt_required). IntVar upper
+            # bound is len(seg_days) (can't have more excess than days).
+            # Domain starts at 0 so we don't need a separate >= 0 constraint.
+            seg_days_count = len(seg_days)
+            if excess_enabled:
+                if rt_replannable and seg_days_count > 0:
+                    erv = model.NewIntVar(0, seg_days_count, f'excess_rt_{r}_{month_key}')
+                    model.Add(erv >= sum(rt_vars[(r, d)] for d in seg_days) - int(t.rt_required))
+                    excess_terms.append(erv * excess_weight)
+                    excess_var_count += 1
+                if ct_replannable and seg_days_count > 0:
+                    ecv = model.NewIntVar(0, seg_days_count, f'excess_ct_{r}_{month_key}')
+                    model.Add(ecv >= sum(ct_vars[(r, d)] for d in seg_days) - int(t.ct_required))
+                    excess_terms.append(ecv * excess_weight)
+                    excess_var_count += 1
+
+            metadata.append({
+                'constraint_id': 'LC_06',
+                'constraint_type': 'hard',
+                'resource_id': r,
+                'month_key': month_key,
+                'segment_start': str(seg_start),
+                'segment_end': str(seg_end),
+                'rt_required': t.rt_required,
+                'ct_required': t.ct_required,
+                'combined_required': t.combined_required,
+                'rt_gross': t.rt_gross,
+                'ct_gross': t.ct_gross,
+                'combined_gross': t.combined_gross,
+                'rt_cap': rt_cap,
+                'ct_cap': ct_cap,
+                'combined_cap': comb_cap,
+                'prior_rt': t.prior_rt,
+                'prior_ct': t.prior_ct,
+                'is_full_month': t.is_full_month,
+            })
+
+    logger.info(
+        f"[LC_06] Target constraints: rt={target_rt_count}, "
+        f"ct={target_ct_count}, combined={target_combined_count}"
+    )
+    if cap_enabled:
+        logger.info(
+            f"[LC_06] Upper-bound caps (multiplier={_cap_mult}): "
+            f"rt={cap_rt_count}, ct={cap_ct_count}, combined={cap_combined_count}"
+        )
+    else:
+        logger.info("[LC_06] Upper-bound caps DISABLED (REST_DAY_ALLOCATION_CAP_MULTIPLIER <= 0 or unset)")
+
+    # Fix #13: stash the excess-penalty terms on the model for the caller
+    # to merge into its objective. Same side-channel pattern as
+    # `lc_06_anchor_map` at the end of this function. Empty list is a
+    # valid no-op when the penalty is disabled.
+    if excess_enabled:
+        logger.info(
+            f"[LC_06] Excess penalty: {excess_var_count} vars created "
+            f"(weight={excess_weight})"
+        )
+    else:
+        logger.info("[LC_06] Excess penalty DISABLED (REST_DAY_EXCESS_PENALTY_WEIGHT <= 0 or unset)")
+    setattr(model, '_lc_06_excess_terms', list(excess_terms))
+
+    # --- Constraint 4: LC-05 weekend coupling (current partition) ---
+    # For each fw[r, (sat, sun)] = free-weekend var:
+    #   fw <= rt[r, sat] + ct[r, sat]
+    #   fw <= rt[r, sun] + ct[r, sun]
+    fw_coupling_count = 0
+    if lc_05_free_weekend_vars:
+        for fw_key, fw_var in lc_05_free_weekend_vars.items():
+            # Key is expected to be (resource_id, (sat_dt_or_date, sun_dt_or_date))
+            try:
+                r, weekend = fw_key
+                sat_raw, sun_raw = weekend
+            except (TypeError, ValueError):
+                logger.warning(f"[LC_06] Unexpected fw_key shape: {fw_key!r}; skipping")
+                continue
+            sat_d = sat_raw.date() if isinstance(sat_raw, datetime) else sat_raw
+            sun_d = sun_raw.date() if isinstance(sun_raw, datetime) else sun_raw
+            for weekend_d in (sat_d, sun_d):
+                if weekend_d not in planning_days_set:
+                    continue
+                terms = []
+                if rt_replannable and (r, weekend_d) in rt_vars:
+                    terms.append(rt_vars[(r, weekend_d)])
+                if ct_replannable and (r, weekend_d) in ct_vars:
+                    terms.append(ct_vars[(r, weekend_d)])
+                if terms:
+                    model.Add(fw_var <= sum(terms))
+                    fw_coupling_count += 1
+    logger.info(f"[LC_06] LC-05 weekend coupling (current): {fw_coupling_count} constraints")
+
+    # --- Constraint 5: LC-05 cross-partition coupling ---
+    # For each prior free weekend whose Sat/Sun falls inside the current
+    # planning range, force rt+ct >= 1 on that day.
+    prior_coupling_count = 0
+    if prior_free_weekends:
+        for r, by_month in prior_free_weekends.items():
+            if not by_month:
+                continue
+            for month_key, weekend_pairs in by_month.items():
+                for pair in weekend_pairs:
+                    try:
+                        sat_d_raw, sun_d_raw = pair
+                    except (TypeError, ValueError):
+                        continue
+                    sat_d = sat_d_raw.date() if isinstance(sat_d_raw, datetime) else sat_d_raw
+                    sun_d = sun_d_raw.date() if isinstance(sun_d_raw, datetime) else sun_d_raw
+                    for wd in (sat_d, sun_d):
+                        if wd not in planning_days_set:
+                            continue
+                        terms = []
+                        if rt_replannable and (r, wd) in rt_vars:
+                            terms.append(rt_vars[(r, wd)])
+                        if ct_replannable and (r, wd) in ct_vars:
+                            terms.append(ct_vars[(r, wd)])
+                        if terms:
+                            model.Add(sum(terms) >= 1)
+                            prior_coupling_count += 1
+    else:
+        logger.info(
+            "[LC_06] No prior_free_weekends supplied — cross-partition weekend "
+            "coupling skipped (first partition or cold start)."
+        )
+    logger.info(f"[LC_06] LC-05 weekend coupling (cross-partition): {prior_coupling_count} constraints")
+
+    # Attach anchor metadata for _extract_solution (Phase H)
+    _attach_anchor_map(model, anchors)
+
+    return rt_vars, ct_vars, violations, metadata
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _to_utc(dt):
+    """Coerce to timezone-aware UTC datetime, or return None."""
+    if dt is None:
+        return None
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+    return None
+
+
+def _parse_demand_datetime(dt_string):
+    """Parse demand datetime string to timezone-aware UTC datetime."""
+    if not dt_string:
+        return None
+    try:
+        if isinstance(dt_string, datetime):
+            return _to_utc(dt_string)
+        s = dt_string
+        if s.endswith('Z'):
+            s = s.replace('Z', '+00:00')
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, AttributeError):
+        return None
+
+
+def _intervals_overlap(a_start: datetime, a_end: datetime,
+                        b_start: datetime, b_end: datetime) -> bool:
+    """True iff half-open intervals [a_start, a_end) and [b_start, b_end) overlap."""
+    return a_start < b_end and b_start < a_end
+
+
+def _attach_anchor_map(model, anchors: Dict[Tuple[str, date], datetime]) -> None:
+    """Stash the anchor map on the model object for Phase H to consume.
+
+    We store it as a plain attribute (not a CP-SAT construct) so the extraction
+    step can compute output timestamps. Using `setattr` avoids coupling to any
+    particular solver wrapper shape.
+    """
+    try:
+        setattr(model, 'lc_06_anchor_map', anchors)
+    except Exception:
+        # If the model is a plain CpModel that doesn't accept attrs, fall back
+        # to a module-level last-call cache (rare path; tests only).
+        global _LAST_ANCHOR_MAP
+        _LAST_ANCHOR_MAP = anchors
+
+
+_LAST_ANCHOR_MAP: Dict[Tuple[str, date], datetime] = {}

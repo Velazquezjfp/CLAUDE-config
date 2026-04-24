@@ -1,0 +1,9 @@
+{
+  "id": "100",
+  "subject": "Fix #17-M — Pre-alloc x=0 forcing must consider shift span, not just start date",
+  "description": "DONE. PLAN-20260423203637: 0 of 12 INFEASIBLE, 0 overlaps, 1339 DEMAND covered, 1041 uncovered documented. Night-shift spans now correctly blocked from locked weekends via interval overlap check.",
+  "activeForm": "Patching pre-alloc x=0 forcing to handle night-shift spans",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

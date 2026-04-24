@@ -1,0 +1,270 @@
+# Plan: Add Replannable Type Seed + Solver Cancel API
+
+---
+
+## Requirement 1: Add 'RT Jour de repos' to Replannable Demand Types Seed
+
+### Context
+
+The `replannable_demand_types` table stores calendar types that the solver can move/reassign. When `lock_allocations=true`, existing assignments become blockers — EXCEPT for types listed as replannable. "RT Jour de repos" (rest day) has **1,948 blocks** in May 2026 QA data but is currently classified as BLOCKING. Adding it as replannable means the FE can select it as a type the solver is allowed to reassign.
+
+### File Modified
+
+**`mock_data_v2/database_application_v2/database/replannable_demand_types_seed.sql`**
+
+Add one new row to the existing INSERT statement:
+
+```sql
+    ('RT Jour de repos', 'Rest day'),
+```
+
+Insert alphabetically between `('Réservé', 'Reserved')` and `('Service de nuit', 'Night service')`.
+
+### Verified
+
+- QA data confirms 1,948 resource blocks with `block_type = "RT Jour de repos"` in May 2026
+- The `ON CONFLICT (type_name, user_id) DO NOTHING` clause means re-running the seed on existing DBs is safe
+- Backend router (`mock_data_v2/database_application_v2/api/routers/replannable_demand_types.py`) already supports full CRUD — no changes needed
+- Users initialized after this change get it automatically via `user_context.py` clone-from-global logic
+
+---
+
+## Requirement 2: Add Cancel Endpoint to Solver API
+
+### Context
+
+There is no way to cancel a running solver job. The FE already shows "cancel" suggestions in time warnings (`service.py:318,322,326`) but no API endpoint exists. The `JobStatus.CANCELLED` enum value already exists (`service.py:46`), and the backend webhook receiver already handles CANCELLED status. We just need the planner-side cancel endpoint + cancellation logic in the execution flow.
+
+### Architecture Constraint
+
+The solver (OR-Tools CP-SAT) runs in a thread pool executor (`service.py:951`). Python cannot interrupt threads, so:
+- **Before solving starts**: immediate cancellation (set flag, early-return at next checkpoint)
+- **During solving**: cannot kill the thread, but we can skip post-processing (analysis, saving) when it returns
+- **Partitioned solving**: can stop between partitions (the loop at `checkpoint_manager.py:449`)
+
+### Cancellation Flow (full lifecycle)
+
+```
+User calls POST /solver/cancel/{job_id}
+  │
+  ├─ cancel endpoint sets job.cancelled = True
+  ├─ cancel_job() broadcasts ProgressMessage(type="cancelled") via WebSocket
+  ├─ cancel_job() sends webhook(status="CANCELLED") to backend DB
+  ├─ cancel_job() sets job.status = CANCELLED, job.end_time = now
+  ├─ cancel_job() cleans up checkpoint files
+  │
+  ├─ WebSocket loop (line 2022) sees status == CANCELLED
+  │   └─ closes socket gracefully (code=1000, reason="Job cancelled")
+  │
+  └─ _execute_solver_job() picks up cancellation at next check:
+      ├─ If in fetch/preprocess/analysis phase → _check_cancelled() returns early
+      ├─ If solving (standard) → thread finishes, post-solve check skips analysis+saving
+      └─ If solving (partitioned) → cancellation_check() stops at next partition boundary
+```
+
+### Files Modified
+
+#### A. `solver_v2/api/service.py` — 4 changes
+
+**A1. Add `cancelled` flag to `SolverJob.__init__()` (line ~293)**
+
+```python
+self.cancelled = False  # Set by cancel endpoint
+```
+
+**A2. Add `cancel_job()` method to `JobManager` (after line ~431)**
+
+This method is the single orchestrator — it sets the flag, updates status, broadcasts to WebSocket, sends webhook, and cleans up checkpoints. All in one place.
+
+```python
+async def cancel_job(self, job_id: str) -> bool:
+    """Cancel a job. Returns True if cancellation was accepted."""
+    job = self.jobs.get(job_id)
+    if not job:
+        return False
+    if job.status in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+        return False  # Already terminal
+
+    job.cancelled = True
+    previous_status = job.status
+    job.status = JobStatus.CANCELLED
+    job.error = "Cancelled by user"
+    job.end_time = datetime.now()
+
+    # 1. Broadcast cancellation via WebSocket → FE gets immediate "cancelled" message
+    #    The WS loop (line 2022) will then detect CANCELLED status and close the socket.
+    cancel_msg = ProgressMessage(
+        type="cancelled",
+        step="cancelled",
+        progress=job.progress,
+        message="Job cancelled by user",
+        timestamp=datetime.now().isoformat(),
+        details={
+            "cancelled_at_step": job.current_step.value if job.current_step else None,
+            "elapsed_seconds": job.get_elapsed_seconds(),
+        }
+    )
+    job.progress_history.append(cancel_msg)
+    await self.broadcast_progress(job_id, cancel_msg)
+
+    # 2. Send webhook → backend DB gets CANCELLED status
+    await send_webhook(job, "CANCELLED", job.progress, current_step="cancelled")
+
+    # 3. Clean up checkpoint files (partitioned solving leaves temp files)
+    try:
+        from config import PARTITION_ENABLE_CHECKPOINTS, PARTITION_CHECKPOINT_DIR
+        if PARTITION_ENABLE_CHECKPOINTS:
+            from solver.checkpoint_manager import CheckpointManager
+            cm = CheckpointManager(PARTITION_CHECKPOINT_DIR)
+            cm.clean_old_checkpoints(job_id, keep_last=0)
+            logger.info(f"Cleaned up checkpoints for cancelled job {job_id}")
+    except Exception as e:
+        logger.warning(f"Checkpoint cleanup failed for {job_id}: {e}")
+
+    logger.info(f"Job {job_id} cancelled (was {previous_status.value})")
+    return True
+```
+
+**A3. Add cancellation checks in `_execute_solver_job()` — helper + 5 check points**
+
+Add helper near top of `_execute_solver_job()` (after line ~530):
+
+```python
+def _check_cancelled(job, step_name):
+    """Return True if job was cancelled — caller should return early."""
+    if job.cancelled:
+        logger.info(f"Job {job.job_id} cancelled during {step_name}")
+        return True
+    return False
+```
+
+Insert `if _check_cancelled(job, "..."): return` at these 5 points:
+1. Before data fetching (after line ~563, before `get_demands()`)
+2. After data fetching, before constraints (after line ~750, before `fetch_constraint_values()`)
+3. After preprocessing, before solver (after line ~799, before `run_in_executor()`)
+4. After solver returns, before analysis (after line ~951, before `SolutionAnalyzer`)
+5. After analysis, before saving (after line ~976, before `post_planner_output()`)
+
+Each check is a simple 2-line pattern:
+```python
+if _check_cancelled(job, "fetching_data"): return
+```
+
+Note: No need to re-set status/webhook in these checks — `cancel_job()` already did that. These just exit the execution flow cleanly.
+
+**A4. Add cancel endpoint (after `/solver/status/{job_id}` endpoint, ~line 1543)**
+
+```python
+@api_router.post("/solver/cancel/{job_id}", tags=["Solver"])
+async def cancel_solver_job(job_id: str):
+    """
+    Cancel a running or queued solver job.
+
+    - **PENDING** jobs are cancelled immediately
+    - **RUNNING** jobs are cancelled at the next safe checkpoint:
+      - Between pipeline stages (fetch → preprocess → solve → analyze → save)
+      - Between partitions (for partitioned solving)
+    - Jobs already COMPLETE/FAILED/CANCELLED return 409
+
+    The cancellation triggers:
+    1. WebSocket broadcast with type="cancelled" (FE gets immediate notification)
+    2. Webhook to backend with status="CANCELLED" (DB updated)
+    3. Checkpoint file cleanup (no leftover temp files)
+    4. Graceful WebSocket close
+    """
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    if job.status in (JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.CANCELLED):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job {job_id} already {job.status.value}, cannot cancel"
+        )
+
+    success = await job_manager.cancel_job(job_id)
+    if not success:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel job {job_id}")
+
+    return {
+        "status": "cancelled",
+        "job_id": job_id,
+        "message": f"Job cancelled. Was at step: {job.current_step.value if job.current_step else 'unknown'}",
+        "cancelled_at_step": job.current_step.value if job.current_step else None,
+        "elapsed_seconds": job.get_elapsed_seconds()
+    }
+```
+
+#### B. `solver_v2/solver/checkpoint_manager.py` — 1 change
+
+**B1. Add `cancellation_check` parameter to `solve_with_checkpointing()` (line ~396)**
+
+Add parameter to function signature:
+```python
+def solve_with_checkpointing(..., cancellation_check=None):
+```
+
+At top of partition loop (line ~449), before skip checks:
+```python
+# Cancel between partitions — current partition already finished, skip the rest
+if cancellation_check and cancellation_check():
+    logger.info(f"Job {job_id} cancelled before partition {i}")
+    break
+```
+
+**This is the key for partitioned solving**: the current partition finishes (typically 1 week/month), then the loop breaks before starting the next one. No partial results saved, checkpoints cleaned up by `cancel_job()`.
+
+In `service.py` caller (line ~867), pass the callback:
+```python
+result = solve_with_checkpointing(
+    ...,
+    cancellation_check=lambda: job.cancelled
+)
+```
+
+### What the FE Sees (WebSocket messages)
+
+```
+Normal flow:     {type:"progress"} → {type:"progress"} → ... → {type:"complete"} → socket closes
+Cancel flow:     {type:"progress"} → {type:"progress"} → {type:"cancelled", details:{cancelled_at_step:"solving"}} → socket closes (code=1000)
+```
+
+The WS loop at `service.py:2022` already checks for `JobStatus.CANCELLED` and closes gracefully. The `"cancelled"` ProgressMessage is broadcast first, so the FE receives it before the socket closes.
+
+### Error Handling
+
+| Scenario | What happens | FE sees |
+|----------|-------------|---------|
+| Cancel PENDING job | Immediate: status → CANCELLED, webhook sent | WS: `type="cancelled"` then close |
+| Cancel during fetch/preprocess | `_check_cancelled()` returns early at next checkpoint | WS: `type="cancelled"` then close |
+| Cancel during solving (standard) | Thread finishes, analysis/saving skipped | WS: `type="cancelled"` then close |
+| Cancel during solving (partitioned) | Current partition finishes, rest skipped | WS: `type="cancelled"` then close |
+| Cancel COMPLETE/FAILED/CANCELLED | HTTP 409 | No WS message |
+| Cancel non-existent job | HTTP 404 | No WS message |
+| Checkpoints exist | Cleaned up by `cancel_job()` | N/A |
+
+### Partition Cancellation Detail
+
+For partitioned solving (e.g., 4 monthly partitions for a quarterly plan):
+- If cancelled during partition 2 of 4: partition 2 finishes (minutes), partitions 3 and 4 are skipped entirely
+- Checkpoint files for partitions 1-2 are cleaned up
+- No partial results are saved to the DB
+- This is the fastest safe cancellation — we don't kill a partition mid-solve (which would corrupt state)
+
+---
+
+## Verification
+
+### Req 1 — Seed value
+1. Rebuild QA DB container
+2. Query `SELECT * FROM replannable_demand_types WHERE type_name = 'RT Jour de repos'` — should exist
+3. Call `GET /qa/ai/api/v1/replannable-demand-types/` — should include the new type
+
+### Req 2 — Cancel API
+1. Rebuild QA solver container
+2. **Test A — Cancel during fetch:** Trigger job, wait for FETCHING_DATA, POST `/solver/cancel/{job_id}` → 200 + logs show "cancelled during fetching"
+3. **Test B — Cancel completed:** POST cancel on completed job → 409
+4. **Test C — Cancel unknown:** POST cancel on "FAKE-ID" → 404
+5. Check solver logs: `Job {id} cancelled (was running)`, checkpoint cleanup
+6. Check backend DB: `solver_jobs` row has `status=CANCELLED`, `completed_at` set
+7. WebSocket: FE receives `{type: "cancelled"}` message, socket closes cleanly

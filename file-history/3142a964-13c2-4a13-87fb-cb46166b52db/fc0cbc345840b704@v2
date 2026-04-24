@@ -1,0 +1,88 @@
+# ============================================================================
+# BAMF Integration Course Ontology
+# ============================================================================
+# This ontology defines the vocabulary (concepts and properties) for the
+# Integration Course Application domain. It describes WHAT EXISTS — the classes
+# and properties that data can use.
+#
+# In production, this file would be served at a URL (like schema.org serves
+# its vocabulary). Any system can fetch this URL to understand the terms.
+#
+# File: integration_course_ontology.ttl
+# Format: Turtle (Terse RDF Triple Language)
+# ============================================================================
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix schema: <http://schema.org/> .
+@prefix bamf:   <https://bamf.bund.de/ontology/integration-course#> .
+
+# ============================================================================
+# Ontology Metadata
+# ============================================================================
+
+<https://bamf.bund.de/ontology/integration-course>
+    a owl:Ontology ;
+    rdfs:label "BAMF Integration Course Ontology"@en ;
+    rdfs:label "BAMF Integrationskurs-Ontologie"@de ;
+    rdfs:comment "Defines the vocabulary for Integration Course applications at BAMF. Covers applicant data, case references, and application metadata."@en ;
+    owl:versionInfo "1.0.0" .
+
+# ============================================================================
+# Classes
+# ============================================================================
+
+bamf:IntegrationCourseApplication
+    a owl:Class ;
+    rdfs:label "Integration Course Application"@en ;
+    rdfs:label "Integrationskurs-Antrag"@de ;
+    rdfs:comment "An application submitted by a person to participate in a German integration course (Integrationskurs) under AufenthG §43-44a."@en ;
+    rdfs:subClassOf schema:Action .
+
+bamf:Applicant
+    a owl:Class ;
+    rdfs:label "Applicant"@en ;
+    rdfs:label "Antragsteller"@de ;
+    rdfs:comment "A person applying for an integration course."@en ;
+    rdfs:subClassOf schema:Person .
+
+# ============================================================================
+# Properties
+# ============================================================================
+
+bamf:referenceNumber
+    a owl:DatatypeProperty ;
+    rdfs:label "Reference Number"@en ;
+    rdfs:label "Aktenzeichen"@de ;
+    rdfs:comment "The official case reference number assigned by BAMF to this application (e.g., ACTE-2024-001)."@en ;
+    rdfs:domain bamf:IntegrationCourseApplication ;
+    rdfs:range xsd:string .
+
+bamf:candidateName
+    a owl:DatatypeProperty ;
+    rdfs:label "Candidate Name"@en ;
+    rdfs:label "Name des Antragstellers"@de ;
+    rdfs:comment "The full legal name of the applicant as it appears on official documents."@en ;
+    rdfs:domain bamf:Applicant ;
+    rdfs:range xsd:string ;
+    rdfs:subPropertyOf schema:name .
+
+bamf:birthPlace
+    a owl:DatatypeProperty ;
+    rdfs:label "Place of Birth"@en ;
+    rdfs:label "Geburtsort"@de ;
+    rdfs:comment "The city or locality where the applicant was born."@en ;
+    rdfs:domain bamf:Applicant ;
+    rdfs:range xsd:string ;
+    owl:equivalentProperty schema:birthPlace .
+
+bamf:reasonForApplication
+    a owl:DatatypeProperty ;
+    rdfs:label "Reason for Application"@en ;
+    rdfs:label "Antragsgrund"@de ;
+    rdfs:comment "Free-text explanation of why the applicant is requesting participation in the integration course, including legal basis (e.g., AufenthG §44, §44a)."@en ;
+    rdfs:domain bamf:IntegrationCourseApplication ;
+    rdfs:range xsd:string ;
+    rdfs:subPropertyOf schema:description .

@@ -1,0 +1,9 @@
+{
+  "id": "93",
+  "subject": "Fix #17-H — RT/CT resource-fields enrichment",
+  "description": "DONE. Fix #17-H verified on PLAN-20260423135649: resource_name, category_priority, team_id, team_name, group_id, group_name all at 100% for both RT (244) and CT (98). resource_category stays null on RT/CT as expected (no underlying demand). BSA_id/request_id stay null as expected.",
+  "activeForm": "Patching RT/CT resource enrichment gap",
+  "status": "completed",
+  "blocks": [],
+  "blockedBy": []
+}

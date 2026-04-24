@@ -1,0 +1,412 @@
+"""
+LC_05: Work-Free Weekend Frequency (HARD CONSTRAINT)
+At least 1 complete work-free weekend (Saturday AND Sunday) per 5 calendar weeks.
+
+============================================================================
+TIME-FRAME SENSITIVE CONSTRAINT (CALENDAR WEEKS)
+============================================================================
+This constraint uses CALENDAR WEEKS (Monday-Sunday) for weekend counting.
+
+Partitioning Considerations:
+- Rolling 5-week windows are based on calendar weeks
+- Planning starting mid-week: First partial week may have incomplete weekend
+- Planning ending mid-week: Last partial week may have incomplete weekend
+
+For quarterly/monthly partitioning:
+- Ensure week boundaries align with partition boundaries when possible
+- Consider tracking "pending weekends" at partition edges
+- Weekend at partition boundary: Include in whichever partition contains both days
+============================================================================
+
+Based on: ../../mock_data_v2/CONSTRAINTS_DOCUMENTATION_v2.md (lines 138-167)
+Source: BAR CCT (final_constraints.md)
+
+Layer 1: Legal constraint (processed after absence blocking)
+
+Definition:
+- A "free weekend" = BOTH Saturday AND Sunday with NO work assignments
+- Requirement: At least 1 free weekend per rolling 5-week period
+- Vacation weekends count toward this requirement
+
+Implementation:
+For each resource and each rolling 5-week window:
+  1. Identify all weekends (Saturday-Sunday pairs) in the window
+  2. For each weekend, check if BOTH Saturday AND Sunday are work-free
+  3. Require at least 1 weekend where both days are free
+"""
+from ortools.sat.python import cp_model
+from datetime import datetime, timedelta, timezone
+import sys
+
+
+def _parse_dt(dt_string: str) -> datetime:
+    """Parse ISO datetime string, ensure timezone-aware (UTC)."""
+    dt = datetime.fromisoformat(dt_string)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+sys.path.append('..')
+from config import SCALING_FACTOR
+
+
+def add_weekend_frequency_constraints(model: cp_model.CpModel,
+                                     x_vars: dict,
+                                     data,
+                                     constraints) -> tuple:
+    """
+    Add work-free weekend frequency constraints to the model.
+
+    LC-05: At least 1 complete weekend (Sat+Sun) free per 5 calendar weeks.
+    This is a HARD constraint per BAR CCT.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables {(resource_id, request_id): BoolVar}
+        data: PreprocessedData object
+        constraints: ConstraintValues object
+
+    Returns:
+        Tuple of (violations, metadata, free_weekend_vars_dict)
+        - violations: Empty list (hard constraint)
+        - metadata: List of dicts with constraint application details
+        - free_weekend_vars_dict: {(resource_id, (saturday_dt, sunday_dt)): BoolVar}
+          Each BoolVar is 1 iff BOTH Sat and Sun have zero assignments for that
+          resource. This dict is consumed by LC-06 (Phase E) to couple chosen
+          free weekends to RT/CT rest-day allocations.
+          Note: auto-free weekends (no demands on Sat or Sun for anyone) are
+          not included — they require no solver enforcement and therefore no
+          coupling variable. LC-06 handles those via its monthly-target
+          constraints rather than weekend coupling.
+    """
+    # Fetch from backend (with fallbacks in preprocessing/constraints.py)
+    FREE_WEEKENDS_REQUIRED = constraints.get_legal_value('free_weekends_required')
+    WEEKEND_WINDOW_WEEKS = constraints.get_legal_value('weekend_window_weeks')
+
+    print(f"\n[LC_05] Adding work-free weekend frequency constraints...")
+    print(f"  Constraint: At least {FREE_WEEKENDS_REQUIRED} free weekend (Sat+Sun) per {WEEKEND_WINDOW_WEEKS} weeks")
+    print(f"  Type: HARD CONSTRAINT")
+
+    violations = []
+    metadata = []
+    # Per-(resource, weekend_pair) cache to dedupe free-weekend BoolVars across
+    # overlapping 5-week windows. Pre-existing behavior silently created one
+    # new var per window — semantically equivalent but wasteful; caching keeps
+    # the var count lower AND gives LC-06 a single, unambiguous handle per
+    # weekend to couple against.
+    free_weekend_vars_dict: dict = {}
+
+    # Identify weekends in planning period
+    weekends = _identify_weekends(data.planning_start, data.planning_end)
+    print(f"  Total weekends in planning period: {len(weekends)}")
+
+    if len(weekends) < 1:
+        print(f"  Planning period too short for weekend frequency constraint")
+        return [], [], {}
+
+    # Map weekends to weeks (for rolling 5-week windows)
+    weekend_to_week = _map_weekends_to_weeks(weekends, data.weeks)
+
+    num_constraints = 0
+
+    # For each resource, enforce weekend frequency in rolling 5-week windows
+    for resource_id in data.resource_ids:
+        num_weeks = len(data.weeks)
+        # Per-resource cache shared across the resource's window loops.
+        resource_cache: dict = {}
+
+        if num_weeks < WEEKEND_WINDOW_WEEKS:
+            # Planning period < window: require at least required free weekends in entire period
+            free_weekend_vars = _create_free_weekend_vars(
+                model, x_vars, data, resource_id, weekends, cache=resource_cache
+            )
+
+            if free_weekend_vars:
+                model.Add(sum(free_weekend_vars) >= FREE_WEEKENDS_REQUIRED)
+                num_constraints += 1
+
+                metadata.append({
+                    'constraint_id': 'LC_05',
+                    'constraint_type': 'hard',
+                    'resource_id': resource_id,
+                    'window_type': 'full_period',
+                    'num_weeks': num_weeks,
+                    'num_weekends': len(weekends),
+                    'reason': 'at_least_1_free_weekend_in_period'
+                })
+        else:
+            for window_start_week in range(num_weeks - (WEEKEND_WINDOW_WEEKS - 1)):
+                window_end_week = window_start_week + (WEEKEND_WINDOW_WEEKS - 1)
+
+                weekends_in_window = [
+                    weekend for weekend in weekends
+                    if weekend_to_week.get(weekend) is not None
+                    and window_start_week <= weekend_to_week[weekend] <= window_end_week
+                ]
+
+                if not weekends_in_window:
+                    continue
+
+                free_weekend_vars = _create_free_weekend_vars(
+                    model, x_vars, data, resource_id, weekends_in_window, cache=resource_cache
+                )
+
+                if free_weekend_vars:
+                    model.Add(sum(free_weekend_vars) >= FREE_WEEKENDS_REQUIRED)
+                    num_constraints += 1
+
+                    metadata.append({
+                        'constraint_id': 'LC_05',
+                        'constraint_type': 'hard',
+                        'resource_id': resource_id,
+                        'window_start_week': window_start_week,
+                        'window_end_week': window_end_week,
+                        'num_weekends_in_window': len(weekends_in_window),
+                        'reason': f'at_least_{FREE_WEEKENDS_REQUIRED}_free_weekend_per_{WEEKEND_WINDOW_WEEKS}_weeks'
+                    })
+
+        # Harvest this resource's cached weekend_free vars into the dict
+        for pair, fw_var in resource_cache.items():
+            free_weekend_vars_dict[(resource_id, pair)] = fw_var
+
+    print(f"  Added {num_constraints} weekend frequency constraints")
+    print(f"  Affected resources: {len(data.resource_ids)}")
+    print(f"  Exposed free_weekend vars: {len(free_weekend_vars_dict)} "
+          f"({len(data.resource_ids)} resources × up to {len(weekends)} weekends)")
+
+    return violations, metadata, free_weekend_vars_dict
+
+
+def _identify_weekends(planning_start: datetime, planning_end: datetime) -> list:
+    """
+    Identify all weekends (Saturday-Sunday pairs) in planning period.
+    
+    Returns:
+        List of tuples: [(saturday_date, sunday_date), ...]
+        Each date is a datetime object at 00:00 UTC
+    """
+    weekends = []
+    current = planning_start.date()
+    end_date = planning_end.date()
+    
+    while current <= end_date:
+        # Find next Saturday (weekday() = 5)
+        days_until_saturday = (5 - current.weekday()) % 7
+        saturday = current + timedelta(days=days_until_saturday)
+        
+        # Check if Saturday is in planning period
+        if saturday > end_date:
+            break
+        
+        # Sunday is the next day
+        sunday = saturday + timedelta(days=1)
+        
+        # Check if Sunday is also in planning period
+        if sunday <= end_date:
+            weekends.append((
+                datetime.combine(saturday, datetime.min.time(), tzinfo=timezone.utc),
+                datetime.combine(sunday, datetime.min.time(), tzinfo=timezone.utc)
+            ))
+        
+        # Move to next week
+        current = sunday + timedelta(days=1)
+    
+    return weekends
+
+
+def _map_weekends_to_weeks(weekends: list, weeks: list) -> dict:
+    """
+    Map each weekend to its containing week index.
+    
+    Args:
+        weekends: List of (saturday_dt, sunday_dt) tuples
+        weeks: List of (week_start, week_end) tuples
+    
+    Returns:
+        Dict: {(saturday_dt, sunday_dt): week_index}
+    """
+    weekend_to_week = {}
+    
+    for weekend in weekends:
+        saturday, sunday = weekend
+        
+        # Find which week contains this Saturday
+        for week_idx, (week_start, week_end) in enumerate(weeks):
+            if week_start <= saturday <= week_end:
+                weekend_to_week[weekend] = week_idx
+                break
+    
+    return weekend_to_week
+
+
+def _create_free_weekend_vars(model: cp_model.CpModel,
+                             x_vars: dict,
+                             data,
+                             resource_id,
+                             weekends: list,
+                             cache: dict = None) -> list:
+    """
+    Create boolean variables representing free weekends for a resource.
+
+    A weekend is "free" if BOTH Saturday AND Sunday have NO work assignments.
+
+    Args:
+        model: CP-SAT model
+        x_vars: Assignment variables
+        data: PreprocessedData object
+        resource_id: Resource ID
+        weekends: List of (saturday_dt, sunday_dt) tuples
+        cache: Optional per-resource dict {pair: weekend_free_var}. When
+               provided, an already-cached weekend re-uses its BoolVar instead
+               of creating a duplicate. Also used by the caller to harvest
+               the exposed vars for LC-06 coupling.
+
+    Returns:
+        List of BoolVar indicating whether each weekend is free (deduped via
+        cache). Auto-free weekends (no demands anywhere) are still skipped
+        so the returned list is semantically identical to the pre-cache
+        version of this function.
+    """
+    free_weekend_vars = []
+    if cache is None:
+        cache = {}
+
+    for weekend_idx, (saturday_dt, sunday_dt) in enumerate(weekends):
+        pair = (saturday_dt, sunday_dt)
+
+        # Cache hit → reuse existing BoolVar (set up in a prior window)
+        if pair in cache:
+            free_weekend_vars.append(cache[pair])
+            continue
+
+        # Find requests on Saturday / Sunday
+        saturday_requests = _get_requests_on_date(data.requests, saturday_dt)
+        sunday_requests = _get_requests_on_date(data.requests, sunday_dt)
+
+        # If no requests on either day, skip (automatically free — no solver
+        # enforcement needed, and no coupling handle exposed to LC-06).
+        if not saturday_requests and not sunday_requests:
+            continue
+
+        # Create boolean: saturday is free (no assignments on Saturday)
+        sat_free = model.NewBoolVar(f'sat_free_{resource_id}_{weekend_idx}')
+        if saturday_requests:
+            saturday_assignments = [
+                x_vars[(resource_id, req['id'])]
+                for req in saturday_requests
+                if (resource_id, req['id']) in x_vars
+            ]
+            if saturday_assignments:
+                model.Add(sum(saturday_assignments) == 0).OnlyEnforceIf(sat_free)
+                model.Add(sum(saturday_assignments) >= 1).OnlyEnforceIf(sat_free.Not())
+            else:
+                model.Add(sat_free == 1)
+        else:
+            model.Add(sat_free == 1)
+
+        # Create boolean: sunday is free (no assignments on Sunday)
+        sun_free = model.NewBoolVar(f'sun_free_{resource_id}_{weekend_idx}')
+        if sunday_requests:
+            sunday_assignments = [
+                x_vars[(resource_id, req['id'])]
+                for req in sunday_requests
+                if (resource_id, req['id']) in x_vars
+            ]
+            if sunday_assignments:
+                model.Add(sum(sunday_assignments) == 0).OnlyEnforceIf(sun_free)
+                model.Add(sum(sunday_assignments) >= 1).OnlyEnforceIf(sun_free.Not())
+            else:
+                model.Add(sun_free == 1)
+        else:
+            model.Add(sun_free == 1)
+
+        # Weekend is free if BOTH Saturday AND Sunday are free
+        weekend_free = model.NewBoolVar(f'weekend_free_{resource_id}_{weekend_idx}')
+        model.AddBoolAnd([sat_free, sun_free]).OnlyEnforceIf(weekend_free)
+        model.AddBoolOr([sat_free.Not(), sun_free.Not()]).OnlyEnforceIf(weekend_free.Not())
+
+        cache[pair] = weekend_free
+        free_weekend_vars.append(weekend_free)
+
+    return free_weekend_vars
+
+
+def _get_requests_on_date(requests: list, target_date: datetime) -> list:
+    """
+    Get all requests that have any work on a specific date.
+    
+    Args:
+        requests: List of request dicts
+        target_date: Target date (datetime at 00:00 UTC)
+    
+    Returns:
+        List of requests that overlap with target_date
+    """
+    day_start = target_date
+    day_end = target_date + timedelta(hours=23, minutes=59, seconds=59)
+    
+    requests_on_date = []
+    
+    for req in requests:
+        req_start = _parse_dt(req['shift_start_time'])
+        req_end = _parse_dt(req['shift_finish_time'])
+        
+        # Check if request overlaps with this day
+        if req_start <= day_end and req_end >= day_start:
+            requests_on_date.append(req)
+    
+    return requests_on_date
+
+
+def get_weekend_frequency_metrics(data, x_solution: dict = None) -> dict:
+    """
+    Generate metrics for weekend frequency analysis.
+    
+    Args:
+        data: PreprocessedData object
+        x_solution: Optional dict of {(resource_id, request_id): 0 or 1} from solver
+    
+    Returns:
+        Dict with weekend frequency metrics
+    """
+    weekends = _identify_weekends(data.planning_start, data.planning_end)
+    
+    metrics = {
+        'total_weekends': len(weekends),
+        'planning_weeks': len(data.weeks),
+        'num_5_week_windows': max(0, len(data.weeks) - 4),
+        'resources_checked': len(data.resource_ids)
+    }
+    
+    if x_solution:
+        # Analyze actual solution
+        resources_with_free_weekends = []
+        
+        for resource_id in data.resource_ids:
+            free_weekends = 0
+            
+            for saturday_dt, sunday_dt in weekends:
+                # Check if this weekend is free for this resource
+                saturday_requests = _get_requests_on_date(data.requests, saturday_dt)
+                sunday_requests = _get_requests_on_date(data.requests, sunday_dt)
+                
+                sat_has_work = any(
+                    x_solution.get((resource_id, req['id']), 0) == 1
+                    for req in saturday_requests
+                )
+                sun_has_work = any(
+                    x_solution.get((resource_id, req['id']), 0) == 1
+                    for req in sunday_requests
+                )
+                
+                if not sat_has_work and not sun_has_work:
+                    free_weekends += 1
+            
+            if free_weekends > 0:
+                resources_with_free_weekends.append({
+                    'resource_id': resource_id,
+                    'free_weekends': free_weekends
+                })
+        
+        metrics['resources_with_free_weekends'] = resources_with_free_weekends
+    
+    return metrics

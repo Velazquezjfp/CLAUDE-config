@@ -1,0 +1,14 @@
+{
+  "user_id": "javi_test",
+  "test_mode": false,
+  "use_mock_data": false,
+  "plan_range": {"start_date": "2026-05-01", "end_date": "2026-06-30"},
+  "target_team_ids": [14],
+  "target_group_ids": [],
+  "lock_allocations": true,
+  "locked_date_ranges": [
+    {"start": "2026-05-01", "end": "2026-06-30", "reason": "CT/RT anchor-flexibility probe"}
+  ],
+  "replannable_demand_type": ["RT Jour de repos", "CT Jour de compensation"],
+  "options": {"time_limit_seconds": 1800}
+}

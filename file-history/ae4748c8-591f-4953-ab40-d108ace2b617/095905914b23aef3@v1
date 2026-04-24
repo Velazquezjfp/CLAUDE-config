@@ -1,0 +1,296 @@
+"""
+Travel Cost Objective Analyzer
+Analyzes travel cost minimization performance and identifies opportunities for more local assignments
+"""
+from .base_analyzer import ObjectiveAnalyzer
+import sys
+sys.path.append('../..')
+
+
+class TravelCostAnalyzer(ObjectiveAnalyzer):
+    """Analyzer for minimize_travel_cost objective"""
+
+    def __init__(self):
+        super().__init__(
+            objective_id='minimize_travel_cost',
+            objective_name='Minimize Travel Cost'
+        )
+
+    def analyze_performance(self, solution, data, constraints):
+        """
+        Analyze travel cost minimization performance
+        """
+        # Check if location data is available
+        if not self._has_location_data(data):
+            return {
+                "objective_id": "minimize_travel_cost",
+                "objective_name": "Minimize Travel Cost",
+                "target_description": "Prefer local assignments to minimize travel",
+                "achieved_value": 0,
+                "max_possible_value": 0,
+                "achievement_rate": 0,
+                "performance_category": "NOT_APPLICABLE",
+                "gaps": [{
+                    "gap_type": "NO_LOCATION_DATA",
+                    "description": "Location data not available in dataset",
+                    "impact": "Cannot analyze travel costs",
+                    "recommendations": [
+                        "Add location_code, region_code, or division_code to resources and requests"
+                    ]
+                }],
+                "metrics": {
+                    "location_data_available": False
+                }
+            }
+
+        # Get assignments
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        if not assignments:
+            return {
+                "objective_id": "minimize_travel_cost",
+                "objective_name": "Minimize Travel Cost",
+                "target_description": "Prefer local assignments to minimize travel",
+                "achieved_value": 0,
+                "max_possible_value": 0,
+                "achievement_rate": 0,
+                "performance_category": "POOR",
+                "gaps": [],
+                "metrics": {
+                    "total_assignments": 0,
+                    "location_data_available": True
+                }
+            }
+
+        # Analyze travel patterns
+        same_location = 0
+        same_region = 0
+        different_region = 0
+        total_assignments = len(assignments)
+
+        # Create lookup dictionaries for resources and requests
+        resource_lookup = {r['resource_id']: r for r in data.resources}
+        request_lookup = {r['id']: r for r in data.requests}
+
+        for assignment in assignments:
+            resource_id = assignment['resource_id']
+            demand_id = assignment['demand_id']
+
+            resource = resource_lookup.get(resource_id)
+            request = request_lookup.get(demand_id)
+
+            if not resource or not request:
+                continue
+
+            # Check location match levels
+            res_location = resource.get('location_code')
+            req_location = request.get('location_code')
+            res_region = resource.get('region_code')
+            req_region = request.get('region_code')
+            res_division = resource.get('division_code')
+            req_division = request.get('division_code')
+
+            # Prioritize most specific location match
+            if res_location and req_location:
+                if res_location == req_location:
+                    same_location += 1
+                elif res_region and req_region and res_region == req_region:
+                    same_region += 1
+                else:
+                    different_region += 1
+            elif res_region and req_region:
+                if res_region == req_region:
+                    same_region += 1
+                else:
+                    different_region += 1
+            elif res_division and req_division:
+                if res_division == req_division:
+                    same_region += 1
+                else:
+                    different_region += 1
+
+        # Calculate achievement rate (100% = all local, decreases with travel)
+        local_ratio = (same_location / total_assignments * 100) if total_assignments > 0 else 0
+        regional_ratio = (same_region / total_assignments * 100) if total_assignments > 0 else 0
+        travel_ratio = (different_region / total_assignments * 100) if total_assignments > 0 else 0
+
+        # Achievement rate: prioritize local, give partial credit for regional
+        achievement_rate = local_ratio + (regional_ratio * 0.5)
+
+        # Get gap details
+        gaps = self.get_gap_details(solution, data)
+
+        return {
+            "objective_id": "minimize_travel_cost",
+            "objective_name": "Minimize Travel Cost",
+            "target_description": "Prefer local assignments to minimize travel",
+            "achieved_value": same_location + different_region,  # Inverse of travel
+            "max_possible_value": total_assignments,
+            "achievement_rate": round(achievement_rate, 2),
+            "performance_category": self.classify_performance(achievement_rate),
+            "gaps": gaps,
+            "metrics": {
+                "total_assignments": total_assignments,
+                "same_location_assignments": same_location,
+                "same_region_assignments": same_region,
+                "different_region_assignments": different_region,
+                "local_ratio": round(local_ratio, 2),
+                "regional_ratio": round(regional_ratio, 2),
+                "travel_ratio": round(travel_ratio, 2),
+                "location_data_available": True
+            }
+        }
+
+    def get_gap_details(self, solution, data):
+        """
+        Identify opportunities to reduce travel costs
+        """
+        gaps = []
+
+        # Get assignments
+        assignments = getattr(solution, 'solution_assignments', getattr(solution, 'assignments', []))
+
+        if not assignments:
+            return gaps
+
+        # Create lookup dictionaries
+        resource_lookup = {r['resource_id']: r for r in data.resources}
+        request_lookup = {r['id']: r for r in data.requests}
+
+        # Track travel assignments and potential alternatives
+        travel_assignments = []
+        potential_local_matches = []
+
+        for assignment in assignments:
+            resource_id = assignment['resource_id']
+            demand_id = assignment['demand_id']
+
+            resource = resource_lookup.get(resource_id)
+            request = request_lookup.get(demand_id)
+
+            if not resource or not request:
+                continue
+
+            # Check if this is a travel assignment
+            res_location = resource.get('location_code')
+            req_location = request.get('location_code')
+            res_region = resource.get('region_code')
+            req_region = request.get('region_code')
+
+            is_travel = False
+            if res_location and req_location and res_location != req_location:
+                is_travel = True
+            elif res_region and req_region and res_region != req_region:
+                is_travel = True
+
+            if is_travel:
+                travel_assignments.append({
+                    'resource_id': resource_id,
+                    'demand_id': demand_id,
+                    'resource_location': res_location or res_region,
+                    'request_location': req_location or req_region
+                })
+
+                # Check if there are local resources with qualifications
+                req_quals = set(request.get('required_qualifications', []))
+                for local_resource in data.resources:
+                    local_loc = local_resource.get('location_code')
+                    local_reg = local_resource.get('region_code')
+                    local_quals = set(local_resource.get('qualifications', []))
+
+                    # Check if local and qualified
+                    is_local = (local_loc == req_location) or (local_reg == req_region)
+                    has_qualifications = req_quals.issubset(local_quals)
+
+                    if is_local and has_qualifications:
+                        potential_local_matches.append({
+                            'request_id': demand_id,
+                            'local_resource_id': local_resource['resource_id'],
+                            'request_location': req_location or req_region
+                        })
+
+        # Build gap report
+        if travel_assignments:
+            travel_count = len(travel_assignments)
+            total = len(assignments)
+            travel_percentage = (travel_count / total * 100) if total > 0 else 0
+
+            recommendations = []
+            if potential_local_matches:
+                recommendations.append(
+                    f"Consider reassigning {len(potential_local_matches)} requests to local resources"
+                )
+                recommendations.append(
+                    "Increase objective weight for travel cost minimization"
+                )
+            else:
+                recommendations.append(
+                    "No immediate local alternatives available - travel is necessary"
+                )
+                recommendations.append(
+                    "Consider hiring resources in high-demand locations"
+                )
+
+            recommendations.append(
+                "Review capacity constraints that may prevent local assignments"
+            )
+
+            gaps.append({
+                "gap_type": "TRAVEL_ASSIGNMENTS",
+                "description": f"{travel_count} assignments require travel to different locations/regions",
+                "impact": f"{travel_percentage:.1f}% of assignments involve travel costs",
+                "recommendations": recommendations
+            })
+
+        # Check for location imbalances
+        location_demand = {}
+        location_supply = {}
+
+        for request in data.requests:
+            req_loc = request.get('location_code') or request.get('region_code')
+            if req_loc:
+                location_demand[req_loc] = location_demand.get(req_loc, 0) + 1
+
+        for resource in data.resources:
+            res_loc = resource.get('location_code') or resource.get('region_code')
+            if res_loc:
+                location_supply[res_loc] = location_supply.get(res_loc, 0) + 1
+
+        imbalanced_locations = []
+        for loc in location_demand:
+            demand = location_demand[loc]
+            supply = location_supply.get(loc, 0)
+            if supply < demand * 0.5:  # Supply is less than 50% of demand
+                imbalanced_locations.append({
+                    'location': loc,
+                    'demand': demand,
+                    'supply': supply
+                })
+
+        if imbalanced_locations:
+            gaps.append({
+                "gap_type": "LOCATION_IMBALANCE",
+                "description": f"{len(imbalanced_locations)} locations have insufficient local resources",
+                "impact": "Forces travel assignments due to resource distribution",
+                "recommendations": [
+                    f"HIGH PRIORITY: Add resources to location {loc['location']} "
+                    f"(demand: {loc['demand']}, supply: {loc['supply']})"
+                    for loc in imbalanced_locations[:3]
+                ]
+            })
+
+        return gaps
+
+    def _has_location_data(self, data):
+        """Check if location data is available in the dataset"""
+        if not data.resources or not data.requests:
+            return False
+
+        # Check if any resource has location data
+        for resource in data.resources:
+            if (resource.get('location_code') or 
+                resource.get('region_code') or 
+                resource.get('division_code')):
+                return True
+
+        return False

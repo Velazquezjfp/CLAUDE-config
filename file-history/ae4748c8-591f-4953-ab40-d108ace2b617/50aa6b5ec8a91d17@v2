@@ -1,0 +1,28 @@
+-- Fix #16 (2026-04-22) — Surface fetch_rt / fetch_ct on solver_jobs so
+-- the /solver-jobs endpoint and /solver/status/{job_id} endpoint can show
+-- them without JOINing planner_output. These mirror the semantics already
+-- established on planner_output:
+--   fetch_rt = NOT rt_replannable  → True: FE must fetch RT from external DB
+--                                    False: solver replanned RT, read from
+--                                           planner_assignments
+--   fetch_ct: same for CT.
+--
+-- Set at trigger time from the payload's replannable_demand_type, so the
+-- flags are already known when the solver_jobs row is first INSERTed.
+--
+-- Idempotent via IF NOT EXISTS. Safe to run on both fresh and existing
+-- deployments. The DEFAULT TRUE mirrors planner_output's default.
+
+ALTER TABLE solver_jobs
+    ADD COLUMN IF NOT EXISTS fetch_rt BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE solver_jobs
+    ADD COLUMN IF NOT EXISTS fetch_ct BOOLEAN NOT NULL DEFAULT TRUE;
+
+COMMENT ON COLUMN solver_jobs.fetch_rt IS
+    'True: FE reads RT blocks from external DB (solver did not replan). '
+    'False: solver replanned RT; allocations are in planner_assignments. '
+    'Derived from NOT rt_replannable at trigger time.';
+
+COMMENT ON COLUMN solver_jobs.fetch_ct IS
+    'Same semantic as fetch_rt but for CT.';

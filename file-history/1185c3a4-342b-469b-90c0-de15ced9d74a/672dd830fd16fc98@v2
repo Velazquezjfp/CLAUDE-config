@@ -1,0 +1,12 @@
+# Sprint 001 — Raw Requirements
+
+_One bullet per requirement. Agent will ground against current state (APIs, DB, env vars) and produce polished files when you run `/requirement-polish 1`._
+
+_Tips:_
+- _Keep bullets focused — one requirement per bullet._
+- _Mention specific tables, endpoints, or env vars when you know them; the agent will verify against current state._
+- _For NFRs, include a measurable target (e.g., "p95 latency under 100ms") or the agent will ask._
+- _To reference another requirement as a dependency, mention its full compound ID (e.g., "follows on from S041-F-003")._
+
+<!-- Write your raw requirements below this line. -->
+

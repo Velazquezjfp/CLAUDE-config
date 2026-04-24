@@ -1,0 +1,47 @@
+FROM postgres:14-alpine
+
+# Install Python and required packages for migration script
+RUN apk add --no-cache python3 py3-pip postgresql-dev gcc python3-dev musl-dev
+
+# Install Python PostgreSQL adapter
+RUN pip3 install --break-system-packages psycopg2-binary
+
+# Set environment variables
+ENV POSTGRES_DB=cff_planning
+ENV POSTGRES_USER=cff_app_user
+ENV POSTGRES_PASSWORD=changeme
+
+# Copy database initialization files
+COPY ../database/schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY ../database/constraints_seed_data.sql /docker-entrypoint-initdb.d/02-constraints.sql
+COPY ../database/schema_planner_output.sql /docker-entrypoint-initdb.d/03-schema-planner-output.sql
+COPY ../database/schema_constraints_v2.sql /docker-entrypoint-initdb.d/04-schema-constraints-v2.sql
+COPY ../database/planner_output_seed.sql /docker-entrypoint-initdb.d/05-planner-output-seed.sql
+COPY ../database/constraints_v2_seed_data.sql /docker-entrypoint-initdb.d/06-constraints-v2-seed.sql
+COPY ../database/schema_replannable_demand_types.sql /docker-entrypoint-initdb.d/07-schema-replannable-demand-types.sql
+COPY ../database/replannable_demand_types_seed.sql /docker-entrypoint-initdb.d/08-replannable-demand-types-seed.sql
+COPY ../database/schema_solver_jobs.sql /docker-entrypoint-initdb.d/09-schema-solver-jobs.sql
+COPY ../database/schema_planner_output_add_job_id.sql /docker-entrypoint-initdb.d/10-schema-planner-output-add-job-id.sql
+COPY ../database/schema_solver_jobs_add_plan_range.sql /docker-entrypoint-initdb.d/11-schema-solver-jobs-add-plan-range.sql
+COPY ../database/schema_planner_assignments.sql /docker-entrypoint-initdb.d/12-schema-planner-assignments.sql
+# Fix #16 (2026-04-22) — idempotent ADD COLUMN migrations. Safe to re-run;
+# use IF NOT EXISTS. Runs automatically on fresh init (new volume) before
+# the Python data migration. Existing deployments need a one-off manual
+# apply via `docker exec cff_postgres_<env> psql ... -f <file>`.
+COPY ../database/schema_solver_jobs_add_fetch_flags.sql /docker-entrypoint-initdb.d/13-schema-solver-jobs-add-fetch-flags.sql
+COPY ../database/schema_planner_assignments_add_category_priority.sql /docker-entrypoint-initdb.d/14-schema-planner-assignments-add-category-priority.sql
+COPY ../database/schema_planner_output_add_fetch_flags.sql /docker-entrypoint-initdb.d/15-schema-planner-output-add-fetch-flags.sql
+COPY ../database/init-db.sh /docker-entrypoint-initdb.d/16-init-db.sh
+
+# Copy migration script
+COPY ../database/migrate_json_to_sql_v2.py /docker-entrypoint-initdb.d/migrate_json_to_sql_v2.py
+
+# Make init script executable
+RUN chmod +x /docker-entrypoint-initdb.d/15-init-db.sh
+
+# Expose PostgreSQL port
+EXPOSE 5432
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1

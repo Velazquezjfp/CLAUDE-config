@@ -1,7 +1,7 @@
 {
   "language": "vite-react",
-  "version": "1.0",
-  "last_updated": "2025-12-16",
+  "version": "1.1",
+  "last_updated": "2025-01-09",
   "description": "Vite + React + TypeScript + shadcn/ui project grammar patterns",
   "file_extensions": [".tsx", ".ts", ".jsx", ".js"],
   "patterns": {
@@ -115,6 +115,26 @@
     "tailwind_classes": [
       "className=['\"]([^'\"]+)['\"]",
       "cn\\(['\"]([^'\"]+)['\"]"
+    ],
+    "websocket_patterns": [
+      "new WebSocket\\(['\"]([^'\"]+)['\"]\\)",
+      "new WebSocket\\(`([^`]+)`\\)",
+      "wsConnection\\.",
+      "WebSocketState",
+      "\\.onmessage\\s*=",
+      "\\.onopen\\s*=",
+      "\\.onclose\\s*=",
+      "\\.onerror\\s*="
+    ],
+    "file_api_patterns": [
+      "fetch\\(`\\$\\{[^}]+\\}([^`]+)`",
+      "fetch\\(['\"]([^'\"]+)['\"]",
+      "new FormData\\(",
+      "formData\\.append\\(",
+      "XMLHttpRequest\\(",
+      "new Blob\\(",
+      "URL\\.createObjectURL\\(",
+      "URL\\.revokeObjectURL\\("
     ]
   },
   "entity_mappings": {
@@ -133,6 +153,8 @@
     "contexts": "provides_context",
     "hooks": "uses_hook",
     "tanstack_query": "queries_data",
-    "radix_primitives": "extends_primitive"
+    "radix_primitives": "extends_primitive",
+    "websocket_patterns": "uses_websocket",
+    "file_api_patterns": "uses_file_api"
   }
 }

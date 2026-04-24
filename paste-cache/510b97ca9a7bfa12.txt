@@ -1,0 +1,61 @@
+I need to continue this topic about RT and CT.                                                                          
+                                                                                                                      
+Please confirm that a mechanism to lock type of absences is already there, it should be a hard coded list. Im           
+asking because there is 2 absences types in this list that are actually special kind of absence type and they can       
+are replannable, meaning that in the post payload that triggers a plan, this calendar type could be included. 
+
+That means that out from the list, this 2 types cpulñd be excluded. So I need to implement in the trigger and pipeline this logic: 
+
+If in parameter "replannable_demand_type": []                                                                                                     
+
+the values for RT and CT are included:
+CT Jour de compensation
+RT Jour de repos
+
+If those values are included in the parameter replannable_demand_type. Then they should be excluded from this list. 
+The same should apply for any value in this list, but we will not be expecting any other value from this list. Other values are always expected, is part of the 
+current design. 
+
+Here the original list: 
+ 
+ALWAYS_BLOCKING_CALENDAR_TYPES = [                                                                                     │
+│     "Congés payés",            # 816 records in DB                                                                     │
+│     "CT Jour de compensation", # 22,822 records                                                                        │
+│     "Maladie",                 # 18 records                                                                            │
+│     "Pas disponible",          # 1,010 records                                                                         │
+│     "RT Jour de repos",        # 26,387 records                                                                        │
+│     "Service militaire / civil",  # 200 records                                                                        │
+│     "Vacances",                # 7,631 records                                                                         │
+│     "Vacances non payées",     # 30 records (note: accent on payées)                                                   │
+│     "Visite médicale",         # 6 records                                                                             │
+│ ]                                                 
+
+
+After this, the planner has an output where it provides the output planner. I need to implement a new parameter in the planner output response:
+fetch_rt = true/false
+fetch_ct = true/false
+
+true should be there if the parameter was not included in the payload request. This means that the calendar type is blocked and it was not "replanned". 
+
+Those should have Boolean values and they will let the Front End know if the data should be fetched. (separate process), just follow logic: 
+if parameter in eplannable_demand_type, then "false" if not in parameter then "true"
+
+This parameters should be included in the current outputs: 
+/api/v1/planner-output/
+Also when filtering plan_id and user_id, simply as part of the request. 
+
+Up until here it should be clear, but there is another challenge. If one of this CT or RT parameters is actually replannable, it means that the solver should allocate this days with exactly those names as assignemnts. Right now the planner allocates resources in working demands, but if CT or Rt are replannable it means the solver should also allocate this days to comply with this requirement/constraint. 
+
+So this may be a major update where now I must modify the solver to assign these days, while complying with everything else. Check this requirement: 
+
+"CT and RT are not only from 24 Uhr to 24 Uhr, but can be also from 12 to 12 or 13 to 13. The planner never respected that, and always put it from 24 to 24. This has a use case, because for example a ressource could work a night shift after a CT day that goes from 12 to 12 (because from 12 to Night shift start there can be enough rest time), whereas a ressource that has a CT from 24 to 24 cant have a night shift directly after it"
+
+Now this is how it should behave in case the CT and RT are replannable, since we have that requirement already noted, we should be able to make sure that a person has CT and RT days allocated in a month, that means that partitions must respect and be aware of this. This is in calendar months btw and it should be respected, planning is selected by months, but if the planning range starts or end in a fraction of the month then we must first calculate the fraction proportionaly to what is needed. I need you to come up with a calculation for this, for example if planning range is until the 10th of a month (then use 1/3 of the required CT and RT days). 
+
+Here is also the original requirement: 
+"Rest Days
+a person must have a minimum of 4 Rest-Days (RT) and 2 Compensation Days (CT), so in total a minimum of 6 days of in a month
+
+See 1.): A person must have minimum of 1 weekend each Month as Rest Days (Saturday and Sunday concurrent). Between these Rest Weekends there must not be a gap of more than 5 Weeks"
+                                                                                                 
+There is already a plan referenced in this conversation, please review it as well, and let us continue with a new plan to comply with this change. 

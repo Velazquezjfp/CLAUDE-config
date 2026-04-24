@@ -1,0 +1,33 @@
+Swagger UI: http://0.0.0.0:8004/qa/planner/docs
+API Base: http://0.0.0.0:8004/qa/planner/api/v1
+============================================================
+
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:__main__:Starting CFF Solver API Service...
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8004 (Press CTRL+C to quit)
+INFO:     127.0.0.1:46082 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35110 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55120 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:40284 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     172.18.0.1:45984 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52184 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:38378 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34930 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:58282 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     172.18.0.1:54594 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:41264 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:51960 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58990 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:35114 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     172.18.0.1:57224 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:44000 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:46618 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:42288 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:46526 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     172.18.0.1:60428 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38936 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:41828 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:47488 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.1:38256 - "GET /qa/planner/api/v1/solver/status/JOB-20260418103744-A7115B HTTP/1.1" 404 Not Found

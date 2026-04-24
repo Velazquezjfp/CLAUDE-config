@@ -1,0 +1,33 @@
+=> [api internal] load .dockerignore                                                                                                                              0.0s
+ => => transferring context: 2B                                                                                                                                    0.0s
+ => [api internal] load build context                                                                                                                              0.0s
+ => => transferring context: 1.09MB                                                                                                                                0.0s
+ => [api 1/8] FROM docker.io/library/python:3.11-slim@sha256:92c262cbb2e99cdc16218338d74fbe518055c13d224d942708f70f8042ff6d18                                      0.0s
+ => CACHED [api 2/8] WORKDIR /app                                                                                                                                  0.0s
+ => CACHED [api 3/8] RUN apt-get update && apt-get install -y --no-install-recommends     gcc     curl     && rm -rf /var/lib/apt/lists/*                          0.0s
+ => CACHED [api 4/8] COPY ../api/requirements.txt .                                                                                                                0.0s
+ => CACHED [api 5/8] RUN pip install --no-cache-dir -r requirements.txt                                                                                            0.0s
+ => CACHED [api 6/8] COPY ../api/ .                                                                                                                                0.0s
+ => CACHED [api 7/8] COPY ../sql_diagram/output/ ./sql_diagram/output/                                                                                             0.0s
+ => CACHED [api 8/8] RUN useradd -m -u 1000 apiuser && chown -R apiuser:apiuser /app                                                                               0.0s
+ => [api] exporting to image                                                                                                                                       0.0s
+ => => exporting layers                                                                                                                                            0.0s
+ => => writing image sha256:c38f61f05cd69eb9ac6ae8bb5a9c145cd9c28b65260454bd83c8dd862c00dcbd                                                                       0.0s
+ => => naming to docker.io/library/database-service-api                                                                                                            0.0s
+ => [api] resolving provenance for metadata file                                                                                                                   0.0s
+[+] Building 2/2
+ ✔ api       Built                                                                                                                                                 0.0s
+ ✔ postgres  Built                                                                                                                                                 0.0s
+WARN[0000] Found orphan containers ([cff_api_uat cff_postgres_uat cff_api_qa cff_postgres_qa]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+[+] Running 2/2
+ ✔ Container cff_postgres  Healthy                                                                                                                                 5.9s
+ ✔ Container cff_api       Started                                                                                                                                 6.2s
+
+--- Applying idempotent migrations ---
+  Waiting for cff_postgres to accept SQL...
+    ✓ schema_replannable_demand_types.sql
+    ✓ schema_solver_jobs_add_fetch_flags.sql
+    ✓ schema_planner_output_add_fetch_flags.sql
+    ✓ schema_planner_assignments_add_category_priority.sql
+  DEV migrations: 4 applied, 0 failed.
+🎉 All requested deployments are complete (preserve mode).

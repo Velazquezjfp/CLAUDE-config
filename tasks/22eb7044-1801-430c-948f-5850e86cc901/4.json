@@ -1,0 +1,9 @@
+{
+  "id": "4",
+  "subject": "Write 6 Python test cases",
+  "description": "Under docs/tests/S001-D-001/: TC-01 through TC-06, each invoking node as subprocess to exercise storage.js",
+  "activeForm": "Writing test cases",
+  "status": "in_progress",
+  "blocks": [],
+  "blockedBy": []
+}
