@@ -14,3 +14,13 @@ file-history/
 tasks/
 telemetry/
 debug/
+agents_pool/
+commands_deprecated/
+grammars/
+paste-cache/
+history.jsonl
+notes-workflow.md
+policy-limits.json
+settings.json
+settings.local.json
+stats-cache.json
