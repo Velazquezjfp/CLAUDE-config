@@ -94,35 +94,51 @@ This workflow addresses all three by enforcing:
 
 ---
 
-## Directory layout the pipeline produces
+## Directory layout
+
+The pipeline splits files across **two locations**: user-global reusable logic in `~/.claude/`, and per-project state + generated artifacts in each project's root.
+
+### User-global (reusable across all projects)
+
+```
+~/.claude/
+├── agents/                            # agent definitions
+│   ├── BO-project-grammar-builder.md
+│   ├── BO-code-graph-builder.md
+│   ├── BO-api-documenter.md
+│   ├── BO-db-documenter.md
+│   ├── BO-env-documenter.md
+│   └── BO-requirements-polisher.md
+├── commands/                          # slash commands
+│   ├── grammar-build.md
+│   ├── grammar-update.md
+│   ├── code-graph-build.md
+│   ├── code-graph-update.md
+│   ├── api-doc-build.md
+│   ├── api-doc-update.md
+│   ├── db-doc-build.md
+│   ├── db-doc-update.md
+│   ├── env-doc-build.md
+│   ├── env-doc-update.md
+│   ├── sprint-init.md
+│   ├── requirement-polish.md
+│   ├── requirement-new.md
+│   ├── sprint-roadmap-build.md
+│   ├── sprint-roadmap-update.md
+│   └── start-requirement.md
+└── skills/
+    └── sprint-planner/
+        ├── SKILL.md
+        └── plan.py                    # stdlib-only Python
+```
+
+Install these once per machine. They work identically across every project you have.
+
+### Per-project (state + generated artifacts)
 
 ```
 your-project/
 ├── .claude/
-│   ├── agents/                        # per-project agent definitions
-│   │   ├── BO-project-grammar-builder.md
-│   │   ├── BO-code-graph-builder.md
-│   │   ├── BO-api-documenter.md
-│   │   ├── BO-db-documenter.md
-│   │   ├── BO-env-documenter.md
-│   │   └── BO-requirements-polisher.md
-│   ├── commands/                      # per-project slash commands
-│   │   ├── grammar-build.md
-│   │   ├── grammar-update.md
-│   │   ├── code-graph-build.md
-│   │   ├── code-graph-update.md
-│   │   ├── api-doc-build.md
-│   │   ├── api-doc-update.md
-│   │   ├── db-doc-build.md
-│   │   ├── db-doc-update.md
-│   │   ├── env-doc-build.md
-│   │   ├── env-doc-update.md
-│   │   ├── sprint-init.md
-│   │   ├── requirement-polish.md
-│   │   ├── requirement-new.md
-│   │   ├── sprint-roadmap-build.md
-│   │   ├── sprint-roadmap-update.md
-│   │   └── start-requirement.md
 │   └── agent-memory/                  # per-project persistent memory
 │       ├── project-grammar-builder/
 │       ├── api-documenter/
@@ -165,13 +181,9 @@ your-project/
             └── TC-S001-F-001-01.py
 ```
 
-Additionally, one user-global skill lives outside any project:
+Commit `docs/` and `.claude/agent-memory/` with the project. Memory travels with the repo so it's shared with teammates (or preserved for future-you). The pipeline logic in `~/.claude/` does not commit — it's your tooling, not the project's.
 
-```
-~/.claude/skills/sprint-planner/
-├── SKILL.md
-└── plan.py                            # stdlib-only Python, reusable
-```
+The split is intentional: **logic is reusable, state is project-scoped.** When you add a new client project, you get the pipeline for free. When you leave a client, your memory and docs leave with the repo.
 
 ---
 
