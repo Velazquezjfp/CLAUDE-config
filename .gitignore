@@ -6,3 +6,11 @@
 /todos
 .credentials.json
 debug/
+plans/
+sessions/
+cache/
+backups/
+file-history/
+tasks/
+telemetry/
+debug/
