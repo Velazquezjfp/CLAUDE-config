@@ -1,9 +1,0 @@
-{
-  "id": "88",
-  "subject": "Fix #17-C — Remove anchor-preference penalty (issue #1)",
-  "description": "Fix #17-C done. Anchor penalty zeroed. PLAN-20260423120047: 96.7% of RT and 91.7% of CT now at non-midnight anchors (18:00 dominant, 06:00 + 00:00 minority). However 25 new within-partition REST×REST overlaps surfaced on consecutive days (D h=18 + D+1 h=6 pattern). Fix #17-D created to close.",
-  "activeForm": "Removing anchor-preference penalty",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

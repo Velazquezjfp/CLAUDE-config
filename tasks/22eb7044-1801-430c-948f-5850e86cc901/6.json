@@ -1,9 +1,0 @@
-{
-  "id": "6",
-  "subject": "Update requirement frontmatter",
-  "description": "Set status: implemented, add implemented_at, tests_passed_at, tests_total/passed/failed",
-  "activeForm": "Updating frontmatter",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

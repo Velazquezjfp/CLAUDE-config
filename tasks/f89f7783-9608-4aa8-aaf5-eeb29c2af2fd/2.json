@@ -1,9 +1,0 @@
-{
-  "id": "2",
-  "subject": "Implement server/storage.js",
-  "description": "Create readData, writeData, DATA_FILE_PATH; atomic temp+rename; auto-init; malformed JSON surfaces error.",
-  "activeForm": "Implementing storage module",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

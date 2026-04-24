@@ -1,9 +1,0 @@
-{
-  "id": "90",
-  "subject": "Diagnostic Probe A — Disable combined_required target",
-  "description": "CONFIRMED: combined_required is mathematically redundant. Disabling it (Probe A PLAN-20260423122718) yielded same P0+P3 INFEASIBLE pattern, just 5 additional rows. Restored to original state.",
-  "activeForm": "Running Probe A (disable combined target)",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

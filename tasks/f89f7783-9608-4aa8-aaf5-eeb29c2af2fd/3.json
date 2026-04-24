@@ -1,9 +1,0 @@
-{
-  "id": "3",
-  "subject": "Write 6 pytest test files",
-  "description": "TC-S001-D-001-01..06 under docs/tests/S001-D-001/ driving Node subprocess or direct file checks.",
-  "activeForm": "Writing tests",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

@@ -1,9 +1,0 @@
-{
-  "id": "96",
-  "subject": "Diagnostic Probe C — lock_allocations=false to isolate fixed-block impact",
-  "description": "DECISIVE: With lock_allocations=false (LC-06 off), all 12 partitions FEASIBLE. With lock_allocations=true (LC-06 on + Fix #17-I pre-allocation), 6 of 12 INFEASIBLE. Confirms LC-06 Constraint 4/5 coupling + cross-partition carryover is the root cause, NOT fixed-block density. Fix #17-J (skip LC-06 var creation + couplings on pre-allocated days, pre-credit rt_count_by_month) is now data-backed.",
-  "activeForm": "Running diagnostic probe C",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

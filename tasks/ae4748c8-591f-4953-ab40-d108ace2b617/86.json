@@ -1,9 +1,0 @@
-{
-  "id": "86",
-  "subject": "Fix #17-A — Cross-partition REST×REST mutex (issue #3)",
-  "description": "Fix #17-A confirmed working. PLAN-20260423113820: zero CT×RT overlaps (vs 1 in prior probe). Constraint 8 (REST×REST cross-partition mutex) firing as expected with 556+92+702 blocks on P2/P3/P4 respectively. P0 INFEASIBLE and midnight-only anchors are separate issues (tasks #87, #88).",
-  "activeForm": "Patching cross-partition REST×REST mutex",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

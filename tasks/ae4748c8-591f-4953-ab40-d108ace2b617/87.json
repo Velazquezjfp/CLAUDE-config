@@ -1,9 +1,0 @@
-{
-  "id": "87",
-  "subject": "Fix #17-B — Diagnose + fix P0 INFEASIBLE (issue #2)",
-  "description": "DEFERRED — Investigation showed P0 INFEASIBLE is NOT a Fix #17 regression. Pre-Fix baseline PLAN-20260423093611 (run 09:36 before any Fix #17 code) had the same 49 DEMAND row count, indicating P0 INFEASIBLE pre-existed. Reclassified as independent bug outside Fix #17 scope. Keep for future work; user may want to address separately.",
-  "activeForm": "Diagnosing P0 infeasibility",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

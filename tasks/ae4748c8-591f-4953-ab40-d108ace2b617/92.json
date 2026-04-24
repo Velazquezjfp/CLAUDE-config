@@ -1,9 +1,0 @@
-{
-  "id": "92",
-  "subject": "Fix #17-E — Soften LC-06 targets to legal violations",
-  "description": "Fix #17-E soft LC-06 targets with shortfall=5 + midnight tiebreaker delivered in PLAN-20260423133942. Pending validation in higher-demand probe (see task for demanding probe).",
-  "activeForm": "Softening LC-06 targets",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

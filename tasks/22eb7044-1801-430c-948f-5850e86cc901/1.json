@@ -1,9 +1,0 @@
-{
-  "id": "1",
-  "subject": "Validate requirement & check dependencies",
-  "description": "Read S001-D-001.md, check status is proposed, check dependencies (none in this case)",
-  "activeForm": "Validating requirement",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

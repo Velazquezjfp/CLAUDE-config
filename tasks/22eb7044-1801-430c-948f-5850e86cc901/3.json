@@ -1,9 +1,0 @@
-{
-  "id": "3",
-  "subject": "Create server/storage.js module",
-  "description": "Implement DATA_FILE_PATH constant, readData(), writeData() with atomic temp+rename pattern",
-  "activeForm": "Creating storage module",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

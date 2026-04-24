@@ -1,9 +1,0 @@
-{
-  "id": "5",
-  "subject": "Write 5 pytest test files",
-  "description": "TC-S001-F-001-01..05 under docs/tests/S001-F-001/",
-  "activeForm": "Writing test files",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}

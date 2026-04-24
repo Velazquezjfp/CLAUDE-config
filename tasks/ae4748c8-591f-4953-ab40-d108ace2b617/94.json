@@ -1,9 +1,0 @@
-{
-  "id": "94",
-  "subject": "Demanding probe — multi-team to exercise anchor flexibility",
-  "description": "Demanding probe series complete. Final PLAN-20260423203637: all 12 partitions FEASIBLE, 1339 DEMAND (+74% vs pre-fix), 0 overlaps. Anchor machinery wired but not exercised in this dataset (100% midnight because resources have enough demand-free days). See memory note project_fix17_pending_probe.md for the outstanding anchor-exercise validation.",
-  "activeForm": "Running demanding multi-team probe",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

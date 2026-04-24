@@ -1,9 +1,0 @@
-{
-  "mon": { "breakfast": null, "lunch": null, "dinner": null },
-  "tue": { "breakfast": null, "lunch": null, "dinner": null },
-  "wed": { "breakfast": null, "lunch": null, "dinner": null },
-  "thu": { "breakfast": null, "lunch": null, "dinner": null },
-  "fri": { "breakfast": null, "lunch": null, "dinner": null },
-  "sat": { "breakfast": null, "lunch": null, "dinner": null },
-  "sun": { "breakfast": null, "lunch": null, "dinner": null }
-}

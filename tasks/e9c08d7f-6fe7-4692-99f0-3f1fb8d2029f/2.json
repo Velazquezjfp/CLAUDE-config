@@ -1,9 +1,0 @@
-{
-  "id": "2",
-  "subject": "Create package.json",
-  "description": "Declare express dependency and start script",
-  "activeForm": "Creating package.json",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

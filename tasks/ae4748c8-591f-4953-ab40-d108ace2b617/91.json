@@ -1,9 +1,0 @@
-{
-  "id": "91",
-  "subject": "Diagnostic Probe B — Disable CP_02 qualification matching",
-  "description": "CONFIRMED: CP-02 is NOT contributing to P0 or P3 rest-day infeasibility. Both still failed with CP-02 off. BUT: DEMAND rows jumped from 49 to 258 (5.3×) because with CP-02 off, team-14 resources were assigned to non-team demands (spurious — can't ship). PLAN-20260423124252 (524 rows total: 258 DEMAND, 171 RT, 95 CT). Restored CP-02 enabled.",
-  "activeForm": "Running Probe B (disable CP-02)",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

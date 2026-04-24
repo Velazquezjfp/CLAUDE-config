@@ -1,9 +1,0 @@
-{
-  "id": "95",
-  "subject": "Fix #17-I — Pre-allocate free weekends globally + config placeholders",
-  "description": "DONE. Pre-allocator + config placeholders + audit trail all shipped. Validated end-to-end in PLAN-20260423203637: 322 weekends locked, 0 legal violations, 52 absence-noted-not-credited (audit log for future HR mapping).",
-  "activeForm": "Implementing LC-05 pre-allocator",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

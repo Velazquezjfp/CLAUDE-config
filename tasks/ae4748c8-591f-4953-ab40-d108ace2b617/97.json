@@ -1,9 +1,0 @@
-{
-  "id": "97",
-  "subject": "Fix #17-J — Decouple LC-06 from pre-allocated weekends",
-  "description": "Fix #17-J (skip var creation on locked days + synthetic RT rows for output) shipped and verified. Combined with #17-I/L/M, cascade fully resolved.",
-  "activeForm": "Implementing LC-06 decoupling from pre-allocated weekends",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}

@@ -1,9 +1,0 @@
-{
-  "id": "89",
-  "subject": "Fix #17-D — Within-partition pairwise REST×REST overlap",
-  "description": "Fix #17-D pairwise within-partition REST×REST overlap shipped in PLAN-20260423120446. Zero overlaps confirmed. Rolled into Fix #17-E validation chain.",
-  "activeForm": "Patching within-partition REST×REST pairwise overlap",
-  "status": "completed",
-  "blocks": [],
-  "blockedBy": []
-}
